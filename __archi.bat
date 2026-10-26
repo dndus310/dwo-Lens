@@ -15,7 +15,7 @@ set "EXTRA=%~2"
 rem ---- 1. preflight ----
 dir /b "%PROJ%\*.uproject" >nul 2>&1 || (echo [archi] No .uproject next to this file. & exit /b 1)
 where git >nul 2>&1 || (echo [archi] git is not installed or not on PATH. & exit /b 1)
-for /f "delims=" %%i in ('git -C "%PROJ%" rev-parse --path-format=absolute --git-path info/exclude 2^>nul') do set "EXCL=%%i"
+for /f "delims=" %%i in ('git -C "%PROJ%" rev-parse --path-format^=absolute --git-path info/exclude 2^>nul') do set "EXCL=%%i"
 if not defined EXCL (echo [archi] This folder is not inside a git repository. & exit /b 1)
 
 set "SYS=%PROJ%\__archi\system"

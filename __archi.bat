@@ -60,7 +60,11 @@ cd /d "%PROJ%"
 powershell -NoProfile -ExecutionPolicy Bypass -File "%SYS%\tools\archi.ps1" -Command %CMD% -Project "%PROJ%" %EXTRA%
 set "RC=%ERRORLEVEL%"
 
-if /i "%CMD%"=="detach" if "%RC%"=="0" (
+rem 0 = clean, 3 = detached but git status differs; either way the system is gone.
+set "GONE="
+if "%RC%"=="0" set "GONE=1"
+if "%RC%"=="3" set "GONE=1"
+if /i "%CMD%"=="detach" if defined GONE (
   echo [archi] Removing __archi.bat
   (goto) 2>nul & del "%~f0"
 )

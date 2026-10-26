@@ -135,11 +135,19 @@ function Clear-ExcludeBlock {
     [IO.File]::WriteAllText($path, $text, $Utf8)
 }
 
+# Folders the engine itself rewrites whenever an editor or commandlet runs (ignored by the standard UE .gitignore).
+$VolatileDirs = @('Saved/', 'Intermediate/', 'DerivedDataCache/', 'Binaries/', '.vs/')
+
 function Get-ProjectStatus {
     # Porcelain status of the project, used to prove attach/detach leave no trace.
+    # Engine work folders are excluded: running the editor always touches them.
     $s = Invoke-Git @('status', '--porcelain', '--untracked-files=all')
     if (-not $s) { return '' }
-    return (@($s) -join "`n")
+    $kept = @($s) | Where-Object {
+        $path = $_.Substring(3).Trim('"')
+        -not ($VolatileDirs | Where-Object { $path.StartsWith($_) })
+    }
+    return (@($kept) -join "`n")
 }
 
 # ---------------------------------------------------------------- plugin
@@ -298,7 +306,7 @@ function Invoke-Analyze {
     Say "[$runId] ST-1 collect: running ArchiInspector commandlet"
     $log = Join-Path $runDir 'commandlet.log'
     $sw = [Diagnostics.Stopwatch]::StartNew()
-    & cmd /c "`"$($engine.Cmd)`" `"$($uproject.Path)`" -run=ArchiInspector -ArchiOut=`"$rawDir`" -unattended -nullrhi -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput > `"$log`" 2>&1"
+    & cmd /c "`"$($engine.Cmd)`" `"$($uproject.Path)`" -run=ArchiInspector -ArchiOut=`"$rawDir`" -ABSLOG=`"$(Join-Path $runDir 'editor.log')`" -unattended -nullrhi -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput > `"$log`" 2>&1"
     $code = $LASTEXITCODE
     $sw.Stop()
     $collected = Test-Path (Join-Path $rawDir 'meta.json')

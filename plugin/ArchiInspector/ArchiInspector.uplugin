@@ -1,0 +1,19 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1.0",
+	"FriendlyName": "Archi Inspector",
+	"Description": "Read-only reflection and Blueprint graph extractor for the Archi analysis factory. Never referenced by project code.",
+	"Category": "Archi",
+	"CreatedBy": "Archi",
+	"CanContainContent": false,
+	"EnabledByDefault": true,
+	"IsBetaVersion": true,
+	"Modules": [
+		{
+			"Name": "ArchiInspector",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	]
+}

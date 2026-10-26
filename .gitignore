@@ -1,0 +1,7 @@
+# Local plugin builds and logs
+.build/
+.build-log.txt
+plugin/ArchiInspector/Binaries/
+plugin/ArchiInspector/Intermediate/
+__pycache__/
+*.pyc

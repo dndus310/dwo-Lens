@@ -7,7 +7,9 @@ param(
     [string]$Project = '',
     [switch]$SkipIntegration
 )
-$ErrorActionPreference = 'Stop'
+# Continue: native tools write progress to stderr, which 'Stop' would turn into a terminating error.
+# Every step is judged explicitly by Check instead.
+$ErrorActionPreference = 'Continue'
 $repo = Split-Path -Parent $PSScriptRoot
 $qa = Join-Path $repo '.qa\selftest'
 if (Test-Path $qa) { Remove-Item -Recurse -Force $qa }

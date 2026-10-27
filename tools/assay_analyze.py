@@ -429,15 +429,15 @@ def write_sqlite(g: Graph, path: Path, meta: dict):
         CREATE INDEX ix_rel_target ON relation(target_key, relation_type);
     """)
     db.execute("INSERT INTO snapshot(engine, extracted_at) VALUES (?, ?)", (meta.get("engineVersion"), meta.get("extractedAtUtc")))
-    for s in g.symbols.values():
-        attrs = {k: v for k, v in s.items() if k not in ("key", "kind", "name", "external")}
-        db.execute("INSERT INTO symbol(symbol_key, kind, name, is_external, attrs) VALUES (?,?,?,?,?)",
-                   (s["key"], s["kind"], s["name"], int(s["external"]), json.dumps(attrs, ensure_ascii=False)))
-    for r in g.relations.values():
-        db.execute("INSERT INTO relation(source_key, target_key, relation_type, status, confidence, evidence, count, extractor_version)"
+    db.executemany("INSERT INTO symbol(symbol_key, kind, name, is_external, attrs) VALUES (?,?,?,?,?)",
+                   ((s["key"], s["kind"], s["name"], int(s["external"]),
+                     json.dumps({k: v for k, v in s.items() if k not in ("key", "kind", "name", "external")}, ensure_ascii=False))
+                    for s in g.symbols.values()))
+    db.executemany("INSERT INTO relation(source_key, target_key, relation_type, status, confidence, evidence, count, extractor_version)"
                    " VALUES (?,?,?,?,?,?,?,?)",
-                   (r["source"], r["target"], r["type"], r["status"], r["confidence"],
-                    json.dumps(r["evidence"], ensure_ascii=False), r["count"], EXTRACTOR_VERSION))
+                   ((r["source"], r["target"], r["type"], r["status"], r["confidence"],
+                     json.dumps(r["evidence"], ensure_ascii=False), r["count"], EXTRACTOR_VERSION)
+                    for r in g.relations.values()))
     db.commit()
     db.close()
 
@@ -629,10 +629,12 @@ def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, dia
     if len(all_flows) > len(shown):
         flows_html.append(f"<p class='meta'>실행 흐름 {len(all_flows)}개 중 큰 {len(shown)}개만 표시했습니다. 전체는 flows/*.mmd 파일에 있습니다.</p>")
 
+    calls_by_source = defaultdict(set)
+    for r in g.edges("Calls"):
+        calls_by_source[r["source"]].add(g.symbols.get(r["target"], {"name": r["target"]})["name"])
     bp_rows = []
     for key, bp in sorted(ctx["bp_index"].items()):
-        calls = [r for r in g.edges("Calls") if r["source"] == key]
-        targets = ", ".join(sorted({g.symbols.get(r["target"], {"name": r["target"]})["name"] for r in calls}))
+        targets = ", ".join(sorted(calls_by_source.get(key, ())))
         bp_rows.append(f"<tr><td>{esc(short_name(bp['asset']))}</td><td>{esc(bp['assetClass'])}</td>"
                        f"<td>{esc(short_name(bp['parent']))}</td><td>{len(bp['graphs'])}</td><td>{esc(targets)}</td></tr>")
 

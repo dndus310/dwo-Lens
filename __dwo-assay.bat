@@ -27,9 +27,10 @@ if /i "%CMD%"=="analyze" goto :handoff
 if /i "%CMD%"=="verify" goto :handoff
 if /i "%CMD%"=="logs" goto :handoff
 if /i "%CMD%"=="tools" goto :handoff
+if /i "%CMD%"=="gui" goto :handoff
 if /i "%CMD%"=="doctor" goto :handoff
 if /i "%CMD%"=="detach" goto :handoff
-echo Usage: __dwo-assay.bat [attach^|update^|status^|analyze^|verify^|logs^|tools^|doctor^|detach] [--keep-data]
+echo Usage: __dwo-assay.bat [attach^|update^|status^|analyze^|verify^|logs^|tools^|gui^|doctor^|detach] [--keep-data]
 exit /b 1
 
 :fetch

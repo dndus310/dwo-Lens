@@ -5,3 +5,4 @@
 *.h text eol=crlf
 *.cpp text eol=crlf
 *.uplugin text eol=crlf
+gui/third_party/** -text

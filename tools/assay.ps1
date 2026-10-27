@@ -2,7 +2,7 @@
 # Windows PowerShell 5.1 compatible. Never modifies tracked project files.
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('attach', 'update', 'status', 'analyze', 'verify', 'logs', 'tools', 'doctor', 'detach')]
+    [ValidateSet('attach', 'update', 'status', 'analyze', 'verify', 'logs', 'tools', 'gui', 'doctor', 'detach')]
     [string]$Command,
     [Parameter(Mandatory = $true)]
     [string]$Project,
@@ -524,5 +524,6 @@ switch ($Command) {
     'verify'  { Invoke-Verify }
     'logs'    { Invoke-Logs }
     'tools'   { Invoke-Tools }
+    'gui'     { & (Join-Path $SystemDir 'tools\gui.ps1') -SystemDir $SystemDir -Project $Project -AssayHome $env:DWO_ASSAY_HOME }
     'detach'  { Invoke-Detach }
 }

@@ -226,6 +226,15 @@
       "command": "gui",
       "invocation": "gui.bat (repository) or __dwo-assay.bat gui; Dear ImGui + DirectX 11, built once with MSVC",
       "output": "interactive runs, history, results"
+    },
+    {
+      "id": "state-monitor-provided",
+      "station": "ST-4",
+      "kind": "build",
+      "status": "ready",
+      "command": "sm-install, sm-remove",
+      "invocation": "installs the bundled StateMonitor plugin (prebuilt per engine, hidden from git) into Plugins/__StateMonitor; refuses removal while project code references it",
+      "output": "runtime USTRUCT snapshots, change history, viewer; StateMonitor.* tests in verify"
     }
   ]
 }

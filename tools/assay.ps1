@@ -2,7 +2,7 @@
 # Windows PowerShell 5.1 compatible. Never modifies tracked project files.
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('attach', 'update', 'status', 'analyze', 'verify', 'logs', 'tools', 'gui', 'doctor', 'detach')]
+    [ValidateSet('attach', 'update', 'status', 'analyze', 'verify', 'logs', 'tools', 'gui', 'sm-install', 'sm-remove', 'doctor', 'detach')]
     [string]$Command,
     [Parameter(Mandatory = $true)]
     [string]$Project,
@@ -22,7 +22,8 @@ $PluginDest  = Join-Path $Project 'Plugins\__DwoAssayInspector'
 $Marker      = '.dwo-assay-managed'
 $BlockStart  = '# >>> dwo-assay managed (do not edit) >>>'
 $BlockEnd    = '# <<< dwo-assay managed <<<'
-$ManagedPaths = @('/__dwo-assay/', '/__dwo-assay.bat', '/Plugins/__DwoAssayInspector/')
+$SmDest      = Join-Path $Project 'Plugins\__StateMonitor'
+$ManagedPaths = @('/__dwo-assay/', '/__dwo-assay.bat', '/Plugins/__DwoAssayInspector/', '/Plugins/__StateMonitor/')
 
 function Say([string]$Message) { Write-Host "[dwo-assay] $Message" }
 function Fail([string]$Message) { Write-Host "[dwo-assay] ERROR: $Message" -ForegroundColor Red; exit 1 }
@@ -151,8 +152,8 @@ function Get-ProjectStatus {
 }
 
 # ---------------------------------------------------------------- plugin
-function Get-PluginSourceHash {
-    $src = Join-Path $SystemDir 'plugin\DwoAssayInspector'
+function Get-PluginSourceHash([string]$Name = 'DwoAssayInspector') {
+    $src = Join-Path $SystemDir "plugin\$Name"
     $sha = [Security.Cryptography.SHA256]::Create()
     $sb = New-Object System.Text.StringBuilder
     Get-ChildItem -Recurse -File $src | Sort-Object FullName | ForEach-Object {
@@ -164,21 +165,21 @@ function Get-PluginSourceHash {
     return (($bytes | ForEach-Object { $_.ToString('x2') }) -join '').Substring(0, 12)
 }
 
-function Get-PluginBuild($Engine) {
-    $hash = Get-PluginSourceHash
+function Get-PluginBuild($Engine, [string]$Name = 'DwoAssayInspector') {
+    $hash = Get-PluginSourceHash $Name
     $cacheRoot = Join-Path $env:LOCALAPPDATA 'dwo-Assay\plugin-cache'
-    $cache = Join-Path $cacheRoot "$($Engine.Version)-$hash"
-    $dll = Join-Path $cache 'Binaries\Win64\UnrealEditor-DwoAssayInspector.dll'
+    $cache = Join-Path $cacheRoot "$($Engine.Version)-$Name-$hash"
+    $dll = Join-Path $cache "Binaries\Win64\UnrealEditor-$Name.dll"
     if (Test-Path $dll) { return [pscustomobject]@{ Dir = $cache; Hash = $hash } }
 
-    Say "Building DwoAssayInspector for UE $($Engine.Version) (first time for this engine/plugin version, takes a few minutes)..."
-    $staging = Join-Path $cacheRoot "staging-$hash"
+    Say "Building $Name for UE $($Engine.Version) (first time for this engine/plugin version, takes a few minutes)..."
+    $staging = Join-Path $cacheRoot "staging-$Name-$hash"
     if (Test-Path $staging) { Remove-Item -Recurse -Force $staging }
-    $log = Join-Path $DataDir 'logs\build-plugin.log'
+    $log = Join-Path $DataDir "logs\build-$Name.log"
     New-Item -ItemType Directory -Force (Split-Path -Parent $log) | Out-Null
-    $uplugin = Join-Path $SystemDir 'plugin\DwoAssayInspector\DwoAssayInspector.uplugin'
+    $uplugin = Join-Path $SystemDir "plugin\$Name\$Name.uplugin"
     & cmd /c "`"$($Engine.RunUAT)`" BuildPlugin -Plugin=`"$uplugin`" -Package=`"$staging`" -HostPlatforms=Win64 -TargetPlatforms=Win64 > `"$log`" 2>&1"
-    if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $staging 'Binaries\Win64\UnrealEditor-DwoAssayInspector.dll'))) {
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $staging "Binaries\Win64\UnrealEditor-$Name.dll"))) {
         Fail "Plugin build failed. See $log"
     }
     if (Test-Path $cache) { Remove-Item -Recurse -Force $cache }
@@ -212,6 +213,73 @@ function Remove-Plugin {
 }
 
 # ---------------------------------------------------------------- commands
+# ---------------------------------------------------------------- StateMonitor (provided tool)
+function Get-StateMonitorReferences {
+    # Project code that includes or calls StateMonitor. Removing the plugin would break those builds.
+    $refs = @()
+    foreach ($dir in @('Source', 'Plugins')) {
+        $path = Join-Path $Project $dir
+        if (-not (Test-Path $path)) { continue }
+        $refs += Get-ChildItem -Path $path -Recurse -File -Include *.h, *.cpp, *.cs -ErrorAction SilentlyContinue |
+                 Where-Object { $_.FullName -notlike '*__StateMonitor*' -and $_.FullName -notlike '*__DwoAssay*' } |
+                 Select-String -Pattern 'StateMonitor' -List | ForEach-Object { $_.Path.Substring($Project.Length + 1) + ':' + $_.LineNumber }
+    }
+    return $refs
+}
+
+function Find-OwnStateMonitor {
+    # A StateMonitor that belongs to the project itself (not installed by dwo-Assay).
+    $plugins = Join-Path $Project 'Plugins'
+    if (-not (Test-Path $plugins)) { return $null }
+    return Get-ChildItem -Path $plugins -Recurse -Filter 'StateMonitor.uplugin' -ErrorAction SilentlyContinue |
+           Where-Object { $_.FullName -notlike '*__StateMonitor*' -and $_.FullName -notlike '*__Dwo*' } | Select-Object -First 1
+}
+
+function Invoke-SmInstall {
+    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-assay.bat attach first.' }
+    $own = Find-OwnStateMonitor
+    if ($own) { Fail "The project already contains StateMonitor ($($own.FullName.Substring($Project.Length + 1))). Nothing to install." }
+    $uproject = Get-UProject
+    $engine = Resolve-Engine $uproject.Json.EngineAssociation
+    Set-ExcludeBlock
+    $build = Get-PluginBuild $engine 'StateMonitor'
+    if (Test-Path $SmDest) { Remove-Item -Recurse -Force $SmDest }
+    New-Item -ItemType Directory -Force $SmDest | Out-Null
+    # Source and headers stay so C++ code can include StateMonitor; Binaries make Blueprint-only projects work without compiling.
+    Get-ChildItem $build.Dir | Where-Object { $_.Name -ne 'Intermediate' } | ForEach-Object { Copy-Item -Recurse $_.FullName $SmDest }
+    $upluginPath = Join-Path $SmDest 'StateMonitor.uplugin'
+    $uplugin = Get-Content -Raw -Encoding UTF8 $upluginPath | ConvertFrom-Json
+    $uplugin | Add-Member -NotePropertyName EnabledByDefault -NotePropertyValue $true -Force
+    [IO.File]::WriteAllText($upluginPath, ($uplugin | ConvertTo-Json -Depth 10), $Utf8)
+    [IO.File]::WriteAllText((Join-Path $SmDest $Marker), "StateMonitor installed by dwo-Assay. Remove with '__dwo-assay.bat sm-remove'.`n", $Utf8)
+    Say "StateMonitor installed: Plugins\__StateMonitor (UE $($engine.Version), hidden from git)"
+    Say 'Blueprint: use the Submit State Snapshot / Show State Monitor nodes.'
+    Say 'C++: add "StateMonitor" to your module Build.cs, then UStateMonitorSubsystem::Get(this)->Submit(TEXT("Id"), State).'
+    Say 'Remove the Build.cs entry and calls before sm-remove or detach.'
+}
+
+function Remove-StateMonitor([bool]$Force) {
+    if (-not (Test-Path $SmDest)) { return $true }
+    if (-not (Test-Path (Join-Path $SmDest $Marker))) { Fail "$SmDest is not managed by dwo-Assay. Leaving it untouched." }
+    $refs = @(Get-StateMonitorReferences)
+    if ($refs.Count -gt 0 -and -not $Force) {
+        Say 'Project code still uses StateMonitor. Removing the plugin would break the build:'
+        $refs | Select-Object -First 15 | ForEach-Object { Write-Host "    $_" }
+        Say 'Remove those references first, or run again with --force.'
+        return $false
+    }
+    Remove-Item -Recurse -Force $SmDest
+    $plugins = Join-Path $Project 'Plugins'
+    if ((Test-Path $plugins) -and -not (Get-ChildItem -Force $plugins)) { Remove-Item -Force $plugins }
+    Say 'StateMonitor removed.'
+    return $true
+}
+
+function Invoke-SmRemove {
+    if (-not (Test-Path $SmDest)) { Say 'StateMonitor is not installed by dwo-Assay.'; return }
+    if (-not (Remove-StateMonitor ($Rest -contains '--force'))) { exit 1 }
+}
+
 function Get-SystemCommit {
     $c = & git -C $SystemDir rev-parse --short HEAD 2>$null
     if ($LASTEXITCODE -ne 0) { return 'unknown' }
@@ -281,13 +349,16 @@ function Invoke-Doctor {
     $excl = Get-ExcludePath
     Check 'exclude block present' ((Test-Path $excl) -and ((Get-Content -Raw $excl) -like "*$BlockStart*")) 'run __dwo-assay.bat attach'
     Check 'plugin installed' (Test-Path (Join-Path $PluginDest 'Binaries\Win64\UnrealEditor-DwoAssayInspector.dll')) 'run __dwo-assay.bat attach'
-    $leaks = Invoke-Git @('status', '--porcelain', '--untracked-files=all', '--', '__dwo-assay', '__dwo-assay.bat', 'Plugins/__DwoAssayInspector')
+    $leaks = Invoke-Git @('status', '--porcelain', '--untracked-files=all', '--', '__dwo-assay', '__dwo-assay.bat', 'Plugins/__DwoAssayInspector', 'Plugins/__StateMonitor')
     Check 'dwo-assay files hidden from git' (-not $leaks) "visible to git: $leaks"
     $py = Get-Command python -ErrorAction SilentlyContinue
     Check 'python available' ($py -ne $null) 'install Python 3.10+'
     if ($uproject.IsCode) {
         Write-Host '  [note] code project: confirm your own builds ignore Plugins/__DwoAssayInspector (prebuilt, no Source).'
     }
+    if (Test-Path $SmDest) { Write-Host '  [info] StateMonitor installed by dwo-Assay (Plugins/__StateMonitor)' }
+    elseif (Find-OwnStateMonitor) { Write-Host '  [info] StateMonitor is part of the project itself' }
+    else { Write-Host '  [info] StateMonitor not installed (optional: __dwo-assay.bat sm-install)' }
     return (-not $script:doctorFailed)
 }
 
@@ -494,6 +565,7 @@ function Invoke-Analyze {
 function Invoke-Detach {
     $keepData = $Rest -contains '--keep-data'
     $state = Read-State
+    if (-not (Remove-StateMonitor ($Rest -contains '--force'))) { Fail 'Detach stopped. StateMonitor is still in use.' }
     Remove-Plugin
     Clear-ExcludeBlock
     if ($keepData -and (Test-Path $DataDir)) {
@@ -524,6 +596,8 @@ switch ($Command) {
     'verify'  { Invoke-Verify }
     'logs'    { Invoke-Logs }
     'tools'   { Invoke-Tools }
+    'sm-install' { Invoke-SmInstall }
+    'sm-remove'  { Invoke-SmRemove }
     'gui'     { & (Join-Path $SystemDir 'tools\gui.ps1') -SystemDir $SystemDir -Project $Project -AssayHome $env:DWO_ASSAY_HOME }
     'detach'  { Invoke-Detach }
 }

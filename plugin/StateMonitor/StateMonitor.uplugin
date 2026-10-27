@@ -1,0 +1,12 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "1.0",
+  "FriendlyName": "State Monitor",
+  "Description": "Reusable runtime reflection snapshots, change history and Slate state viewer.",
+  "Category": "Runtime",
+  "CanContainContent": false,
+  "Modules": [
+    { "Name": "StateMonitor", "Type": "Runtime", "LoadingPhase": "Default" }
+  ]
+}

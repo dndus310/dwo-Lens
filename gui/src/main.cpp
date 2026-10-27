@@ -439,6 +439,7 @@ struct App
 	bool hasUProject = false;
 	bool attached = false;
 	bool isCodeProject = false;
+	int stateMonitor = 0;        // 0 none, 1 installed by dwo-Assay, 2 part of the project
 	json state;
 	std::vector<RunInfo> runs;
 	int selectedRun = -1;
@@ -499,6 +500,14 @@ struct App
 					break;
 				}
 		isCodeProject = fs::exists(project / "Source", ec);
+		stateMonitor = 0;
+		if (fs::exists(project / "Plugins" / "__StateMonitor" / "StateMonitor.uplugin", ec)) stateMonitor = 1;
+		else if (fs::is_directory(project / "Plugins", ec))
+			for (auto it = fs::recursive_directory_iterator(project / "Plugins", ec); it != fs::recursive_directory_iterator(); it.increment(ec))
+			{
+				if (ec || it.depth() > 3) { if (it.depth() > 3) it.disable_recursion_pending(); continue; }
+				if (it->path().filename() == "StateMonitor.uplugin" && PathUtf8(it->path()).find("__") == std::string::npos) { stateMonitor = 2; break; }
+			}
 		auto st = ReadJson(project / "__dwo-assay" / "state.json");
 		attached = st.has_value();
 		state = st ? *st : json::object();
@@ -695,6 +704,27 @@ static void DrawSidebar(App& app)
 		ImGui::PopStyleColor();
 	}
 	ImGui::EndDisabled();
+
+	if (app.attached)
+	{
+		SectionTitle("제공 도구");
+		ImGui::TextUnformatted("StateMonitor");
+		ImGui::SameLine();
+		const char* smState = app.stateMonitor == 1 ? "설치됨" : app.stateMonitor == 2 ? "프로젝트 포함" : "미설치";
+		Badge(app.stateMonitor == 0 ? "-" : "pass");
+		ImGui::SameLine();
+		ImGui::TextDisabled("%s", smState);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("USTRUCT 상태 스냅샷·변경 이력 뷰어 (런타임).
+설치하면 analyze가 제출 지점을 찾고 verify가 StateMonitor 테스트를 함께 실행합니다.");
+		ImGui::BeginDisabled(!idle || app.stateMonitor == 2);
+		if (app.stateMonitor == 1)
+		{
+			if (ImGui::Button("StateMonitor 제거", ImVec2(-FLT_MIN, 0))) app.Run("sm-remove");
+		}
+		else if (ImGui::Button("StateMonitor 설치", ImVec2(-FLT_MIN, 0))) app.Run("sm-install");
+		ImGui::EndDisabled();
+	}
 
 	if (app.runner.running)
 	{

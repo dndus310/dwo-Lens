@@ -2,7 +2,7 @@
 
 언리얼 프로젝트에 흔적 없이 부착되는 분석·로그·검증 팩토리입니다. 대상 프로젝트를 읽기만 하며, 언제 떼어 내도 프로젝트는 그대로 동작합니다.
 
-현재 단계: **Phase 1 — 아키텍처 리포트 라인** (AI 미사용)
+현재 가동 라인 (AI 미사용): **아키텍처 리포트(`analyze`)**, **검증(`verify`)**, **로그(`logs`)**
 
 ## 설치 (PC당 1회)
 
@@ -18,8 +18,11 @@ setup.bat
 2. 실행합니다.
 
 ```bat
-__dwo-assay.bat attach     :: 부착 (처음 한 번은 플러그인 빌드로 몇 분 걸림)
-__dwo-assay.bat analyze    :: 아키텍처 리포트 생성
+__dwo-assay.bat attach     :: 부착 (엔진 버전별 첫 회만 플러그인 빌드로 몇 분 걸림)
+__dwo-assay.bat analyze    :: ST-1~2 아키텍처 리포트 + 품질 점검
+__dwo-assay.bat verify     :: ST-3 BP 전체 컴파일, 데이터 검증, 자동화 테스트
+__dwo-assay.bat logs       :: ST-4 Saved/Logs, Saved/Crashes 분석 (이전 실행 대비 새 오류)
+__dwo-assay.bat tools      :: 도구 카탈로그 (ready / planned)
 __dwo-assay.bat status     :: 부착 버전·엔진 확인
 __dwo-assay.bat doctor     :: 환경 점검
 __dwo-assay.bat update     :: 시스템 최신화
@@ -31,6 +34,7 @@ __dwo-assay.bat detach     :: 제거 (--keep-data 로 분석 데이터 보존)
 - 대상 프로젝트는 **자체 git 저장소**여야 합니다 (상위 폴더 저장소에 포함된 경우 거부).
 - Epic Launcher 또는 소스 빌드로 프로젝트의 `EngineAssociation` 엔진이 설치되어 있어야 합니다.
 - Python 3.10 이상, git 2.31 이상.
+- C++ 프로젝트는 에디터 바이너리가 빌드된 상태여야 Commandlet이 실행됩니다.
 
 ## 부착 시 프로젝트에 생기는 것
 
@@ -40,29 +44,60 @@ A/
 ├─ __dwo-assay/
 │  ├─ system/          # 이 저장소의 clone (버전 = 커밋)
 │  ├─ data/runs/<id>/  # 실행별 raw · out · run.json · 로그
+│  ├─ config.json      # (선택) 프로젝트별 규칙 덮어쓰기
 │  └─ state.json
 └─ Plugins/__DwoAssayInspector/   # 미리 빌드된 에디터 전용 플러그인 (Source 없음)
 ```
 
-모두 `.git/info/exclude`의 표식 블록으로 git에서 숨겨집니다. `.uproject`, `Build.cs`, 기존 파일은 건드리지 않습니다.
+모두 `.git/info/exclude`의 표식 블록으로 git에서 숨겨집니다. `.uproject`, `Build.cs`, 기존 파일은 건드리지 않습니다. 제거 시 엔진 작업 폴더(`Saved/`, `Intermediate/`, `DerivedDataCache/`)를 뺀 git 상태가 부착 전과 같은지 검사합니다.
+
+## 라인과 도구
+
+| 라인 | 공정 | 도구 |
+|---|---|---|
+| `analyze` | ST-1 수집 | `-run=DwoAssayInspector` (리플렉션, BP 그래프, 에셋 참조), 모듈·플러그인 스캔 |
+| | ST-2 분석 | 통합 그래프, 순환 검사, 하드 참조 체인, 미사용 에셋·리다이렉터, BP 복잡도 |
+| | ST-3 규칙 | 이름·폴더 규칙 (UE5 스타일 가이드 기본값) |
+| | ST-4 연계 | StateMonitor 어댑터: 프로젝트에 있으면 제출 지점·Source ID 수집 |
+| `verify` | ST-3 검증 | `CompileAllBlueprints`, `DataValidation`, `Automation RunTests` (StateMonitor가 있으면 `StateMonitor.*` 추가) |
+| `logs` | ST-4 로그 | 구조화 로그 파서 (심각도·카테고리·지문 그룹, 이전 실행 대비 새 오류), 크래시 수집 |
+
+전체 목록과 계획 중인 도구(Insights 내보내기, CSV 성능 리포트, 정적 분석 등)는 `tools/catalog.json` 또는 `__dwo-assay.bat tools`로 확인합니다.
+
+## 설정
+
+`config/default.json`이 기본값입니다. 프로젝트별로 바꾸려면 `__dwo-assay/config.json`에 같은 구조로 필요한 키만 적습니다.
+
+```json
+{
+  "naming": { "forbidAssetsAtContentRoot": false },
+  "verify": { "automationFilters": ["Project.", "MyGame."] }
+}
+```
 
 ## 구성
 
 | 경로 | 역할 |
 |---|---|
 | `__dwo-assay.bat` | 부트스트랩: 사전 확인 → exclude → clone/pull → `assay.ps1` 호출 |
-| `tools/assay.ps1` | attach / update / status / doctor / analyze / detach |
+| `tools/assay.ps1` | 명령 실행, 엔진 호출, 실행 기록 (`run.json`) |
 | `tools/assay_analyze.py` | raw JSON → 통합 그래프, SQLite, 다이어그램, 게이트, HTML 리포트 |
-| `plugin/DwoAssayInspector` | 리플렉션·BP 그래프·에셋 참조를 추출하는 Commandlet (`-run=DwoAssayInspector`) |
+| `tools/assay_quality.py` | 이름 규칙, 미사용 에셋, BP 복잡도, StateMonitor 감지 |
+| `tools/assay_logs.py` | UE 로그·크래시 파서 |
+| `tools/assay_verify.py` | 검증·로그 라인 판정과 리포트 |
+| `tools/catalog.json` | 도구 레지스트리 |
+| `config/default.json` | 규칙과 기준값 |
+| `plugin/DwoAssayInspector` | 추출 Commandlet (읽기 전용, 패키지를 저장하지 않음) |
 
 플러그인은 엔진 버전과 소스 해시별로 `%LOCALAPPDATA%\dwo-Assay\plugin-cache`에 한 번만 빌드되고 여러 프로젝트가 재사용합니다.
 
-## 산출물 (`__dwo-assay/data/runs/<id>/out`)
+## 산출물 (`__dwo-assay/data/runs/<id>/`)
 
 | 파일 | 내용 |
 |---|---|
-| `report.html` | 판정, 발견 사항, 클래스 UML, 모듈·에셋 그래프, BP 실행 흐름 |
-| `graph.json`, `index.db` | 심볼·관계 (status, evidence 포함) |
-| `class_uml.puml` / `.mmd` | 클래스 다이어그램 |
-| `flows/*.mmd` | BP 그래프별 실행 흐름 |
-| `findings.json` | 게이트 판정 (pass / warn / fail) |
+| `run.json` | 실행 ID, 라인, 공정별 판정·소요 시간, 시스템 커밋 |
+| `out/report.html` | 라인별 리포트 |
+| `out/graph.json`, `out/index.db` | 심볼·관계 (status, evidence 포함) |
+| `out/class_uml.puml` / `.mmd`, `out/flows/*.mmd` | 클래스 다이어그램, BP 실행 흐름 |
+| `out/findings.json`, `out/quality.json`, `out/statemonitor.json` | 분석 판정과 품질 점검 |
+| `out/verify.json`, `out/logs.json` | 검증·로그 라인 결과 |

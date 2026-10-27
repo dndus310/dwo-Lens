@@ -22,6 +22,7 @@ SCHEMA = "assay.graph/0.1"
 EXTRACTOR_VERSION = "assay-analyze/0.1"
 MAX_DIAGRAM_NODES = 120
 MAX_FLOW_NODES = 60
+MAX_REPORT_FLOWS = 60
 TICK_EVENTS = {"ReceiveTick", "Tick"}
 EXTERNAL_PREFIXES = ("__ExternalActors__", "__ExternalObjects__")
 
@@ -73,8 +74,36 @@ def mermaid_label(text: str) -> str:
 
 
 def tarjan(graph: dict[str, set[str]]) -> list[list[str]]:
-    """Strongly connected components with more than one node. Iterative, so reference chains of any
-    length (large asset graphs) cannot hit Python's recursion limit."""
+    """Strongly connected components with more than one node (cycles), sorted."""
+    return [sorted(c) for c in strongly_connected(graph) if len(c) > 1]
+
+
+def reach_counts(graph: dict[str, set[str]], nodes) -> dict[str, int]:
+    """Number of other nodes reachable from each node. Cycles are condensed first and reachability is
+    propagated as integer bitsets in reverse topological order, so large asset graphs stay fast."""
+    all_nodes = set(nodes) | set(graph)
+    for deps in graph.values():
+        all_nodes |= deps
+    bit = {n: 1 << i for i, n in enumerate(sorted(all_nodes))}
+    comp_of, reach = {}, []
+    for ci, comp in enumerate(strongly_connected({n: graph.get(n, set()) for n in all_nodes})):
+        mask = 0
+        for n in comp:
+            comp_of[n] = ci
+            mask |= bit[n]
+        for n in comp:  # components arrive sinks first, so successors are already final
+            for d in graph.get(n, ()):
+                dc = comp_of[d]
+                if dc != ci:
+                    mask |= reach[dc]
+        reach.append(mask)
+    return {n: bin(reach[comp_of[n]]).count("1") - (0 if len(graph.get(n, ())) and n in graph.get(n, ()) else 1)
+            for n in nodes}
+
+
+def strongly_connected(graph: dict[str, set[str]]) -> list[list[str]]:
+    """All strongly connected components in reverse topological order (sinks first). Iterative, so
+    reference chains of any length cannot hit Python's recursion limit."""
     index, low, stack, on_stack, result = {}, {}, [], set(), []
     counter = 0
     for root in sorted(graph):
@@ -113,8 +142,7 @@ def tarjan(graph: dict[str, set[str]]) -> list[list[str]]:
                     component.append(w)
                     if w == v:
                         break
-                if len(component) > 1:
-                    result.append(sorted(component))
+                result.append(component)
     return result
 
 
@@ -351,15 +379,8 @@ def run_checks(g: Graph, ctx: dict) -> dict:
         add("warn", "tick-usage", f"{t['blueprint']}: Tick 이벤트에 로직이 연결되어 있음 ({t['graph']})", [t])
 
     # Transitive hard-reference load chain per asset.
-    def closure(start: str) -> set[str]:
-        seen, stack = set(), [start]
-        while stack:
-            for d in hard.get(stack.pop(), ()):
-                if d not in seen:
-                    seen.add(d)
-                    stack.append(d)
-        return seen
-    chains = sorted(((pkg, len(closure(pkg))) for pkg in ctx["asset_class"]), key=lambda x: -x[1])[:10]
+    loads = reach_counts(hard, ctx["asset_class"].keys())
+    chains = sorted(loads.items(), key=lambda x: (-x[1], x[0]))[:10]
     heavy = [{"asset": p, "loads": n} for p, n in chains if n > 0]
     if heavy:
         add("info", "hard-ref-chain", "하드 참조로 함께 로드되는 에셋 수 상위", heavy)
@@ -596,10 +617,17 @@ def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, dia
             return f"<h3>{esc(title)}</h3><p class='meta'>해당 데이터 없음</p>"
         return f"<h3>{esc(title)}</h3>{note}<pre class='mermaid'>{esc(source)}</pre>"
 
+    # Large projects have thousands of graphs; the page keeps the biggest ones and links the rest.
+    all_flows = [(bp_name, gname, src) for bp_name, graphs in diagrams["flows"].items() for gname, src in graphs]
+    shown = sorted(all_flows, key=lambda f: -f[2].count("\n"))[:MAX_REPORT_FLOWS]
+    shown_keys = {(b, gname) for b, gname, _ in shown}
     flows_html = []
     for bp_name, graphs in diagrams["flows"].items():
-        inner = "".join(mermaid_block(f"{bp_name} · {gname}", src) for gname, src in graphs)
-        flows_html.append(f"<details open><summary>{esc(bp_name)}</summary>{inner}</details>")
+        inner = "".join(mermaid_block(f"{bp_name} · {gname}", src) for gname, src in graphs if (bp_name, gname) in shown_keys)
+        if inner:
+            flows_html.append(f"<details{' open' if len(shown) <= 12 else ''}><summary>{esc(bp_name)}</summary>{inner}</details>")
+    if len(all_flows) > len(shown):
+        flows_html.append(f"<p class='meta'>실행 흐름 {len(all_flows)}개 중 큰 {len(shown)}개만 표시했습니다. 전체는 flows/*.mmd 파일에 있습니다.</p>")
 
     bp_rows = []
     for key, bp in sorted(ctx["bp_index"].items()):

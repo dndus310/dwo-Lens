@@ -135,6 +135,13 @@ class AnalyzerHelperTests(unittest.TestCase):
         self.assertEqual(cycles, [["a", "b", "c"]])
         self.assertEqual(analyze.tarjan({"a": {"b"}, "b": set()}), [])
 
+    def test_reach_counts(self):
+        graph = {"a": {"b"}, "b": {"c"}, "c": {"a"}, "d": {"a"}, "e": set()}
+        self.assertEqual(analyze.reach_counts(graph, ["a", "b", "c", "d", "e"]), {"a": 2, "b": 2, "c": 2, "d": 3, "e": 0})
+        long_chain = {str(i): {str(i + 1)} for i in range(3000)}
+        counts = analyze.reach_counts(long_chain, ["0", "2999"])
+        self.assertEqual(counts, {"0": 3000, "2999": 1})
+
     def test_tarjan_deep_chain_has_no_recursion_error(self):
         chain = {str(i): {str(i + 1)} for i in range(5000)}
         self.assertEqual(analyze.tarjan(chain), [])

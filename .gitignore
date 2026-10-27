@@ -7,3 +7,4 @@ __pycache__/
 *.pyc
 # QA scratch (package checks, stress data)
 .qa/
+.qa-*.txt

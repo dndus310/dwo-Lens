@@ -1,0 +1,19 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1.0",
+	"FriendlyName": "dwo-Assay Inspector",
+	"Description": "Read-only reflection and Blueprint graph extractor for the dwo-Assay analysis factory. Never referenced by project code.",
+	"Category": "dwo-Assay",
+	"CreatedBy": "dwo-Assay",
+	"CanContainContent": false,
+	"EnabledByDefault": true,
+	"IsBetaVersion": true,
+	"Modules": [
+		{
+			"Name": "DwoAssayInspector",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	]
+}

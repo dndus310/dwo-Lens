@@ -2,23 +2,23 @@
 
 #include "CoreMinimal.h"
 #include "Commandlets/Commandlet.h"
-#include "ArchiInspectorCommandlet.generated.h"
+#include "DwoAssayInspectorCommandlet.generated.h"
 
 /**
  * Read-only extractor. Writes reflection, Blueprint graph and asset reference data as JSON.
  *
  * Usage:
- *   UnrealEditor-Cmd.exe <Project>.uproject -run=ArchiInspector -ArchiOut=<dir> [-ArchiContentRoots=/Game,/MyPlugin]
+ *   UnrealEditor-Cmd.exe <Project>.uproject -run=DwoAssayInspector -AssayOut=<dir> [-AssayContentRoots=/Game,/MyPlugin]
  *
  * Never saves packages and never modifies project files.
  */
 UCLASS()
-class UArchiInspectorCommandlet : public UCommandlet
+class UDwoAssayInspectorCommandlet : public UCommandlet
 {
 	GENERATED_BODY()
 
 public:
-	UArchiInspectorCommandlet();
+	UDwoAssayInspectorCommandlet();
 
 	virtual int32 Main(const FString& Params) override;
 };

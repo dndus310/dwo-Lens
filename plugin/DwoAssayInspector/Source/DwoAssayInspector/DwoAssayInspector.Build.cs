@@ -1,8 +1,8 @@
 using UnrealBuildTool;
 
-public class ArchiInspector : ModuleRules
+public class DwoAssayInspector : ModuleRules
 {
-	public ArchiInspector(ReadOnlyTargetRules Target) : base(Target)
+	public DwoAssayInspector(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 

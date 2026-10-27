@@ -1,4 +1,4 @@
-# Archi control script. Invoked by __archi.bat from the project root.
+# dwo-Assay control script. Invoked by __dwo-assay.bat from the project root.
 # Windows PowerShell 5.1 compatible. Never modifies tracked project files.
 param(
     [Parameter(Mandatory = $true)]
@@ -15,17 +15,17 @@ $Utf8 = New-Object System.Text.UTF8Encoding($false)
 
 $SystemDir   = Split-Path -Parent $PSScriptRoot
 $Project     = (Resolve-Path $Project).Path.TrimEnd('\')
-$ArchiDir    = Join-Path $Project '__archi'
-$DataDir     = Join-Path $ArchiDir 'data'
-$StatePath   = Join-Path $ArchiDir 'state.json'
-$PluginDest  = Join-Path $Project 'Plugins\__ArchiInspector'
-$Marker      = '.archi-managed'
-$BlockStart  = '# >>> archi managed (do not edit) >>>'
-$BlockEnd    = '# <<< archi managed <<<'
-$ManagedPaths = @('/__archi/', '/__archi.bat', '/Plugins/__ArchiInspector/')
+$dwo-AssayDir    = Join-Path $Project '__dwo-assay'
+$DataDir     = Join-Path $dwo-AssayDir 'data'
+$StatePath   = Join-Path $dwo-AssayDir 'state.json'
+$PluginDest  = Join-Path $Project 'Plugins\__DwoAssayInspector'
+$Marker      = '.dwo-assay-managed'
+$BlockStart  = '# >>> dwo-assay managed (do not edit) >>>'
+$BlockEnd    = '# <<< dwo-assay managed <<<'
+$ManagedPaths = @('/__dwo-assay/', '/__dwo-assay.bat', '/Plugins/__DwoAssayInspector/')
 
-function Say([string]$Message) { Write-Host "[archi] $Message" }
-function Fail([string]$Message) { Write-Host "[archi] ERROR: $Message" -ForegroundColor Red; exit 1 }
+function Say([string]$Message) { Write-Host "[dwo-assay] $Message" }
+function Fail([string]$Message) { Write-Host "[dwo-assay] ERROR: $Message" -ForegroundColor Red; exit 1 }
 
 function Write-Json($Path, $Object) {
     $dir = Split-Path -Parent $Path
@@ -118,8 +118,8 @@ function Remove-Block([string[]]$Lines) {
     $out = New-Object System.Collections.Generic.List[string]
     $inside = $false
     foreach ($line in $Lines) {
-        if ($line -like '# >>> archi managed*') { $inside = $true; continue }
-        if ($line -like '# <<< archi managed*') { $inside = $false; continue }
+        if ($line -like '# >>> dwo-assay managed*') { $inside = $true; continue }
+        if ($line -like '# <<< dwo-assay managed*') { $inside = $false; continue }
         if (-not $inside) { $out.Add($line) }
     }
     while ($out.Count -gt 0 -and [string]::IsNullOrWhiteSpace($out[$out.Count - 1])) { $out.RemoveAt($out.Count - 1) }
@@ -152,7 +152,7 @@ function Get-ProjectStatus {
 
 # ---------------------------------------------------------------- plugin
 function Get-PluginSourceHash {
-    $src = Join-Path $SystemDir 'plugin\ArchiInspector'
+    $src = Join-Path $SystemDir 'plugin\DwoAssayInspector'
     $sha = [Security.Cryptography.SHA256]::Create()
     $sb = New-Object System.Text.StringBuilder
     Get-ChildItem -Recurse -File $src | Sort-Object FullName | ForEach-Object {
@@ -166,19 +166,19 @@ function Get-PluginSourceHash {
 
 function Get-PluginBuild($Engine) {
     $hash = Get-PluginSourceHash
-    $cacheRoot = Join-Path $env:LOCALAPPDATA 'Archi\plugin-cache'
+    $cacheRoot = Join-Path $env:LOCALAPPDATA 'dwo-Assay\plugin-cache'
     $cache = Join-Path $cacheRoot "$($Engine.Version)-$hash"
-    $dll = Join-Path $cache 'Binaries\Win64\UnrealEditor-ArchiInspector.dll'
+    $dll = Join-Path $cache 'Binaries\Win64\UnrealEditor-DwoAssayInspector.dll'
     if (Test-Path $dll) { return [pscustomobject]@{ Dir = $cache; Hash = $hash } }
 
-    Say "Building ArchiInspector for UE $($Engine.Version) (first time for this engine/plugin version, takes a few minutes)..."
+    Say "Building DwoAssayInspector for UE $($Engine.Version) (first time for this engine/plugin version, takes a few minutes)..."
     $staging = Join-Path $cacheRoot "staging-$hash"
     if (Test-Path $staging) { Remove-Item -Recurse -Force $staging }
     $log = Join-Path $DataDir 'logs\build-plugin.log'
     New-Item -ItemType Directory -Force (Split-Path -Parent $log) | Out-Null
-    $uplugin = Join-Path $SystemDir 'plugin\ArchiInspector\ArchiInspector.uplugin'
+    $uplugin = Join-Path $SystemDir 'plugin\DwoAssayInspector\DwoAssayInspector.uplugin'
     & cmd /c "`"$($Engine.RunUAT)`" BuildPlugin -Plugin=`"$uplugin`" -Package=`"$staging`" -HostPlatforms=Win64 -TargetPlatforms=Win64 > `"$log`" 2>&1"
-    if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $staging 'Binaries\Win64\UnrealEditor-ArchiInspector.dll'))) {
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $staging 'Binaries\Win64\UnrealEditor-DwoAssayInspector.dll'))) {
         Fail "Plugin build failed. See $log"
     }
     if (Test-Path $cache) { Remove-Item -Recurse -Force $cache }
@@ -190,21 +190,21 @@ function Install-Plugin($Build) {
     Remove-Plugin
     New-Item -ItemType Directory -Force $PluginDest | Out-Null
     # Prebuilt binaries only: the project's own build never compiles this plugin.
-    Copy-Item (Join-Path $Build.Dir 'ArchiInspector.uplugin') $PluginDest
+    Copy-Item (Join-Path $Build.Dir 'DwoAssayInspector.uplugin') $PluginDest
     # BuildPlugin drops EnabledByDefault; restore it so the project never needs a .uproject entry.
-    $upluginPath = Join-Path $PluginDest 'ArchiInspector.uplugin'
+    $upluginPath = Join-Path $PluginDest 'DwoAssayInspector.uplugin'
     $uplugin = Get-Content -Raw -Encoding UTF8 $upluginPath | ConvertFrom-Json
     $uplugin | Add-Member -NotePropertyName EnabledByDefault -NotePropertyValue $true -Force
     [IO.File]::WriteAllText($upluginPath, ($uplugin | ConvertTo-Json -Depth 10), $Utf8)
     Copy-Item -Recurse (Join-Path $Build.Dir 'Binaries') $PluginDest
     if (Test-Path (Join-Path $Build.Dir 'Resources')) { Copy-Item -Recurse (Join-Path $Build.Dir 'Resources') $PluginDest }
-    [IO.File]::WriteAllText((Join-Path $PluginDest $Marker), "Managed by Archi. Removed by '__archi.bat detach'.`n", $Utf8)
+    [IO.File]::WriteAllText((Join-Path $PluginDest $Marker), "Managed by dwo-Assay. Removed by '__dwo-assay.bat detach'.`n", $Utf8)
 }
 
 function Remove-Plugin {
     if (-not (Test-Path $PluginDest)) { return }
     if (-not (Test-Path (Join-Path $PluginDest $Marker))) {
-        Fail "$PluginDest exists but is not managed by Archi. Leaving it untouched."
+        Fail "$PluginDest exists but is not managed by dwo-Assay. Leaving it untouched."
     }
     Remove-Item -Recurse -Force $PluginDest
     $plugins = Join-Path $Project 'Plugins'
@@ -233,7 +233,7 @@ function Invoke-Attach([string]$Mode) {
     Install-Plugin $build
 
     $state = [ordered]@{
-        schema                = 'archi.state/0.1'
+        schema                = 'assay.state/0.1'
         project               = $uproject.Name
         projectType           = $(if ($uproject.IsCode) { 'code' } else { 'blueprint-only' })
         engineVersion         = $engine.Version
@@ -255,14 +255,14 @@ function Invoke-Status {
     Say "Project        : $($state.project) ($($state.projectType))"
     Say "Engine         : UE $($state.engineVersion)"
     Say "System commit  : $($state.systemCommit)"
-    if ($env:ARCHI_HOME -and (Test-Path (Join-Path $env:ARCHI_HOME '.git'))) {
-        $latest = & git -C $env:ARCHI_HOME rev-parse --short HEAD 2>$null
-        if ($latest -and $latest -ne $state.systemCommit) { Say "Update available: $latest (run __archi.bat update)" }
+    if ($env:DWO_ASSAY_HOME -and (Test-Path (Join-Path $env:DWO_ASSAY_HOME '.git'))) {
+        $latest = & git -C $env:DWO_ASSAY_HOME rev-parse --short HEAD 2>$null
+        if ($latest -and $latest -ne $state.systemCommit) { Say "Update available: $latest (run __dwo-assay.bat update)" }
         else { Say 'System is up to date.' }
     }
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
-    if ($engine.Version -ne $state.engineVersion) { Say "Engine changed to $($engine.Version). Run __archi.bat update." }
+    if ($engine.Version -ne $state.engineVersion) { Say "Engine changed to $($engine.Version). Run __dwo-assay.bat update." }
     Say "Attached at    : $($state.attachedAt)"
 }
 
@@ -279,21 +279,21 @@ function Invoke-Doctor {
     $top = Invoke-Git @('rev-parse', '--show-toplevel')
     Check 'project is its own git repository' ($top -and (($top -replace '/', '\').TrimEnd('\') -eq $Project)) 'run git init in the project'
     $excl = Get-ExcludePath
-    Check 'exclude block present' ((Test-Path $excl) -and ((Get-Content -Raw $excl) -like "*$BlockStart*")) 'run __archi.bat attach'
-    Check 'plugin installed' (Test-Path (Join-Path $PluginDest 'Binaries\Win64\UnrealEditor-ArchiInspector.dll')) 'run __archi.bat attach'
-    $leaks = Invoke-Git @('status', '--porcelain', '--untracked-files=all', '--', '__archi', '__archi.bat', 'Plugins/__ArchiInspector')
-    Check 'archi files hidden from git' (-not $leaks) "visible to git: $leaks"
+    Check 'exclude block present' ((Test-Path $excl) -and ((Get-Content -Raw $excl) -like "*$BlockStart*")) 'run __dwo-assay.bat attach'
+    Check 'plugin installed' (Test-Path (Join-Path $PluginDest 'Binaries\Win64\UnrealEditor-DwoAssayInspector.dll')) 'run __dwo-assay.bat attach'
+    $leaks = Invoke-Git @('status', '--porcelain', '--untracked-files=all', '--', '__dwo-assay', '__dwo-assay.bat', 'Plugins/__DwoAssayInspector')
+    Check 'dwo-assay files hidden from git' (-not $leaks) "visible to git: $leaks"
     $py = Get-Command python -ErrorAction SilentlyContinue
     Check 'python available' ($py -ne $null) 'install Python 3.10+'
     if ($uproject.IsCode) {
-        Write-Host '  [note] code project: confirm your own builds ignore Plugins/__ArchiInspector (prebuilt, no Source).'
+        Write-Host '  [note] code project: confirm your own builds ignore Plugins/__DwoAssayInspector (prebuilt, no Source).'
     }
     return (-not $script:doctorFailed)
 }
 
 function Invoke-Analyze {
     $state = Read-State
-    if (-not $state) { Fail 'Not attached. Run __archi.bat attach first.' }
+    if (-not $state) { Fail 'Not attached. Run __dwo-assay.bat attach first.' }
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     $runId = 'run-' + (Get-Date).ToString('yyyyMMdd-HHmmss')
@@ -303,10 +303,10 @@ function Invoke-Analyze {
     New-Item -ItemType Directory -Force $rawDir, $outDir | Out-Null
     $stations = New-Object System.Collections.Generic.List[object]
 
-    Say "[$runId] ST-1 collect: running ArchiInspector commandlet"
+    Say "[$runId] ST-1 collect: running DwoAssayInspector commandlet"
     $log = Join-Path $runDir 'commandlet.log'
     $sw = [Diagnostics.Stopwatch]::StartNew()
-    & cmd /c "`"$($engine.Cmd)`" `"$($uproject.Path)`" -run=ArchiInspector -ArchiOut=`"$rawDir`" -ABSLOG=`"$(Join-Path $runDir 'editor.log')`" -unattended -nullrhi -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput > `"$log`" 2>&1"
+    & cmd /c "`"$($engine.Cmd)`" `"$($uproject.Path)`" -run=DwoAssayInspector -AssayOut=`"$rawDir`" -ABSLOG=`"$(Join-Path $runDir 'editor.log')`" -unattended -nullrhi -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput > `"$log`" 2>&1"
     $code = $LASTEXITCODE
     $sw.Stop()
     $collected = Test-Path (Join-Path $rawDir 'meta.json')
@@ -315,7 +315,7 @@ function Invoke-Analyze {
 
     Say "[$runId] ST-2/3 analyze and gate"
     $sw = [Diagnostics.Stopwatch]::StartNew()
-    & python (Join-Path $SystemDir 'tools\archi_analyze.py') --raw $rawDir --project $uproject.Path --out $outDir --run-id $runId
+    & python (Join-Path $SystemDir 'tools\assay_analyze.py') --raw $rawDir --project $uproject.Path --out $outDir --run-id $runId
     $pyCode = $LASTEXITCODE
     $sw.Stop()
     $findingsPath = Join-Path $outDir 'findings.json'
@@ -324,7 +324,7 @@ function Invoke-Analyze {
     $stations.Add([ordered]@{ id = 'ST-2'; name = 'analyze+gate'; verdict = $verdict; exitCode = $pyCode; ms = $sw.ElapsedMilliseconds })
 
     $run = [ordered]@{
-        schema = 'archi.run/0.1'; runId = $runId; line = 'architecture-report'
+        schema = 'assay.run/0.1'; runId = $runId; line = 'architecture-report'
         project = $state.project; engineVersion = $engine.Version; systemCommit = Get-SystemCommit
         startedAt = (Get-Date).ToString('o'); stations = $stations; final = $verdict
     }
@@ -340,16 +340,16 @@ function Invoke-Detach {
     Remove-Plugin
     Clear-ExcludeBlock
     if ($keepData -and (Test-Path $DataDir)) {
-        $dest = Join-Path $env:LOCALAPPDATA ("Archi\detached\" + (Split-Path -Leaf $Project) + '-' + (Get-Date).ToString('yyyyMMdd-HHmmss'))
+        $dest = Join-Path $env:LOCALAPPDATA ("dwo-Assay\detached\" + (Split-Path -Leaf $Project) + '-' + (Get-Date).ToString('yyyyMMdd-HHmmss'))
         New-Item -ItemType Directory -Force (Split-Path -Parent $dest) | Out-Null
         Move-Item $DataDir $dest
         Say "Analysis data kept at $dest"
     }
     Set-Location $Project
-    if (Test-Path $ArchiDir) { Remove-Item -Recurse -Force $ArchiDir }
+    if (Test-Path $dwo-AssayDir) { Remove-Item -Recurse -Force $dwo-AssayDir }
 
-    # __archi.bat deletes itself after this script returns; exclude it from the comparison.
-    $after = (@((Get-ProjectStatus) -split "`n") | Where-Object { $_ -and $_ -notmatch '__archi\.bat$' }) -join "`n"
+    # __dwo-assay.bat deletes itself after this script returns; exclude it from the comparison.
+    $after = (@((Get-ProjectStatus) -split "`n") | Where-Object { $_ -and $_ -notmatch '__dwo-assay\.bat$' }) -join "`n"
     if ($state -and $state.gitStatusBeforeAttach -ne $null) {
         if ($after -eq $state.gitStatusBeforeAttach) { Say 'Detached. git status matches the state before attach.' }
         else { Say 'Detached, but git status differs from before attach. Review: git status'; exit 3 }

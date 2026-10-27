@@ -1,8 +1,8 @@
-"""Archi analyzer: raw extractor JSON -> unified graph, SQLite index, diagrams, gate findings, HTML report.
+"""dwo-Assay analyzer: raw extractor JSON -> unified graph, SQLite index, diagrams, gate findings, HTML report.
 
 Standard library only. Deterministic: the same raw input always produces the same output.
 
-    python archi_analyze.py --raw <raw dir> --project <x.uproject> --out <out dir> [--run-id <id>]
+    python assay_analyze.py --raw <raw dir> --project <x.uproject> --out <out dir> [--run-id <id>]
 """
 from __future__ import annotations
 
@@ -14,8 +14,8 @@ import sqlite3
 from collections import defaultdict
 from pathlib import Path
 
-SCHEMA = "archi.graph/0.1"
-EXTRACTOR_VERSION = "archi-analyze/0.1"
+SCHEMA = "assay.graph/0.1"
+EXTRACTOR_VERSION = "assay-analyze/0.1"
 MAX_DIAGRAM_NODES = 120
 MAX_FLOW_NODES = 60
 TICK_EVENTS = {"ReceiveTick", "Tick"}
@@ -144,8 +144,8 @@ def scan_modules(project_file: Path, g: Graph) -> dict[str, set[str]]:
     plugins_dir = root / "Plugins"
     plugin_files = []
     if plugins_dir.exists():
-        plugin_files = [p for p in plugins_dir.rglob("*.uplugin") if "__ArchiInspector" not in p.parts]
-        build_files += [p for p in plugins_dir.rglob("*.Build.cs") if "__ArchiInspector" not in p.parts]
+        plugin_files = [p for p in plugins_dir.rglob("*.uplugin") if "__DwoAssayInspector" not in p.parts]
+        build_files += [p for p in plugins_dir.rglob("*.Build.cs") if "__DwoAssayInspector" not in p.parts]
 
     for plugin in plugin_files:
         desc = load_json(plugin)
@@ -594,7 +594,7 @@ def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, dia
                        f"<td>{esc(short_name(bp['parent']))}</td><td>{len(bp['graphs'])}</td><td>{esc(targets)}</td></tr>")
 
     doc = f"""<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Archi 리포트 · {esc(Path(meta['project']).stem)}</title><style>{REPORT_CSS}</style></head><body><main>
+<title>dwo-Assay 리포트 · {esc(Path(meta['project']).stem)}</title><style>{REPORT_CSS}</style></head><body><main>
 <section><div class="meta">{esc(run_id)} · UE {esc(meta['engineVersion'].split('-')[0])} · {esc(meta['extractedAtUtc'])}</div>
 <h1>{esc(Path(meta['project']).stem)} 아키텍처 리포트 <span class="badge {result['verdict']}">{result['verdict']}</span></h1>
 <div class="kpis">
@@ -662,7 +662,7 @@ def main() -> int:
     write_sqlite(g, args.out / "index.db", ctx["meta"])
     render_report(args.out, args.run_id, g, ctx, result, diagrams)
 
-    print(f"[archi] symbols={len(g.symbols)} relations={len(g.relations)} verdict={result['verdict']} "
+    print(f"[dwo-assay] symbols={len(g.symbols)} relations={len(g.relations)} verdict={result['verdict']} "
           f"findings={len(result['findings'])}")
     return 0
 

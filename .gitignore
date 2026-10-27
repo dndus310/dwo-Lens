@@ -1,7 +1,7 @@
 # Local plugin builds and logs
 .build/
 .build-log.txt
-plugin/ArchiInspector/Binaries/
-plugin/ArchiInspector/Intermediate/
+plugin/DwoAssayInspector/Binaries/
+plugin/DwoAssayInspector/Intermediate/
 __pycache__/
 *.pyc

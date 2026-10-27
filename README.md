@@ -1,4 +1,4 @@
-# Archi
+# dwo-Assay
 
 언리얼 프로젝트에 흔적 없이 부착되는 분석·로그·검증 팩토리입니다. 대상 프로젝트를 읽기만 하며, 언제 떼어 내도 프로젝트는 그대로 동작합니다.
 
@@ -10,20 +10,20 @@
 setup.bat
 ```
 
-`ARCHI_HOME` 환경 변수를 이 저장소로 등록합니다. 실행 후 새 터미널을 여세요.
+`DWO_ASSAY_HOME` 환경 변수를 이 저장소로 등록합니다. 실행 후 새 터미널을 여세요.
 
 ## 프로젝트에 부착
 
-1. `__archi.bat`을 대상 프로젝트 루트(`.uproject`가 있는 폴더)에 복사합니다.
+1. `__dwo-assay.bat`을 대상 프로젝트 루트(`.uproject`가 있는 폴더)에 복사합니다.
 2. 실행합니다.
 
 ```bat
-__archi.bat attach     :: 부착 (처음 한 번은 플러그인 빌드로 몇 분 걸림)
-__archi.bat analyze    :: 아키텍처 리포트 생성
-__archi.bat status     :: 부착 버전·엔진 확인
-__archi.bat doctor     :: 환경 점검
-__archi.bat update     :: 시스템 최신화
-__archi.bat detach     :: 제거 (--keep-data 로 분석 데이터 보존)
+__dwo-assay.bat attach     :: 부착 (처음 한 번은 플러그인 빌드로 몇 분 걸림)
+__dwo-assay.bat analyze    :: 아키텍처 리포트 생성
+__dwo-assay.bat status     :: 부착 버전·엔진 확인
+__dwo-assay.bat doctor     :: 환경 점검
+__dwo-assay.bat update     :: 시스템 최신화
+__dwo-assay.bat detach     :: 제거 (--keep-data 로 분석 데이터 보존)
 ```
 
 ### 전제 조건
@@ -36,12 +36,12 @@ __archi.bat detach     :: 제거 (--keep-data 로 분석 데이터 보존)
 
 ```
 A/
-├─ __archi.bat
-├─ __archi/
+├─ __dwo-assay.bat
+├─ __dwo-assay/
 │  ├─ system/          # 이 저장소의 clone (버전 = 커밋)
 │  ├─ data/runs/<id>/  # 실행별 raw · out · run.json · 로그
 │  └─ state.json
-└─ Plugins/__ArchiInspector/   # 미리 빌드된 에디터 전용 플러그인 (Source 없음)
+└─ Plugins/__DwoAssayInspector/   # 미리 빌드된 에디터 전용 플러그인 (Source 없음)
 ```
 
 모두 `.git/info/exclude`의 표식 블록으로 git에서 숨겨집니다. `.uproject`, `Build.cs`, 기존 파일은 건드리지 않습니다.
@@ -50,14 +50,14 @@ A/
 
 | 경로 | 역할 |
 |---|---|
-| `__archi.bat` | 부트스트랩: 사전 확인 → exclude → clone/pull → `archi.ps1` 호출 |
-| `tools/archi.ps1` | attach / update / status / doctor / analyze / detach |
-| `tools/archi_analyze.py` | raw JSON → 통합 그래프, SQLite, 다이어그램, 게이트, HTML 리포트 |
-| `plugin/ArchiInspector` | 리플렉션·BP 그래프·에셋 참조를 추출하는 Commandlet (`-run=ArchiInspector`) |
+| `__dwo-assay.bat` | 부트스트랩: 사전 확인 → exclude → clone/pull → `assay.ps1` 호출 |
+| `tools/assay.ps1` | attach / update / status / doctor / analyze / detach |
+| `tools/assay_analyze.py` | raw JSON → 통합 그래프, SQLite, 다이어그램, 게이트, HTML 리포트 |
+| `plugin/DwoAssayInspector` | 리플렉션·BP 그래프·에셋 참조를 추출하는 Commandlet (`-run=DwoAssayInspector`) |
 
-플러그인은 엔진 버전과 소스 해시별로 `%LOCALAPPDATA%\Archi\plugin-cache`에 한 번만 빌드되고 여러 프로젝트가 재사용합니다.
+플러그인은 엔진 버전과 소스 해시별로 `%LOCALAPPDATA%\dwo-Assay\plugin-cache`에 한 번만 빌드되고 여러 프로젝트가 재사용합니다.
 
-## 산출물 (`__archi/data/runs/<id>/out`)
+## 산출물 (`__dwo-assay/data/runs/<id>/out`)
 
 | 파일 | 내용 |
 |---|---|

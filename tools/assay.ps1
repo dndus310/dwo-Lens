@@ -177,8 +177,14 @@ function Get-PluginBuild($Engine, [string]$Name = 'DwoAssayInspector') {
     if (Test-Path $staging) { Remove-Item -Recurse -Force $staging }
     $log = Join-Path $DataDir "logs\build-$Name.log"
     New-Item -ItemType Directory -Force (Split-Path -Parent $log) | Out-Null
-    $uplugin = Join-Path $SystemDir "plugin\$Name\$Name.uplugin"
+    # Build from a copy: BuildPlugin writes files (Config/FilterPlugin.ini) into the plugin folder,
+    # and the system clone must stay clean so 'update' (git pull) keeps working.
+    $srcCopy = Join-Path $cacheRoot "src-$Name-$hash"
+    if (Test-Path $srcCopy) { Remove-Item -Recurse -Force $srcCopy }
+    Copy-Item -Recurse (Join-Path $SystemDir "plugin\$Name") $srcCopy
+    $uplugin = Join-Path $srcCopy "$Name.uplugin"
     & cmd /c "`"$($Engine.RunUAT)`" BuildPlugin -Plugin=`"$uplugin`" -Package=`"$staging`" -HostPlatforms=Win64 -TargetPlatforms=Win64 > `"$log`" 2>&1"
+    Remove-Item -Recurse -Force $srcCopy -ErrorAction SilentlyContinue
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path (Join-Path $staging "Binaries\Win64\UnrealEditor-$Name.dll"))) {
         Fail "Plugin build failed. See $log"
     }

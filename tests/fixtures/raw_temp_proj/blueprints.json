@@ -1,0 +1,470 @@
+{
+	"blueprints": [
+		{
+			"asset": "/Game/WBP_Item.WBP_Item",
+			"package": "/Game/WBP_Item",
+			"assetClass": "WidgetBlueprint",
+			"blueprintType": "BPTYPE_Normal",
+			"parent": "/Script/UMG.UserWidget",
+			"generatedClass": "/Game/WBP_Item.WBP_Item_C",
+			"interfaces": [],
+			"variables": [],
+			"graphs": [
+				{
+					"name": "SetTitle",
+					"path": "/Game/WBP_Item.WBP_Item:SetTitle",
+					"kind": "function",
+					"nodes": [
+						{
+							"id": "929542D04C1CABDA20ED888250377693",
+							"class": "K2Node_FunctionEntry",
+							"title": "SetTitle",
+							"role": "other"
+						},
+						{
+							"id": "C0F2D1594C3529FCA362929818E997F0",
+							"class": "K2Node_VariableGet",
+							"title": "Get EditableText_154",
+							"role": "variable",
+							"member": "EditableText_154",
+							"memberOwner": "/Game/WBP_Item.SKEL_WBP_Item_C"
+						},
+						{
+							"id": "D0AA21164E818BEBD4B5EF95A6697CA7",
+							"class": "K2Node_CallFunction",
+							"title": "SetText (Editable Text)",
+							"role": "call",
+							"member": "SetText",
+							"memberOwner": "/Script/UMG.EditableText",
+							"memberFlags": [
+								"Native",
+								"BlueprintCallable"
+							]
+						}
+					],
+					"links": [
+						{
+							"from": "929542D04C1CABDA20ED888250377693",
+							"fromPin": "then",
+							"to": "D0AA21164E818BEBD4B5EF95A6697CA7",
+							"toPin": "execute",
+							"kind": "exec"
+						},
+						{
+							"from": "929542D04C1CABDA20ED888250377693",
+							"fromPin": "InText",
+							"to": "D0AA21164E818BEBD4B5EF95A6697CA7",
+							"toPin": "InText",
+							"kind": "data"
+						},
+						{
+							"from": "C0F2D1594C3529FCA362929818E997F0",
+							"fromPin": "EditableText_154",
+							"to": "D0AA21164E818BEBD4B5EF95A6697CA7",
+							"toPin": "self",
+							"kind": "data"
+						}
+					]
+				},
+				{
+					"name": "EventGraph",
+					"path": "/Game/WBP_Item.WBP_Item:EventGraph",
+					"kind": "event",
+					"nodes": [
+						{
+							"id": "C4C19B2243DF650F266A708C434EC68D",
+							"class": "K2Node_Event",
+							"title": "PreConstruct 이벤트",
+							"role": "event",
+							"member": "PreConstruct",
+							"memberOwner": "/Script/UMG.UserWidget",
+							"override": true
+						},
+						{
+							"id": "C3C3F99C438748657F8579B91B937BB6",
+							"class": "K2Node_Event",
+							"title": "Construct 이벤트",
+							"role": "event",
+							"member": "Construct",
+							"memberOwner": "/Script/UMG.UserWidget",
+							"override": true
+						},
+						{
+							"id": "8A5980744FE95A3263035682855BB010",
+							"class": "K2Node_Event",
+							"title": "Tick 이벤트",
+							"role": "event",
+							"member": "Tick",
+							"memberOwner": "/Script/UMG.UserWidget",
+							"override": true
+						},
+						{
+							"id": "CA94A50D45B8C985B8C8BE897C626F6E",
+							"class": "K2Node_CallFunction",
+							"title": "GetDesiredSize",
+							"role": "call",
+							"member": "GetDesiredSize",
+							"memberOwner": "/Script/UMG.Widget",
+							"memberFlags": [
+								"Native",
+								"BlueprintCallable",
+								"BlueprintPure"
+							]
+						},
+						{
+							"id": "C90BA1CC4999EC5DD909EDA49B11996B",
+							"class": "K2Node_CallFunction",
+							"title": "ForceLayoutPrepass",
+							"role": "call",
+							"member": "ForceLayoutPrepass",
+							"memberOwner": "/Script/UMG.Widget",
+							"memberFlags": [
+								"Native",
+								"BlueprintCallable"
+							]
+						},
+						{
+							"id": "9399229642F8591E7399EDA12BAAB2C2",
+							"class": "K2Node_VariableGet",
+							"title": "Get SizeBox_69",
+							"role": "variable",
+							"member": "SizeBox_69",
+							"memberOwner": "/Game/WBP_Item.SKEL_WBP_Item_C"
+						},
+						{
+							"id": "1D50474A4C742ADBD6A064A864AA422C",
+							"class": "K2Node_CallFunction",
+							"title": "SetWidthOverride",
+							"role": "call",
+							"member": "SetWidthOverride",
+							"memberOwner": "/Script/UMG.SizeBox",
+							"memberFlags": [
+								"Native",
+								"BlueprintCallable"
+							]
+						},
+						{
+							"id": "F735D7CA4F14B2BD10C0D384B396FDEE",
+							"class": "K2Node_CallFunction",
+							"title": "SetHeightOverride",
+							"role": "call",
+							"member": "SetHeightOverride",
+							"memberOwner": "/Script/UMG.SizeBox",
+							"memberFlags": [
+								"Native",
+								"BlueprintCallable"
+							]
+						},
+						{
+							"id": "3E684BB849A755D15E2D28901238FB50",
+							"class": "K2Node_CallFunction",
+							"title": "BreakVector2D",
+							"role": "call",
+							"member": "BreakVector2D",
+							"memberOwner": "/Script/Engine.KismetMathLibrary",
+							"memberFlags": [
+								"Native",
+								"BlueprintCallable",
+								"BlueprintPure",
+								"Static"
+							]
+						},
+						{
+							"id": "2FD00B684E67C65773F2669BBC917F8A",
+							"class": "K2Node_VariableGet",
+							"title": "Get Border_0",
+							"role": "variable",
+							"member": "Border_0",
+							"memberOwner": "/Game/WBP_Item.SKEL_WBP_Item_C"
+						}
+					],
+					"links": [
+						{
+							"from": "C4C19B2243DF650F266A708C434EC68D",
+							"fromPin": "then",
+							"to": "C90BA1CC4999EC5DD909EDA49B11996B",
+							"toPin": "execute",
+							"kind": "exec"
+						},
+						{
+							"from": "CA94A50D45B8C985B8C8BE897C626F6E",
+							"fromPin": "ReturnValue",
+							"to": "3E684BB849A755D15E2D28901238FB50",
+							"toPin": "InVec",
+							"kind": "data"
+						},
+						{
+							"from": "C90BA1CC4999EC5DD909EDA49B11996B",
+							"fromPin": "then",
+							"to": "1D50474A4C742ADBD6A064A864AA422C",
+							"toPin": "execute",
+							"kind": "exec"
+						},
+						{
+							"from": "9399229642F8591E7399EDA12BAAB2C2",
+							"fromPin": "SizeBox_69",
+							"to": "1D50474A4C742ADBD6A064A864AA422C",
+							"toPin": "self",
+							"kind": "data"
+						},
+						{
+							"from": "9399229642F8591E7399EDA12BAAB2C2",
+							"fromPin": "SizeBox_69",
+							"to": "F735D7CA4F14B2BD10C0D384B396FDEE",
+							"toPin": "self",
+							"kind": "data"
+						},
+						{
+							"from": "1D50474A4C742ADBD6A064A864AA422C",
+							"fromPin": "then",
+							"to": "F735D7CA4F14B2BD10C0D384B396FDEE",
+							"toPin": "execute",
+							"kind": "exec"
+						},
+						{
+							"from": "3E684BB849A755D15E2D28901238FB50",
+							"fromPin": "X",
+							"to": "1D50474A4C742ADBD6A064A864AA422C",
+							"toPin": "InWidthOverride",
+							"kind": "data"
+						},
+						{
+							"from": "3E684BB849A755D15E2D28901238FB50",
+							"fromPin": "Y",
+							"to": "F735D7CA4F14B2BD10C0D384B396FDEE",
+							"toPin": "InHeightOverride",
+							"kind": "data"
+						},
+						{
+							"from": "2FD00B684E67C65773F2669BBC917F8A",
+							"fromPin": "Border_0",
+							"to": "CA94A50D45B8C985B8C8BE897C626F6E",
+							"toPin": "self",
+							"kind": "data"
+						}
+					]
+				}
+			]
+		},
+		{
+			"asset": "/Game/WBP_ListView.WBP_ListView",
+			"package": "/Game/WBP_ListView",
+			"assetClass": "WidgetBlueprint",
+			"blueprintType": "BPTYPE_Normal",
+			"parent": "/Script/UMG.UserWidget",
+			"generatedClass": "/Game/WBP_ListView.WBP_ListView_C",
+			"interfaces": [],
+			"variables": [
+				{
+					"name": "RawData",
+					"category": "string",
+					"subType": "",
+					"replicated": false
+				}
+			],
+			"graphs": [
+				{
+					"name": "EventGraph",
+					"path": "/Game/WBP_ListView.WBP_ListView:EventGraph",
+					"kind": "event",
+					"nodes": [
+						{
+							"id": "3C793E28401885483C797D91B781A747",
+							"class": "K2Node_Event",
+							"title": "PreConstruct 이벤트",
+							"role": "event",
+							"member": "PreConstruct",
+							"memberOwner": "/Script/UMG.UserWidget",
+							"override": true
+						},
+						{
+							"id": "C5479999402E19F4668C49A014F793F0",
+							"class": "K2Node_Event",
+							"title": "Construct 이벤트",
+							"role": "event",
+							"member": "Construct",
+							"memberOwner": "/Script/UMG.UserWidget",
+							"override": true
+						},
+						{
+							"id": "3DA81A544A431DC64ACC7EBDE09684AA",
+							"class": "K2Node_Event",
+							"title": "Tick 이벤트",
+							"role": "event",
+							"member": "Tick",
+							"memberOwner": "/Script/UMG.UserWidget",
+							"override": true
+						},
+						{
+							"id": "06D157D2467537227447EFB814128A7C",
+							"class": "K2Node_VariableGet",
+							"title": "Get RawData",
+							"role": "variable",
+							"member": "RawData",
+							"memberOwner": "/Game/WBP_ListView.SKEL_WBP_ListView_C"
+						},
+						{
+							"id": "10B057484D42D1EDF7B13FA4CEA1E840",
+							"class": "K2Node_CallFunction",
+							"title": "ParseIntoArray",
+							"role": "call",
+							"member": "ParseIntoArray",
+							"memberOwner": "/Script/Engine.KismetStringLibrary",
+							"memberFlags": [
+								"Native",
+								"BlueprintCallable",
+								"BlueprintPure",
+								"Static"
+							]
+						},
+						{
+							"id": "493230A449E59B4EADE04385F1FA6F87",
+							"class": "K2Node_MacroInstance",
+							"title": "For Each Loop",
+							"role": "macro",
+							"member": "/Engine/EditorBlueprintResources/StandardMacros.StandardMacros:ForEachLoop"
+						},
+						{
+							"id": "1F6431C546EF2C623E2BA5832ED2E2DF",
+							"class": "K2Node_VariableGet",
+							"title": "Get ScrollBox_27",
+							"role": "variable",
+							"member": "ScrollBox_27",
+							"memberOwner": "/Game/WBP_ListView.SKEL_WBP_ListView_C"
+						},
+						{
+							"id": "9BB100584379FFC79E99BA92821D4C86",
+							"class": "K2Node_CallFunction",
+							"title": "AddChild",
+							"role": "call",
+							"member": "AddChild",
+							"memberOwner": "/Script/UMG.PanelWidget",
+							"memberFlags": [
+								"Native",
+								"BlueprintCallable"
+							]
+						},
+						{
+							"id": "A1241C104739C391157D6587CBB76091",
+							"class": "K2Node_CreateWidget",
+							"title": "위젯 생성",
+							"role": "other"
+						},
+						{
+							"id": "40F52825443A56601F97C0833458F18E",
+							"class": "K2Node_CallFunction",
+							"title": "SetTitle",
+							"role": "call",
+							"member": "SetTitle",
+							"memberOwner": "/Game/WBP_Item.SKEL_WBP_Item_C",
+							"memberFlags": [
+								"BlueprintCallable",
+								"BlueprintEvent"
+							]
+						},
+						{
+							"id": "A245E19B4E4CBF39AD6CEC88B18129B5",
+							"class": "K2Node_CallFunction",
+							"title": "To Text (String)",
+							"role": "call",
+							"member": "Conv_StringToText",
+							"memberOwner": "/Script/Engine.KismetTextLibrary",
+							"memberFlags": [
+								"Native",
+								"BlueprintCallable",
+								"BlueprintPure",
+								"Static"
+							]
+						}
+					],
+					"links": [
+						{
+							"from": "3C793E28401885483C797D91B781A747",
+							"fromPin": "then",
+							"to": "493230A449E59B4EADE04385F1FA6F87",
+							"toPin": "Exec",
+							"kind": "exec"
+						},
+						{
+							"from": "C5479999402E19F4668C49A014F793F0",
+							"fromPin": "then",
+							"to": "493230A449E59B4EADE04385F1FA6F87",
+							"toPin": "Exec",
+							"kind": "exec"
+						},
+						{
+							"from": "06D157D2467537227447EFB814128A7C",
+							"fromPin": "RawData",
+							"to": "10B057484D42D1EDF7B13FA4CEA1E840",
+							"toPin": "SourceString",
+							"kind": "data"
+						},
+						{
+							"from": "10B057484D42D1EDF7B13FA4CEA1E840",
+							"fromPin": "ReturnValue",
+							"to": "493230A449E59B4EADE04385F1FA6F87",
+							"toPin": "Array",
+							"kind": "data"
+						},
+						{
+							"from": "493230A449E59B4EADE04385F1FA6F87",
+							"fromPin": "LoopBody",
+							"to": "A1241C104739C391157D6587CBB76091",
+							"toPin": "execute",
+							"kind": "exec"
+						},
+						{
+							"from": "493230A449E59B4EADE04385F1FA6F87",
+							"fromPin": "Array Element",
+							"to": "A245E19B4E4CBF39AD6CEC88B18129B5",
+							"toPin": "InString",
+							"kind": "data"
+						},
+						{
+							"from": "1F6431C546EF2C623E2BA5832ED2E2DF",
+							"fromPin": "ScrollBox_27",
+							"to": "9BB100584379FFC79E99BA92821D4C86",
+							"toPin": "self",
+							"kind": "data"
+						},
+						{
+							"from": "A1241C104739C391157D6587CBB76091",
+							"fromPin": "then",
+							"to": "40F52825443A56601F97C0833458F18E",
+							"toPin": "execute",
+							"kind": "exec"
+						},
+						{
+							"from": "A1241C104739C391157D6587CBB76091",
+							"fromPin": "ReturnValue",
+							"to": "9BB100584379FFC79E99BA92821D4C86",
+							"toPin": "Content",
+							"kind": "data"
+						},
+						{
+							"from": "A1241C104739C391157D6587CBB76091",
+							"fromPin": "ReturnValue",
+							"to": "40F52825443A56601F97C0833458F18E",
+							"toPin": "self",
+							"kind": "data"
+						},
+						{
+							"from": "40F52825443A56601F97C0833458F18E",
+							"fromPin": "then",
+							"to": "9BB100584379FFC79E99BA92821D4C86",
+							"toPin": "execute",
+							"kind": "exec"
+						},
+						{
+							"from": "A245E19B4E4CBF39AD6CEC88B18129B5",
+							"fromPin": "ReturnValue",
+							"to": "40F52825443A56601F97C0833458F18E",
+							"toPin": "InText",
+							"kind": "data"
+						}
+					]
+				}
+			]
+		}
+	]
+}

@@ -73,34 +73,48 @@ def mermaid_label(text: str) -> str:
 
 
 def tarjan(graph: dict[str, set[str]]) -> list[list[str]]:
+    """Strongly connected components with more than one node. Iterative, so reference chains of any
+    length (large asset graphs) cannot hit Python's recursion limit."""
     index, low, stack, on_stack, result = {}, {}, [], set(), []
-    counter = [0]
-
-    def visit(v: str):
-        index[v] = low[v] = counter[0]
-        counter[0] += 1
-        stack.append(v)
-        on_stack.add(v)
-        for w in sorted(graph.get(v, ())):
-            if w not in index:
-                visit(w)
-                low[v] = min(low[v], low[w])
-            elif w in on_stack:
-                low[v] = min(low[v], index[w])
-        if low[v] == index[v]:
-            component = []
-            while True:
-                w = stack.pop()
-                on_stack.discard(w)
-                component.append(w)
-                if w == v:
+    counter = 0
+    for root in sorted(graph):
+        if root in index:
+            continue
+        work = [(root, iter(sorted(graph.get(root, ()))))]
+        index[root] = low[root] = counter
+        counter += 1
+        stack.append(root)
+        on_stack.add(root)
+        while work:
+            v, children = work[-1]
+            advanced = False
+            for w in children:
+                if w not in index:
+                    index[w] = low[w] = counter
+                    counter += 1
+                    stack.append(w)
+                    on_stack.add(w)
+                    work.append((w, iter(sorted(graph.get(w, ())))))
+                    advanced = True
                     break
-            if len(component) > 1:
-                result.append(sorted(component))
-
-    for v in sorted(graph):
-        if v not in index:
-            visit(v)
+                if w in on_stack:
+                    low[v] = min(low[v], index[w])
+            if advanced:
+                continue
+            work.pop()
+            if work:
+                parent = work[-1][0]
+                low[parent] = min(low[parent], low[v])
+            if low[v] == index[v]:
+                component = []
+                while True:
+                    w = stack.pop()
+                    on_stack.discard(w)
+                    component.append(w)
+                    if w == v:
+                        break
+                if len(component) > 1:
+                    result.append(sorted(component))
     return result
 
 

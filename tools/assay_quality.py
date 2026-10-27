@@ -127,20 +127,30 @@ def _longest_exec_chain(graph: dict) -> int:
     for l in graph["links"]:
         if l["kind"] == "exec":
             adj[l["from"]].append(l["to"])
+    # Longest path counting nodes, ignoring loop back-edges. Iterative post-order so very long
+    # graphs cannot hit the recursion limit.
     memo: dict[str, int] = {}
-
-    def depth(n: str, stack: set[str]) -> int:
-        if n in memo:
-            return memo[n]
-        if n in stack:
-            return 0  # loop back-edge
-        stack.add(n)
-        best = 1 + max((depth(c, stack) for c in adj.get(n, ())), default=0)
-        stack.discard(n)
-        memo[n] = best
-        return best
-
-    return max((depth(n["id"], set()) for n in graph["nodes"]), default=0)
+    for start in (n["id"] for n in graph["nodes"]):
+        if start in memo:
+            continue
+        on_path = {start}
+        work = [(start, iter(adj.get(start, ())))]
+        while work:
+            node, children = work[-1]
+            pushed = False
+            for c in children:
+                if c in memo or c in on_path:
+                    continue  # done already, or a loop back-edge
+                on_path.add(c)
+                work.append((c, iter(adj.get(c, ()))))
+                pushed = True
+                break
+            if pushed:
+                continue
+            work.pop()
+            on_path.discard(node)
+            memo[node] = 1 + max((memo.get(c, 0) for c in adj.get(node, ()) if c not in on_path), default=0)
+    return max(memo.values(), default=0)
 
 
 def check_complexity(ctx: dict, cfg: dict) -> tuple[list, dict]:

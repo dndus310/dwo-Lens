@@ -1,0 +1,2063 @@
+{
+	"assets": [
+		{
+			"package": "/Game/test",
+			"asset": "/Game/test.test_C",
+			"class": "/Script/Engine.BlueprintGeneratedClass",
+			"hard": [
+				"/Script/NavigationSystem",
+				"/Script/UMGEditor",
+				"/Script/UMG",
+				"/Engine/EngineMaterials/WorldGridMaterial",
+				"/Engine/EditorBlueprintResources/StandardMacros",
+				"/Game/test_HLOD0_Instancing",
+				"/Game/WBP_ListView",
+				"/Game/__ExternalActors__/test/5/1A/VUP29XOSGVTBSEE7DBRMJV"
+			],
+			"soft": [
+				"/Game/__ExternalActors__/test/D/CG/MSYH9JZC4WSRRYZNDPRKLV",
+				"/Game/__ExternalActors__/test/D/PX/MZ72UWU44VD8H5TCZQNDB7",
+				"/Game/__ExternalActors__/test/D/PZ/7NAV74VZ3VE1XLX5N4376V",
+				"/Game/__ExternalActors__/test/D/SK/PLIG1B9SG219RW2B9MTPIP",
+				"/Game/__ExternalActors__/test/D/VR/QQVF5D4CSVON8IZWNOT6JL",
+				"/Game/__ExternalActors__/test/B/0G/1S72DQRRD2NL30PZ914334",
+				"/Game/__ExternalActors__/test/B/20/HF45TOFMX1JAXXVIRZI379",
+				"/Game/__ExternalActors__/test/B/50/2LAEXIHDLH6HK9NJXN55TC",
+				"/Game/__ExternalActors__/test/B/9Y/BMBZNQNWGHVQQ70WQVOD9L",
+				"/Game/__ExternalActors__/test/B/D8/9E5VLSQCA2GLB0SBL6HSHQ",
+				"/Game/__ExternalActors__/test/B/EE/MEYJ8W23HQT6FQ3Q5JM0J1",
+				"/Game/__ExternalActors__/test/B/JV/VS909K6F6CEBV305V45KXZ",
+				"/Game/__ExternalActors__/test/B/LK/2KF9YN9BCDZA416BQCKS4Y",
+				"/Game/__ExternalActors__/test/B/U1/77NYGMSBL3CRHSA3A1H9NI",
+				"/Game/__ExternalActors__/test/B/X8/LWZUWGYGR758PC5A5M5R0F",
+				"/Game/__ExternalActors__/test/F/51/U2PJX50FWOMIJEIHDJY2G9",
+				"/Game/__ExternalActors__/test/E/5O/EPH6YPDNUP1G6H2YBET4R7",
+				"/Game/__ExternalActors__/test/E/8N/1S624L00G52QAU13V04KJL",
+				"/Game/__ExternalActors__/test/E/BE/XY2FFG2RJJSN0OZJO361H0",
+				"/Game/__ExternalActors__/test/E/LW/Q38EXK7ZS5QIK7R5H794WX",
+				"/Game/__ExternalActors__/test/E/OC/MHOUXNEAKF6GP7X8HZ19ZT",
+				"/Game/__ExternalActors__/test/E/R4/BM4TNGMP5DFD127CDVT54J",
+				"/Game/__ExternalObjects__/test/1/KR/KRHS4PP7HVVKUP6UGB4ZFJ",
+				"/Game/__ExternalObjects__/test/4/F9/ISI636G4JOM1QVPD8GH4YT",
+				"/Game/__ExternalObjects__/test/3/62/7DJ1R2GMV5L29X9E997JM4",
+				"/Game/__ExternalActors__/test/3/7B/C5FFXVXQNZWXMO0RG471RT",
+				"/Game/__ExternalActors__/test/3/7D/LYRPG8X5R2OY07IFVD6C1K",
+				"/Game/__ExternalActors__/test/3/8B/IW55MMH1GTJPMXKFH7LFYH",
+				"/Game/__ExternalActors__/test/3/CZ/GX1RV3X8J244MRXDKZ7SH3",
+				"/Game/__ExternalActors__/test/3/D6/RTH6Q0I80LKLJ7O54IAFXL",
+				"/Game/__ExternalActors__/test/3/HL/JUE93203VGTFYLHOOQJKY8",
+				"/Game/__ExternalActors__/test/3/JK/GCTRBN3WIAPUOK25U2D3BZ",
+				"/Game/__ExternalActors__/test/3/JX/0S9DTZ6PJGCXF5IPO30UNA",
+				"/Game/__ExternalObjects__/test/6/ZO/2M4CCFHWV4BEZ7FU4BIJYM",
+				"/Game/__ExternalActors__/test/8/55/EY2U0NA7VBQDAQCHAQ13Y2",
+				"/Game/__ExternalActors__/test/8/5X/VFYF787N3ZXP60E05JI242",
+				"/Game/__ExternalActors__/test/8/8A/N7JGJY5PQ8WMHWP0CV1JIF",
+				"/Game/__ExternalActors__/test/8/B3/W0613OHSJESO6G2RTAZLKK",
+				"/Game/__ExternalActors__/test/8/PY/O59TCDXODMXDUSMIJBLR47",
+				"/Game/__ExternalActors__/test/8/R7/JJWZ7E2OAT78OCTOAW7KCL",
+				"/Game/__ExternalActors__/test/8/SY/IOAO96VO61TQQKVVG15QJD",
+				"/Game/__ExternalActors__/test/8/X7/P8ZL1C14281DB1OONHXICK",
+				"/Game/__ExternalActors__/test/7/16/B6S2HXPK641YEB9MQHSODB",
+				"/Game/__ExternalActors__/test/7/5H/7FULZGZL3Y84NTTKYI43IR",
+				"/Game/__ExternalActors__/test/7/8X/8XYG8KUJNDQMPNJ3V92GBS",
+				"/Game/__ExternalActors__/test/7/NO/9AJ5NXGYYZHCSSLOKY8AWG",
+				"/Game/__ExternalActors__/test/7/OE/NISDEJC0AZA6VF5RU5LTUR",
+				"/Game/__ExternalActors__/test/7/Q8/KTMBCQ8A074NHJ7CAUFHWW",
+				"/Game/__ExternalActors__/test/7/R3/Q4CTSHS2LW1O4JAAP5Z9CC",
+				"/Game/__ExternalActors__/test/7/SQ/A03NL9FGDKE5T70JMEJ902",
+				"/Game/__ExternalActors__/test/7/TO/P0Z46H5X9LRXWZQ1SO2FK0",
+				"/Game/__ExternalActors__/test/6/0O/OTIJMWJ9MIWLKHUGN5VDFK",
+				"/Game/__ExternalActors__/test/6/3F/S7BUX9K7KLSLXU4ILSBKEN",
+				"/Game/__ExternalActors__/test/6/7X/FJLC3XT0RQ199RFUJBHISX",
+				"/Game/__ExternalActors__/test/6/RQ/UBCBZGS2OAHYLRJ7H1VV74",
+				"/Game/__ExternalActors__/test/6/SH/W4781DQ7D5W82NF6EENF4D",
+				"/Game/__ExternalActors__/test/6/VO/1DZ6YOYAU7ADAU2A2PMDDJ",
+				"/Game/__ExternalActors__/test/5/1A/VUP29XOSGVTBSEE7DBRMJV",
+				"/Game/__ExternalActors__/test/5/8G/JFWP4RDLC27CK78FC0PMFY",
+				"/Game/__ExternalActors__/test/5/8R/ED1A5HWBHP9KDETPE9AY9J",
+				"/Game/__ExternalActors__/test/5/9Y/9GS676UCMSAQ28IY40GMGT",
+				"/Game/__ExternalActors__/test/5/AE/I22TEXOZGCDYNJ8C1A38JX",
+				"/Game/__ExternalActors__/test/5/BJ/4U4PVJE3GOPX75F8VP2Y0J",
+				"/Game/__ExternalActors__/test/5/E0/0WRF74G64K5L5KBGYCNRNC",
+				"/Game/__ExternalActors__/test/4/0M/LW8IX1E4RELCCLED2K7XA2",
+				"/Game/__ExternalActors__/test/4/2M/0BQN5EXEAIONCWC2NU8B13",
+				"/Game/__ExternalActors__/test/4/3M/M6A2MV7NLJLR73QMYDOFF8",
+				"/Game/__ExternalActors__/test/4/7K/O15E5C2S79I9GLB2VOHFAO",
+				"/Game/__ExternalActors__/test/4/G4/X7NZ7V1S4AYJ2X4FPS18PR",
+				"/Game/__ExternalActors__/test/4/J0/EHEATCO34VYD4AH12RJ74H",
+				"/Game/__ExternalActors__/test/4/OE/OQYY841VH1E1BY5IO28H7V",
+				"/Game/__ExternalActors__/test/4/PH/38OY2ZHF23WZ3BT9CI9ZN7",
+				"/Game/__ExternalActors__/test/4/S0/N22ATXU2XM8GNRNPREQUIF",
+				"/Game/__ExternalActors__/test/4/XY/7XSOFF8717IJ15VLO64O6S",
+				"/Game/__ExternalActors__/test/2/2S/7ENASQDBRQ2Y0EYSNUKJ89",
+				"/Game/__ExternalActors__/test/2/3P/4DM2RUV4P86JQNB3A5XXS9",
+				"/Game/__ExternalActors__/test/2/7I/6KJPY1K7X5MS38CPZ31KUN",
+				"/Game/__ExternalActors__/test/2/97/T5QAPZVNJN91ADXDSP61PJ",
+				"/Game/__ExternalActors__/test/2/9K/6DBW5XJAX1L1DJIG3LMX5C",
+				"/Game/__ExternalActors__/test/2/AV/DIJQE4WB0X0EU59QKYC2DL",
+				"/Game/__ExternalActors__/test/2/GY/1PJK5Z4MSANDJSNG5D2QR0",
+				"/Game/__ExternalActors__/test/1/3O/KLNZ3C8WJCVKPHKTO2ALOO",
+				"/Game/__ExternalActors__/test/1/67/4PT73EVZJGG1NQ69L5GD2G",
+				"/Game/__ExternalActors__/test/1/6Q/XI0ULDGMGS6ZJQB06DCPNE",
+				"/Game/__ExternalActors__/test/1/8L/BBU6HPOQ0KWEIR5QBMC594",
+				"/Game/__ExternalActors__/test/1/IT/L1HU7V9OJ230WWXTJNSLRE",
+				"/Game/__ExternalActors__/test/1/J9/A16EBPF4BDV4ICEUEXTS55",
+				"/Game/__ExternalActors__/test/1/K1/EPGNUJQDJMUQTK8ZI2Q2XP",
+				"/Game/__ExternalActors__/test/1/T6/OY7UY3QT65SR4HJ3G51451",
+				"/Game/__ExternalActors__/test/1/W2/61DOXF8E2U6MMORO1QSKB1",
+				"/Game/__ExternalActors__/test/0/0C/G72SFB5UP4823ZCK8SE2A1",
+				"/Game/__ExternalActors__/test/0/4L/TTL0H48V85P3DCG16NUYMU",
+				"/Game/__ExternalActors__/test/0/55/RU0K81QBCWMQYK10TOP6XS",
+				"/Game/__ExternalActors__/test/0/5Q/YMBYQLXIDMF21H4MS622P7",
+				"/Game/__ExternalActors__/test/0/CA/2RYFQG1STEMPZW04Q067IO",
+				"/Game/__ExternalActors__/test/0/IF/342K0Q4AAHLP1NKXRZIW74",
+				"/Game/__ExternalActors__/test/0/JJ/86XEROONJG6Q3UR002SOQ2",
+				"/Game/__ExternalActors__/test/0/NL/29WHJB48Y2QL843ROBA0LO",
+				"/Game/__ExternalActors__/test/0/QX/6U7ZGTBW1UHA53EF1HSCSO",
+				"/Game/__ExternalActors__/test/0/RK/AVFQYLWNXXVYUH88RGLYS4",
+				"/Game/__ExternalActors__/test/0/SQ/AHPV2FTYJLVPFDNO3QS7ZE",
+				"/Game/__ExternalActors__/test/0/SU/U0WW2WGVAL3Y5OPDMC6XAK",
+				"/Game/__ExternalObjects__/test/A/MU/E8FY2C1S9S5DTO9FKZY1L0",
+				"/Game/__ExternalActors__/test/9/DI/91QUKXOG32NLVNEJIAY7DQ",
+				"/Game/__ExternalActors__/test/9/3K/TBC4IA86CLSTLACE6JHDAI",
+				"/Game/__ExternalActors__/test/9/FA/BXBC8CKIGNX3O2ECF3VHNF",
+				"/Game/__ExternalActors__/test/9/DT/PH1JXMKVZOLG5RX9266LWQ",
+				"/Game/__ExternalActors__/test/9/HD/RWYC6921UHEWL0227DYHTL",
+				"/Game/__ExternalActors__/test/9/IB/EQB83ILFE4XI49XIFFUD5H",
+				"/Game/__ExternalActors__/test/9/QK/H8I7OJ2C29KJJMYLERPUO1",
+				"/Game/__ExternalActors__/test/9/U9/6DS7IXUJHG6QZE4RS5FIW8",
+				"/Game/__ExternalActors__/test/9/WJ/44I83LNTUYQUC746883L0Q",
+				"/Game/__ExternalActors__/test/9/XE/2H85TPSB50U0MLQPUCSMOR",
+				"/Game/__ExternalActors__/test/C/0K/EH1AG3RNALQL6B7F143M4M",
+				"/Game/__ExternalActors__/test/A/41/2FJM9D0ARS14JZKACORL9J",
+				"/Game/__ExternalActors__/test/A/69/WDK6EICB32RU4JGILZFWHJ",
+				"/Game/__ExternalActors__/test/A/76/CYPGNE0TAMEYID2WOW4B6K",
+				"/Game/__ExternalActors__/test/A/1D/GZOXPP6CJFNPFVNKLQ0MA0",
+				"/Game/__ExternalActors__/test/A/Q4/XDKAEYEP53KYPAXSE298X5",
+				"/Game/__ExternalActors__/test/A/KI/P9G02M0L4Y47NJ16DCU8YG",
+				"/Game/__ExternalActors__/test/A/8H/4XM4EWYDGRTE2XAMF9NQHQ",
+				"/Game/__ExternalActors__/test/A/WU/JD7HSJOKSF48MFTLZ599MG",
+				"/Game/__ExternalActors__/test/A/RZ/1IC33FHNZG04FPBXKOFOAS",
+				"/Game/__ExternalActors__/test/C/5A/VTS9Z4P5OZ9YT714JLVVKV",
+				"/Game/__ExternalActors__/test/C/5E/DWHB37UY2RNQK3KMSPHUFY",
+				"/Game/__ExternalActors__/test/C/9C/9N57WM2WMXUCZQYNLHU7CT",
+				"/Game/__ExternalActors__/test/C/AE/NJMAXMPXU5XJG84ET2DFMU",
+				"/Game/__ExternalActors__/test/C/UV/A75WREJ2JD04ACXBQZM6BR",
+				"/Game/__ExternalActors__/test/E/V1/OPTW74G8WGAIUF6YR2YMRI",
+				"/Game/__ExternalActors__/test/5/HH/P1QBPXQJET98ZMXZ17NGVA",
+				"/Game/__ExternalActors__/test/5/IG/NOE56V03GTOUFI94T57TUP",
+				"/Game/__ExternalActors__/test/5/JK/6FK57KN9IKYB9B43ZMK994",
+				"/Game/__ExternalActors__/test/5/MN/IKTASSDMS9GMRCXWFUTMJF",
+				"/Game/__ExternalActors__/test/5/PI/21MJY1DQPWYZBOL8W9PAKB",
+				"/Game/__ExternalActors__/test/5/TC/V41YRHW0JW97R4Y05WFALH",
+				"/Game/__ExternalActors__/test/5/ZF/5QM05JNG4EXYZ1WEKGR3HX",
+				"/Game/__ExternalActors__/test/5/ZL/EOTXTR5Q64E4TKUMIHZWHS",
+				"/Game/__ExternalActors__/test/2/H4/GCLGPHBZCI878ZZ97NZJHY",
+				"/Game/__ExternalActors__/test/2/IB/5P0QJAHQZG0B762LOSU715",
+				"/Game/__ExternalActors__/test/2/Q0/AOS5TM7SH5GV3RZZV2W3QM",
+				"/Game/__ExternalActors__/test/2/VO/SRNZTC7VN6AOKMN9N9Y332",
+				"/Game/__ExternalActors__/test/2/WV/8YECSX9LSZWXY0OOUXNG29",
+				"/Game/__ExternalActors__/test/0/ZV/UDYFW33BV2O7V1MX98DX59"
+			]
+		},
+		{
+			"package": "/Game/test",
+			"asset": "/Game/test.test",
+			"class": "/Script/Engine.World",
+			"hard": [
+				"/Script/NavigationSystem",
+				"/Script/UMGEditor",
+				"/Script/UMG",
+				"/Engine/EngineMaterials/WorldGridMaterial",
+				"/Engine/EditorBlueprintResources/StandardMacros",
+				"/Game/test_HLOD0_Instancing",
+				"/Game/WBP_ListView",
+				"/Game/__ExternalActors__/test/5/1A/VUP29XOSGVTBSEE7DBRMJV"
+			],
+			"soft": [
+				"/Game/__ExternalActors__/test/D/CG/MSYH9JZC4WSRRYZNDPRKLV",
+				"/Game/__ExternalActors__/test/D/PX/MZ72UWU44VD8H5TCZQNDB7",
+				"/Game/__ExternalActors__/test/D/PZ/7NAV74VZ3VE1XLX5N4376V",
+				"/Game/__ExternalActors__/test/D/SK/PLIG1B9SG219RW2B9MTPIP",
+				"/Game/__ExternalActors__/test/D/VR/QQVF5D4CSVON8IZWNOT6JL",
+				"/Game/__ExternalActors__/test/B/0G/1S72DQRRD2NL30PZ914334",
+				"/Game/__ExternalActors__/test/B/20/HF45TOFMX1JAXXVIRZI379",
+				"/Game/__ExternalActors__/test/B/50/2LAEXIHDLH6HK9NJXN55TC",
+				"/Game/__ExternalActors__/test/B/9Y/BMBZNQNWGHVQQ70WQVOD9L",
+				"/Game/__ExternalActors__/test/B/D8/9E5VLSQCA2GLB0SBL6HSHQ",
+				"/Game/__ExternalActors__/test/B/EE/MEYJ8W23HQT6FQ3Q5JM0J1",
+				"/Game/__ExternalActors__/test/B/JV/VS909K6F6CEBV305V45KXZ",
+				"/Game/__ExternalActors__/test/B/LK/2KF9YN9BCDZA416BQCKS4Y",
+				"/Game/__ExternalActors__/test/B/U1/77NYGMSBL3CRHSA3A1H9NI",
+				"/Game/__ExternalActors__/test/B/X8/LWZUWGYGR758PC5A5M5R0F",
+				"/Game/__ExternalActors__/test/F/51/U2PJX50FWOMIJEIHDJY2G9",
+				"/Game/__ExternalActors__/test/E/5O/EPH6YPDNUP1G6H2YBET4R7",
+				"/Game/__ExternalActors__/test/E/8N/1S624L00G52QAU13V04KJL",
+				"/Game/__ExternalActors__/test/E/BE/XY2FFG2RJJSN0OZJO361H0",
+				"/Game/__ExternalActors__/test/E/LW/Q38EXK7ZS5QIK7R5H794WX",
+				"/Game/__ExternalActors__/test/E/OC/MHOUXNEAKF6GP7X8HZ19ZT",
+				"/Game/__ExternalActors__/test/E/R4/BM4TNGMP5DFD127CDVT54J",
+				"/Game/__ExternalObjects__/test/1/KR/KRHS4PP7HVVKUP6UGB4ZFJ",
+				"/Game/__ExternalObjects__/test/4/F9/ISI636G4JOM1QVPD8GH4YT",
+				"/Game/__ExternalObjects__/test/3/62/7DJ1R2GMV5L29X9E997JM4",
+				"/Game/__ExternalActors__/test/3/7B/C5FFXVXQNZWXMO0RG471RT",
+				"/Game/__ExternalActors__/test/3/7D/LYRPG8X5R2OY07IFVD6C1K",
+				"/Game/__ExternalActors__/test/3/8B/IW55MMH1GTJPMXKFH7LFYH",
+				"/Game/__ExternalActors__/test/3/CZ/GX1RV3X8J244MRXDKZ7SH3",
+				"/Game/__ExternalActors__/test/3/D6/RTH6Q0I80LKLJ7O54IAFXL",
+				"/Game/__ExternalActors__/test/3/HL/JUE93203VGTFYLHOOQJKY8",
+				"/Game/__ExternalActors__/test/3/JK/GCTRBN3WIAPUOK25U2D3BZ",
+				"/Game/__ExternalActors__/test/3/JX/0S9DTZ6PJGCXF5IPO30UNA",
+				"/Game/__ExternalObjects__/test/6/ZO/2M4CCFHWV4BEZ7FU4BIJYM",
+				"/Game/__ExternalActors__/test/8/55/EY2U0NA7VBQDAQCHAQ13Y2",
+				"/Game/__ExternalActors__/test/8/5X/VFYF787N3ZXP60E05JI242",
+				"/Game/__ExternalActors__/test/8/8A/N7JGJY5PQ8WMHWP0CV1JIF",
+				"/Game/__ExternalActors__/test/8/B3/W0613OHSJESO6G2RTAZLKK",
+				"/Game/__ExternalActors__/test/8/PY/O59TCDXODMXDUSMIJBLR47",
+				"/Game/__ExternalActors__/test/8/R7/JJWZ7E2OAT78OCTOAW7KCL",
+				"/Game/__ExternalActors__/test/8/SY/IOAO96VO61TQQKVVG15QJD",
+				"/Game/__ExternalActors__/test/8/X7/P8ZL1C14281DB1OONHXICK",
+				"/Game/__ExternalActors__/test/7/16/B6S2HXPK641YEB9MQHSODB",
+				"/Game/__ExternalActors__/test/7/5H/7FULZGZL3Y84NTTKYI43IR",
+				"/Game/__ExternalActors__/test/7/8X/8XYG8KUJNDQMPNJ3V92GBS",
+				"/Game/__ExternalActors__/test/7/NO/9AJ5NXGYYZHCSSLOKY8AWG",
+				"/Game/__ExternalActors__/test/7/OE/NISDEJC0AZA6VF5RU5LTUR",
+				"/Game/__ExternalActors__/test/7/Q8/KTMBCQ8A074NHJ7CAUFHWW",
+				"/Game/__ExternalActors__/test/7/R3/Q4CTSHS2LW1O4JAAP5Z9CC",
+				"/Game/__ExternalActors__/test/7/SQ/A03NL9FGDKE5T70JMEJ902",
+				"/Game/__ExternalActors__/test/7/TO/P0Z46H5X9LRXWZQ1SO2FK0",
+				"/Game/__ExternalActors__/test/6/0O/OTIJMWJ9MIWLKHUGN5VDFK",
+				"/Game/__ExternalActors__/test/6/3F/S7BUX9K7KLSLXU4ILSBKEN",
+				"/Game/__ExternalActors__/test/6/7X/FJLC3XT0RQ199RFUJBHISX",
+				"/Game/__ExternalActors__/test/6/RQ/UBCBZGS2OAHYLRJ7H1VV74",
+				"/Game/__ExternalActors__/test/6/SH/W4781DQ7D5W82NF6EENF4D",
+				"/Game/__ExternalActors__/test/6/VO/1DZ6YOYAU7ADAU2A2PMDDJ",
+				"/Game/__ExternalActors__/test/5/1A/VUP29XOSGVTBSEE7DBRMJV",
+				"/Game/__ExternalActors__/test/5/8G/JFWP4RDLC27CK78FC0PMFY",
+				"/Game/__ExternalActors__/test/5/8R/ED1A5HWBHP9KDETPE9AY9J",
+				"/Game/__ExternalActors__/test/5/9Y/9GS676UCMSAQ28IY40GMGT",
+				"/Game/__ExternalActors__/test/5/AE/I22TEXOZGCDYNJ8C1A38JX",
+				"/Game/__ExternalActors__/test/5/BJ/4U4PVJE3GOPX75F8VP2Y0J",
+				"/Game/__ExternalActors__/test/5/E0/0WRF74G64K5L5KBGYCNRNC",
+				"/Game/__ExternalActors__/test/4/0M/LW8IX1E4RELCCLED2K7XA2",
+				"/Game/__ExternalActors__/test/4/2M/0BQN5EXEAIONCWC2NU8B13",
+				"/Game/__ExternalActors__/test/4/3M/M6A2MV7NLJLR73QMYDOFF8",
+				"/Game/__ExternalActors__/test/4/7K/O15E5C2S79I9GLB2VOHFAO",
+				"/Game/__ExternalActors__/test/4/G4/X7NZ7V1S4AYJ2X4FPS18PR",
+				"/Game/__ExternalActors__/test/4/J0/EHEATCO34VYD4AH12RJ74H",
+				"/Game/__ExternalActors__/test/4/OE/OQYY841VH1E1BY5IO28H7V",
+				"/Game/__ExternalActors__/test/4/PH/38OY2ZHF23WZ3BT9CI9ZN7",
+				"/Game/__ExternalActors__/test/4/S0/N22ATXU2XM8GNRNPREQUIF",
+				"/Game/__ExternalActors__/test/4/XY/7XSOFF8717IJ15VLO64O6S",
+				"/Game/__ExternalActors__/test/2/2S/7ENASQDBRQ2Y0EYSNUKJ89",
+				"/Game/__ExternalActors__/test/2/3P/4DM2RUV4P86JQNB3A5XXS9",
+				"/Game/__ExternalActors__/test/2/7I/6KJPY1K7X5MS38CPZ31KUN",
+				"/Game/__ExternalActors__/test/2/97/T5QAPZVNJN91ADXDSP61PJ",
+				"/Game/__ExternalActors__/test/2/9K/6DBW5XJAX1L1DJIG3LMX5C",
+				"/Game/__ExternalActors__/test/2/AV/DIJQE4WB0X0EU59QKYC2DL",
+				"/Game/__ExternalActors__/test/2/GY/1PJK5Z4MSANDJSNG5D2QR0",
+				"/Game/__ExternalActors__/test/1/3O/KLNZ3C8WJCVKPHKTO2ALOO",
+				"/Game/__ExternalActors__/test/1/67/4PT73EVZJGG1NQ69L5GD2G",
+				"/Game/__ExternalActors__/test/1/6Q/XI0ULDGMGS6ZJQB06DCPNE",
+				"/Game/__ExternalActors__/test/1/8L/BBU6HPOQ0KWEIR5QBMC594",
+				"/Game/__ExternalActors__/test/1/IT/L1HU7V9OJ230WWXTJNSLRE",
+				"/Game/__ExternalActors__/test/1/J9/A16EBPF4BDV4ICEUEXTS55",
+				"/Game/__ExternalActors__/test/1/K1/EPGNUJQDJMUQTK8ZI2Q2XP",
+				"/Game/__ExternalActors__/test/1/T6/OY7UY3QT65SR4HJ3G51451",
+				"/Game/__ExternalActors__/test/1/W2/61DOXF8E2U6MMORO1QSKB1",
+				"/Game/__ExternalActors__/test/0/0C/G72SFB5UP4823ZCK8SE2A1",
+				"/Game/__ExternalActors__/test/0/4L/TTL0H48V85P3DCG16NUYMU",
+				"/Game/__ExternalActors__/test/0/55/RU0K81QBCWMQYK10TOP6XS",
+				"/Game/__ExternalActors__/test/0/5Q/YMBYQLXIDMF21H4MS622P7",
+				"/Game/__ExternalActors__/test/0/CA/2RYFQG1STEMPZW04Q067IO",
+				"/Game/__ExternalActors__/test/0/IF/342K0Q4AAHLP1NKXRZIW74",
+				"/Game/__ExternalActors__/test/0/JJ/86XEROONJG6Q3UR002SOQ2",
+				"/Game/__ExternalActors__/test/0/NL/29WHJB48Y2QL843ROBA0LO",
+				"/Game/__ExternalActors__/test/0/QX/6U7ZGTBW1UHA53EF1HSCSO",
+				"/Game/__ExternalActors__/test/0/RK/AVFQYLWNXXVYUH88RGLYS4",
+				"/Game/__ExternalActors__/test/0/SQ/AHPV2FTYJLVPFDNO3QS7ZE",
+				"/Game/__ExternalActors__/test/0/SU/U0WW2WGVAL3Y5OPDMC6XAK",
+				"/Game/__ExternalObjects__/test/A/MU/E8FY2C1S9S5DTO9FKZY1L0",
+				"/Game/__ExternalActors__/test/9/DI/91QUKXOG32NLVNEJIAY7DQ",
+				"/Game/__ExternalActors__/test/9/3K/TBC4IA86CLSTLACE6JHDAI",
+				"/Game/__ExternalActors__/test/9/FA/BXBC8CKIGNX3O2ECF3VHNF",
+				"/Game/__ExternalActors__/test/9/DT/PH1JXMKVZOLG5RX9266LWQ",
+				"/Game/__ExternalActors__/test/9/HD/RWYC6921UHEWL0227DYHTL",
+				"/Game/__ExternalActors__/test/9/IB/EQB83ILFE4XI49XIFFUD5H",
+				"/Game/__ExternalActors__/test/9/QK/H8I7OJ2C29KJJMYLERPUO1",
+				"/Game/__ExternalActors__/test/9/U9/6DS7IXUJHG6QZE4RS5FIW8",
+				"/Game/__ExternalActors__/test/9/WJ/44I83LNTUYQUC746883L0Q",
+				"/Game/__ExternalActors__/test/9/XE/2H85TPSB50U0MLQPUCSMOR",
+				"/Game/__ExternalActors__/test/C/0K/EH1AG3RNALQL6B7F143M4M",
+				"/Game/__ExternalActors__/test/A/41/2FJM9D0ARS14JZKACORL9J",
+				"/Game/__ExternalActors__/test/A/69/WDK6EICB32RU4JGILZFWHJ",
+				"/Game/__ExternalActors__/test/A/76/CYPGNE0TAMEYID2WOW4B6K",
+				"/Game/__ExternalActors__/test/A/1D/GZOXPP6CJFNPFVNKLQ0MA0",
+				"/Game/__ExternalActors__/test/A/Q4/XDKAEYEP53KYPAXSE298X5",
+				"/Game/__ExternalActors__/test/A/KI/P9G02M0L4Y47NJ16DCU8YG",
+				"/Game/__ExternalActors__/test/A/8H/4XM4EWYDGRTE2XAMF9NQHQ",
+				"/Game/__ExternalActors__/test/A/WU/JD7HSJOKSF48MFTLZ599MG",
+				"/Game/__ExternalActors__/test/A/RZ/1IC33FHNZG04FPBXKOFOAS",
+				"/Game/__ExternalActors__/test/C/5A/VTS9Z4P5OZ9YT714JLVVKV",
+				"/Game/__ExternalActors__/test/C/5E/DWHB37UY2RNQK3KMSPHUFY",
+				"/Game/__ExternalActors__/test/C/9C/9N57WM2WMXUCZQYNLHU7CT",
+				"/Game/__ExternalActors__/test/C/AE/NJMAXMPXU5XJG84ET2DFMU",
+				"/Game/__ExternalActors__/test/C/UV/A75WREJ2JD04ACXBQZM6BR",
+				"/Game/__ExternalActors__/test/E/V1/OPTW74G8WGAIUF6YR2YMRI",
+				"/Game/__ExternalActors__/test/5/HH/P1QBPXQJET98ZMXZ17NGVA",
+				"/Game/__ExternalActors__/test/5/IG/NOE56V03GTOUFI94T57TUP",
+				"/Game/__ExternalActors__/test/5/JK/6FK57KN9IKYB9B43ZMK994",
+				"/Game/__ExternalActors__/test/5/MN/IKTASSDMS9GMRCXWFUTMJF",
+				"/Game/__ExternalActors__/test/5/PI/21MJY1DQPWYZBOL8W9PAKB",
+				"/Game/__ExternalActors__/test/5/TC/V41YRHW0JW97R4Y05WFALH",
+				"/Game/__ExternalActors__/test/5/ZF/5QM05JNG4EXYZ1WEKGR3HX",
+				"/Game/__ExternalActors__/test/5/ZL/EOTXTR5Q64E4TKUMIHZWHS",
+				"/Game/__ExternalActors__/test/2/H4/GCLGPHBZCI878ZZ97NZJHY",
+				"/Game/__ExternalActors__/test/2/IB/5P0QJAHQZG0B762LOSU715",
+				"/Game/__ExternalActors__/test/2/Q0/AOS5TM7SH5GV3RZZV2W3QM",
+				"/Game/__ExternalActors__/test/2/VO/SRNZTC7VN6AOKMN9N9Y332",
+				"/Game/__ExternalActors__/test/2/WV/8YECSX9LSZWXY0OOUXNG29",
+				"/Game/__ExternalActors__/test/0/ZV/UDYFW33BV2O7V1MX98DX59"
+			]
+		},
+		{
+			"package": "/Game/test_HLOD0_Instancing",
+			"asset": "/Game/test_HLOD0_Instancing.test_HLOD0_Instancing",
+			"class": "/Script/Engine.HLODLayer",
+			"hard": [
+				"/Script/WorldPartitionHLODUtilities"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/WBP_Item",
+			"asset": "/Game/WBP_Item.WBP_Item",
+			"class": "/Script/UMGEditor.WidgetBlueprint",
+			"hard": [
+				"/Script/SlateCore",
+				"/Script/UMGEditor",
+				"/Script/UMG"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/WBP_Item",
+			"asset": "/Game/WBP_Item.WBP_Item_C",
+			"class": "/Script/UMG.WidgetBlueprintGeneratedClass",
+			"hard": [
+				"/Script/SlateCore",
+				"/Script/UMGEditor",
+				"/Script/UMG"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/WBP_ListView",
+			"asset": "/Game/WBP_ListView.WBP_ListView",
+			"class": "/Script/UMGEditor.WidgetBlueprint",
+			"hard": [
+				"/Script/SlateCore",
+				"/Script/UMGEditor",
+				"/Script/UMG",
+				"/Engine/EditorBlueprintResources/StandardMacros",
+				"/Game/WBP_Item"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/WBP_ListView",
+			"asset": "/Game/WBP_ListView.WBP_ListView_C",
+			"class": "/Script/UMG.WidgetBlueprintGeneratedClass",
+			"hard": [
+				"/Script/SlateCore",
+				"/Script/UMGEditor",
+				"/Script/UMG",
+				"/Engine/EditorBlueprintResources/StandardMacros",
+				"/Game/WBP_Item"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/0/0C/G72SFB5UP4823ZCK8SE2A1",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000004aac2cf3",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/0/4L/TTL0H48V85P3DCG16NUYMU",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000caf01cac",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/0/55/RU0K81QBCWMQYK10TOP6XS",
+			"asset": "/Game/test.test:PersistentLevel.VolumetricCloud_UAID_A85E45CFE40401D200_1470381760",
+			"class": "/Script/Engine.VolumetricCloud",
+			"hard": [
+				"/Game/test",
+				"/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud_Inst"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/0/5Q/YMBYQLXIDMF21H4MS622P7",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_4_1_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/0/CA/2RYFQG1STEMPZW04Q067IO",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000dcb40cb2",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/0/IF/342K0Q4AAHLP1NKXRZIW74",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_5_0_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/0/JJ/86XEROONJG6Q3UR002SOQ2",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_6_6_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/0/NL/29WHJB48Y2QL843ROBA0LO",
+			"asset": "/Game/test.test:PersistentLevel.DirectionalLight_UAID_A85E45CFE40401D200_1470382761",
+			"class": "/Script/Engine.DirectionalLight",
+			"hard": [
+				"/Game/test"
+			],
+			"soft": [
+				"/Engine/EditorResources/LightIcons/S_LightError"
+			]
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/0/QX/6U7ZGTBW1UHA53EF1HSCSO",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_1_5_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/0/RK/AVFQYLWNXXVYUH88RGLYS4",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000098abf43",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/0/SQ/AHPV2FTYJLVPFDNO3QS7ZE",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000ab4927c5",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/0/SU/U0WW2WGVAL3Y5OPDMC6XAK",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_3_5_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/0/ZV/UDYFW33BV2O7V1MX98DX59",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000004c66ee4e",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/1/3O/KLNZ3C8WJCVKPHKTO2ALOO",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000c7d54aab",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/1/67/4PT73EVZJGG1NQ69L5GD2G",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_3_2_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/1/6Q/XI0ULDGMGS6ZJQB06DCPNE",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000336901f9",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/1/8L/BBU6HPOQ0KWEIR5QBMC594",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000006d8a60a8",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/1/IT/L1HU7V9OJ230WWXTJNSLRE",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000b6da7064",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/1/J9/A16EBPF4BDV4ICEUEXTS55",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_1_0_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/1/K1/EPGNUJQDJMUQTK8ZI2Q2XP",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000000c2d2848",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/1/T6/OY7UY3QT65SR4HJ3G51451",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_2_4_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/1/W2/61DOXF8E2U6MMORO1QSKB1",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_5_7_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/2/2S/7ENASQDBRQ2Y0EYSNUKJ89",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_0_7_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/2/3P/4DM2RUV4P86JQNB3A5XXS9",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_2_6_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/2/7I/6KJPY1K7X5MS38CPZ31KUN",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_4_0_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/2/97/T5QAPZVNJN91ADXDSP61PJ",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_6_5_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/2/9K/6DBW5XJAX1L1DJIG3LMX5C",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_1_1_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/2/AV/DIJQE4WB0X0EU59QKYC2DL",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_4_2_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/2/GY/1PJK5Z4MSANDJSNG5D2QR0",
+			"asset": "/Game/test.test:PersistentLevel.PlayerStart_UAID_F02F74551BF5599B01_1153002503",
+			"class": "/Script/Engine.PlayerStart",
+			"hard": [
+				"/Script/NavigationSystem",
+				"/Game/test"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/2/H4/GCLGPHBZCI878ZZ97NZJHY",
+			"asset": "/Game/test.test:PersistentLevel.ExponentialHeightFog_UAID_A85E45CFE40401D200_1470382763",
+			"class": "/Script/Engine.ExponentialHeightFog",
+			"hard": [
+				"/Game/test"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/2/IB/5P0QJAHQZG0B762LOSU715",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_5_2_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/2/Q0/AOS5TM7SH5GV3RZZV2W3QM",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000294c2cc4",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/2/VO/SRNZTC7VN6AOKMN9N9Y332",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000003d42f5b8",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/2/WV/8YECSX9LSZWXY0OOUXNG29",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_0_5_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/3/7B/C5FFXVXQNZWXMO0RG471RT",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000588cf99a",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/3/7D/LYRPG8X5R2OY07IFVD6C1K",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_1_4_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/3/8B/IW55MMH1GTJPMXKFH7LFYH",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000cd4bdf5c",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/3/CZ/GX1RV3X8J244MRXDKZ7SH3",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000b5aad672",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/3/D6/RTH6Q0I80LKLJ7O54IAFXL",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_0_1_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/3/HL/JUE93203VGTFYLHOOQJKY8",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000b5e934d3",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/3/JK/GCTRBN3WIAPUOK25U2D3BZ",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000a3cefa20",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/3/JX/0S9DTZ6PJGCXF5IPO30UNA",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_2_3_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/4/0M/LW8IX1E4RELCCLED2K7XA2",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_0_6_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/4/2M/0BQN5EXEAIONCWC2NU8B13",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000de9397b6",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/4/3M/M6A2MV7NLJLR73QMYDOFF8",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000009ba77be2",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/4/7K/O15E5C2S79I9GLB2VOHFAO",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_2_2_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/4/G4/X7NZ7V1S4AYJ2X4FPS18PR",
+			"asset": "/Game/test.test:PersistentLevel.WorldPartitionMiniMap_UAID_3497F631D5890DD300_1296925927",
+			"class": "/Script/Engine.WorldPartitionMiniMap",
+			"hard": [
+				"/Game/test"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/4/J0/EHEATCO34VYD4AH12RJ74H",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000009f3ee17d",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/4/OE/OQYY841VH1E1BY5IO28H7V",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000bbb6ad66",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/4/PH/38OY2ZHF23WZ3BT9CI9ZN7",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_2_1_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/4/S0/N22ATXU2XM8GNRNPREQUIF",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_0000000083045f39",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/4/XY/7XSOFF8717IJ15VLO64O6S",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_6_4_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/5/1A/VUP29XOSGVTBSEE7DBRMJV",
+			"asset": "/Game/test.test:PersistentLevel.WorldDataLayers",
+			"class": "/Script/Engine.WorldDataLayers",
+			"hard": [
+				"/Game/test"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/5/8G/JFWP4RDLC27CK78FC0PMFY",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_1_7_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/5/8R/ED1A5HWBHP9KDETPE9AY9J",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_6_0_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/5/9Y/9GS676UCMSAQ28IY40GMGT",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000c67dd055",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/5/AE/I22TEXOZGCDYNJ8C1A38JX",
+			"asset": "/Game/test.test:PersistentLevel.SkyAtmosphere_UAID_A85E45CFE40401D200_1470382762",
+			"class": "/Script/Engine.SkyAtmosphere",
+			"hard": [
+				"/Game/test"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/5/BJ/4U4PVJE3GOPX75F8VP2Y0J",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_6_2_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/5/E0/0WRF74G64K5L5KBGYCNRNC",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_7_1_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/5/HH/P1QBPXQJET98ZMXZ17NGVA",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_6_1_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/5/IG/NOE56V03GTOUFI94T57TUP",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_0_3_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/5/JK/6FK57KN9IKYB9B43ZMK994",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_0000000059a235de",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/5/MN/IKTASSDMS9GMRCXWFUTMJF",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000d1e96690",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/5/PI/21MJY1DQPWYZBOL8W9PAKB",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_0_0_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/5/TC/V41YRHW0JW97R4Y05WFALH",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000dfa516b7",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/5/ZF/5QM05JNG4EXYZ1WEKGR3HX",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_5_6_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/5/ZL/EOTXTR5Q64E4TKUMIHZWHS",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_2_7_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/6/0O/OTIJMWJ9MIWLKHUGN5VDFK",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_7_5_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/6/3F/S7BUX9K7KLSLXU4ILSBKEN",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_3_1_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/6/7X/FJLC3XT0RQ199RFUJBHISX",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_0_4_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/6/RQ/UBCBZGS2OAHYLRJ7H1VV74",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000008d245922",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/6/SH/W4781DQ7D5W82NF6EENF4D",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_7_7_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/6/VO/1DZ6YOYAU7ADAU2A2PMDDJ",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000d615a089",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/7/16/B6S2HXPK641YEB9MQHSODB",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000e4e3cadb",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/7/5H/7FULZGZL3Y84NTTKYI43IR",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000004955f843",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/7/8X/8XYG8KUJNDQMPNJ3V92GBS",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_4_5_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/7/NO/9AJ5NXGYYZHCSSLOKY8AWG",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000ce213f8d",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/7/OE/NISDEJC0AZA6VF5RU5LTUR",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000e432d768",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/7/Q8/KTMBCQ8A074NHJ7CAUFHWW",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_7_4_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/7/R3/Q4CTSHS2LW1O4JAAP5Z9CC",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_1_6_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/7/SQ/A03NL9FGDKE5T70JMEJ902",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_6_7_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/7/TO/P0Z46H5X9LRXWZQ1SO2FK0",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_0000000019796d69",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/8/55/EY2U0NA7VBQDAQCHAQ13Y2",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_7_0_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/8/5X/VFYF787N3ZXP60E05JI242",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000004bcbb79e",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/8/8A/N7JGJY5PQ8WMHWP0CV1JIF",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000004df8876d",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/8/B3/W0613OHSJESO6G2RTAZLKK",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000f37d3085",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/8/PY/O59TCDXODMXDUSMIJBLR47",
+			"asset": "/Game/test.test:PersistentLevel.StaticMeshActor_UAID_A4AE111137DC54FB00_1240666663",
+			"class": "/Script/Engine.StaticMeshActor",
+			"hard": [
+				"/Game/test",
+				"/Engine/EngineSky/SM_SkySphere",
+				"/Engine/EngineSky/M_SimpleSkyDome"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/8/R7/JJWZ7E2OAT78OCTOAW7KCL",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000daffb3b1",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/8/SY/IOAO96VO61TQQKVVG15QJD",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_5_5_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/8/X7/P8ZL1C14281DB1OONHXICK",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000003122e25f",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/9/3K/TBC4IA86CLSTLACE6JHDAI",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_3_3_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/9/DI/91QUKXOG32NLVNEJIAY7DQ",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_5_3_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/9/DT/PH1JXMKVZOLG5RX9266LWQ",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000005bb1b7e3",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/9/FA/BXBC8CKIGNX3O2ECF3VHNF",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000007882c2b0",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/9/HD/RWYC6921UHEWL0227DYHTL",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_1_2_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/9/IB/EQB83ILFE4XI49XIFFUD5H",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000409edf19",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/9/QK/H8I7OJ2C29KJJMYLERPUO1",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000003808e17f",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/9/U9/6DS7IXUJHG6QZE4RS5FIW8",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_3_0_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/9/WJ/44I83LNTUYQUC746883L0Q",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_0_2_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/9/XE/2H85TPSB50U0MLQPUCSMOR",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_1_3_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/A/1D/GZOXPP6CJFNPFVNKLQ0MA0",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_4_7_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/A/41/2FJM9D0ARS14JZKACORL9J",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_2_5_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/A/69/WDK6EICB32RU4JGILZFWHJ",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000b7335e2f",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/A/76/CYPGNE0TAMEYID2WOW4B6K",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_0000000019da8926",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/A/8H/4XM4EWYDGRTE2XAMF9NQHQ",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000b820085f",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/A/KI/P9G02M0L4Y47NJ16DCU8YG",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000cd24eff3",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/A/Q4/XDKAEYEP53KYPAXSE298X5",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000f083c001",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/A/RZ/1IC33FHNZG04FPBXKOFOAS",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_3_7_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/A/WU/JD7HSJOKSF48MFTLZ599MG",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_4_4_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/B/0G/1S72DQRRD2NL30PZ914334",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000002ff8dc1d",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/B/20/HF45TOFMX1JAXXVIRZI379",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000ebbfe662",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/B/50/2LAEXIHDLH6HK9NJXN55TC",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_5_1_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/B/9Y/BMBZNQNWGHVQQ70WQVOD9L",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000008b2c1b91",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/B/D8/9E5VLSQCA2GLB0SBL6HSHQ",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_6_3_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/B/EE/MEYJ8W23HQT6FQ3Q5JM0J1",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_5_4_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/B/JV/VS909K6F6CEBV305V45KXZ",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_4_3_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/B/LK/2KF9YN9BCDZA416BQCKS4Y",
+			"asset": "/Game/test.test:PersistentLevel.Landscape_UAID_A85E45CFE404FBD100_1221515703",
+			"class": "/Script/Landscape.Landscape",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/B/U1/77NYGMSBL3CRHSA3A1H9NI",
+			"asset": "/Game/test.test:PersistentLevel.SkyLight_UAID_A85E45CFE40401D200_1470380759",
+			"class": "/Script/Engine.SkyLight",
+			"hard": [
+				"/Game/test"
+			],
+			"soft": [
+				"/Engine/EditorResources/LightIcons/S_LightError"
+			]
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/B/X8/LWZUWGYGR758PC5A5M5R0F",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_7_2_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/C/0K/EH1AG3RNALQL6B7F143M4M",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000006b580ce1",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/C/5A/VTS9Z4P5OZ9YT714JLVVKV",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_4_6_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/C/5E/DWHB37UY2RNQK3KMSPHUFY",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_7_6_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/C/9C/9N57WM2WMXUCZQYNLHU7CT",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_7_3_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/C/AE/NJMAXMPXU5XJG84ET2DFMU",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_0000000030ff9b8f",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/C/UV/A75WREJ2JD04ACXBQZM6BR",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000f40719ee",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/D/CG/MSYH9JZC4WSRRYZNDPRKLV",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000a8797807",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/D/PX/MZ72UWU44VD8H5TCZQNDB7",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000e2b069c3",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/D/PZ/7NAV74VZ3VE1XLX5N4376V",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000006f281387",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/D/SK/PLIG1B9SG219RW2B9MTPIP",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000e7b5ef29",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/D/VR/QQVF5D4CSVON8IZWNOT6JL",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000056e4d2f",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/E/5O/EPH6YPDNUP1G6H2YBET4R7",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000009757b31d",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/E/8N/1S624L00G52QAU13V04KJL",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000002465d8af",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/E/BE/XY2FFG2RJJSN0OZJO361H0",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_3_6_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/E/LW/Q38EXK7ZS5QIK7R5H794WX",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000002dd5331d",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/E/OC/MHOUXNEAKF6GP7X8HZ19ZT",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_2_0_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/E/R4/BM4TNGMP5DFD127CDVT54J",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_00000000eb6e53e9",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/E/V1/OPTW74G8WGAIUF6YR2YMRI",
+			"asset": "/Game/test.test:PersistentLevel.HLOD0_Instancing_000000004840756b",
+			"class": "/Script/Engine.WorldPartitionHLOD",
+			"hard": [
+				"/Script/Landscape",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid",
+				"/Engine/OpenWorldTemplate/HLOD/HLOD0_Instancing"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalActors__/test/F/51/U2PJX50FWOMIJEIHDJY2G9",
+			"asset": "/Game/test.test:PersistentLevel.LandscapeStreamingProxy_D7T4VF4LBP34PHV9XOEVM5TIG_1_3_4_0",
+			"class": "/Script/Landscape.LandscapeStreamingProxy",
+			"hard": [
+				"/Script/Landscape",
+				"/Engine/EngineMaterials/DefaultPhysicalMaterial",
+				"/Game/test",
+				"/Engine/OpenWorldTemplate/LandscapeMaterial/M_ProcGrid"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalObjects__/test/1/KR/KRHS4PP7HVVKUP6UGB4ZFJ",
+			"asset": "/Game/test.test:PersistentLevel.ActorFolder_UID_B7E9BD5B-45A65265-4791988D-EF54CCEB",
+			"class": "/Script/Engine.ActorFolder",
+			"hard": [
+				"/Game/test"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalObjects__/test/3/62/7DJ1R2GMV5L29X9E997JM4",
+			"asset": "/Game/test.test:PersistentLevel.ActorFolder_UID_F0B34F1C-498F52BA-314B94B2-A472577C",
+			"class": "/Script/Engine.ActorFolder",
+			"hard": [
+				"/Game/test"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalObjects__/test/4/F9/ISI636G4JOM1QVPD8GH4YT",
+			"asset": "/Game/test.test:PersistentLevel.ActorFolder_UID_26DBD2B7-434D115B-68D5CB88-82E789AF",
+			"class": "/Script/Engine.ActorFolder",
+			"hard": [
+				"/Game/test"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalObjects__/test/6/ZO/2M4CCFHWV4BEZ7FU4BIJYM",
+			"asset": "/Game/test.test:PersistentLevel.ActorFolder_UID_C11A5F59-487C0DB2-AA58CABA-5DEDB377",
+			"class": "/Script/Engine.ActorFolder",
+			"hard": [
+				"/Game/test"
+			],
+			"soft": []
+		},
+		{
+			"package": "/Game/__ExternalObjects__/test/A/MU/E8FY2C1S9S5DTO9FKZY1L0",
+			"asset": "/Game/test.test:PersistentLevel.ActorFolder_UID_069B7288-4681824D-D41E3894-8B3951F3",
+			"class": "/Script/Engine.ActorFolder",
+			"hard": [
+				"/Game/test"
+			],
+			"soft": []
+		}
+	]
+}

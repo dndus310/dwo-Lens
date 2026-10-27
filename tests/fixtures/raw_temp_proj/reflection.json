@@ -1,0 +1,188 @@
+{
+	"native": [],
+	"blueprint": [
+		{
+			"path": "/Game/WBP_Item.WBP_Item_C",
+			"name": "WBP_Item_C",
+			"package": "/Game/WBP_Item",
+			"origin": "blueprint",
+			"super": "/Script/UMG.UserWidget",
+			"abstract": false,
+			"interface": false,
+			"blueprintable": true,
+			"interfaces": [],
+			"functions": [
+				{
+					"name": "SetTitle",
+					"flags": [
+						"BlueprintCallable",
+						"BlueprintEvent"
+					],
+					"overrides": "",
+					"paramRefs": []
+				},
+				{
+					"name": "PreConstruct",
+					"flags": [
+						"Event",
+						"BlueprintEvent"
+					],
+					"overrides": "/Script/UMG.UserWidget:PreConstruct",
+					"paramRefs": []
+				},
+				{
+					"name": "ExecuteUbergraph_WBP_Item",
+					"flags": [],
+					"overrides": "",
+					"paramRefs": [
+						{
+							"kind": "struct",
+							"target": "/Script/CoreUObject.Vector2D"
+						}
+					]
+				}
+			],
+			"properties": [
+				{
+					"name": "UberGraphFrame",
+					"cppType": "FPointerToUberGraphFrame",
+					"replicated": false,
+					"blueprintVisible": false,
+					"refs": [
+						{
+							"kind": "struct",
+							"target": "/Script/Engine.PointerToUberGraphFrame"
+						}
+					]
+				},
+				{
+					"name": "SizeBox_69",
+					"cppType": "USizeBox*",
+					"replicated": false,
+					"blueprintVisible": true,
+					"refs": [
+						{
+							"kind": "hard",
+							"target": "/Script/UMG.SizeBox"
+						}
+					]
+				},
+				{
+					"name": "HorizontalBox_26",
+					"cppType": "UHorizontalBox*",
+					"replicated": false,
+					"blueprintVisible": true,
+					"refs": [
+						{
+							"kind": "hard",
+							"target": "/Script/UMG.HorizontalBox"
+						}
+					]
+				},
+				{
+					"name": "EditableText_154",
+					"cppType": "UEditableText*",
+					"replicated": false,
+					"blueprintVisible": true,
+					"refs": [
+						{
+							"kind": "hard",
+							"target": "/Script/UMG.EditableText"
+						}
+					]
+				},
+				{
+					"name": "Border_0",
+					"cppType": "UBorder*",
+					"replicated": false,
+					"blueprintVisible": true,
+					"refs": [
+						{
+							"kind": "hard",
+							"target": "/Script/UMG.Border"
+						}
+					]
+				}
+			]
+		},
+		{
+			"path": "/Game/WBP_ListView.WBP_ListView_C",
+			"name": "WBP_ListView_C",
+			"package": "/Game/WBP_ListView",
+			"origin": "blueprint",
+			"super": "/Script/UMG.UserWidget",
+			"abstract": false,
+			"interface": false,
+			"blueprintable": true,
+			"interfaces": [],
+			"functions": [
+				{
+					"name": "PreConstruct",
+					"flags": [
+						"Event",
+						"BlueprintEvent"
+					],
+					"overrides": "/Script/UMG.UserWidget:PreConstruct",
+					"paramRefs": []
+				},
+				{
+					"name": "Construct",
+					"flags": [
+						"Event",
+						"BlueprintEvent"
+					],
+					"overrides": "/Script/UMG.UserWidget:Construct",
+					"paramRefs": []
+				},
+				{
+					"name": "ExecuteUbergraph_WBP_ListView",
+					"flags": [],
+					"overrides": "",
+					"paramRefs": [
+						{
+							"kind": "hard",
+							"target": "/Game/WBP_Item.WBP_Item_C"
+						},
+						{
+							"kind": "hard",
+							"target": "/Script/UMG.PanelSlot"
+						}
+					]
+				}
+			],
+			"properties": [
+				{
+					"name": "UberGraphFrame",
+					"cppType": "FPointerToUberGraphFrame",
+					"replicated": false,
+					"blueprintVisible": false,
+					"refs": [
+						{
+							"kind": "struct",
+							"target": "/Script/Engine.PointerToUberGraphFrame"
+						}
+					]
+				},
+				{
+					"name": "ScrollBox_27",
+					"cppType": "UScrollBox*",
+					"replicated": false,
+					"blueprintVisible": true,
+					"refs": [
+						{
+							"kind": "hard",
+							"target": "/Script/UMG.ScrollBox"
+						}
+					]
+				},
+				{
+					"name": "RawData",
+					"cppType": "FString",
+					"replicated": false,
+					"blueprintVisible": true,
+					"refs": []
+				}
+			]
+		}
+	]
+}

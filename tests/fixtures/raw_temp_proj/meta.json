@@ -1,0 +1,11 @@
+{
+	"schema": "archi.raw/0.1",
+	"engineVersion": "5.7.4-51494982+++UE5+Release-5.7",
+	"project": "C:/Users/jkyii/Desktop/temp_proj/temp_proj.uproject",
+	"extractedAtUtc": "2026-10-26T16:05:05.432Z",
+	"projectModules": [],
+	"contentRoots": [
+		"/Game"
+	],
+	"blueprintLoadFailures": 0
+}

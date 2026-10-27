@@ -715,8 +715,7 @@ static void DrawSidebar(App& app)
 		ImGui::SameLine();
 		ImGui::TextDisabled("%s", smState);
 		if (ImGui::IsItemHovered())
-			ImGui::SetTooltip("USTRUCT 상태 스냅샷·변경 이력 뷰어 (런타임).
-설치하면 analyze가 제출 지점을 찾고 verify가 StateMonitor 테스트를 함께 실행합니다.");
+			ImGui::SetTooltip("USTRUCT 상태 스냅샷·변경 이력 뷰어 (런타임).\n설치하면 analyze가 제출 지점을 찾고 verify가 StateMonitor 테스트를 함께 실행합니다.");
 		ImGui::BeginDisabled(!idle || app.stateMonitor == 2);
 		if (app.stateMonitor == 1)
 		{

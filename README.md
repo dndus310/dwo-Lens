@@ -24,6 +24,7 @@ __dwo-assay.bat verify     :: ST-3 BP 전체 컴파일, 데이터 검증, 자동
 __dwo-assay.bat logs       :: ST-4 Saved/Logs, Saved/Crashes 분석 (이전 실행 대비 새 오류)
 __dwo-assay.bat tools      :: 도구 카탈로그 (ready / planned)
 __dwo-assay.bat gui        :: 제어판 창 열기
+__dwo-assay.bat sm-install :: StateMonitor 설치 (아래 '제공 도구')
 __dwo-assay.bat status     :: 부착 버전·엔진 확인
 __dwo-assay.bat doctor     :: 환경 점검
 __dwo-assay.bat update     :: 시스템 최신화
@@ -53,6 +54,28 @@ __dwo-assay.bat detach     :: 제거 (--keep-data 로 분석 데이터 보존)
 | `dwo-assay-gui.exe --project <폴더> --export-report <파일.html>` | 창 없이 종합 리포트 생성 (자동화·CI용) |
 
 처음 실행할 때 Visual Studio C++ 도구로 한 번 빌드합니다(약 1분, `%LOCALAPPDATA%\dwo-Assay\gui-cache`). GUI는 `__dwo-assay.bat`을 그대로 실행하고 같은 결과 파일을 읽으므로 명령줄과 결과가 같습니다.
+
+## 제공 도구: StateMonitor
+
+USTRUCT 상태 스냅샷·변경 이력 뷰어(런타임 플러그인)를 프로젝트에 설치해 줍니다. 설치하면 `analyze`가 제출 지점을 찾고 `verify`가 StateMonitor 테스트를 함께 실행합니다.
+
+```bat
+__dwo-assay.bat sm-install            :: 에디터·PIE 전용 (기본). 패키지 빌드에 영향 없음
+__dwo-assay.bat sm-install --runtime  :: 패키지 게임에도 포함. .uproject(BP 전용) 또는 Build.cs(C++) 등록 필요
+__dwo-assay.bat sm-remove             :: 제거. 프로젝트 코드가 참조 중이면 거부 (--force로 강제)
+```
+
+GUI 왼쪽 "제공 도구"에서도 설치·제거할 수 있습니다. `.uproject`는 수정하지 않으며 `Plugins/__StateMonitor`는 git에서 숨겨집니다.
+
+## 검증 (QA)
+
+```bat
+selftest.bat "C:\Projects\MyGame"                      :: 단위·정적·GUI·전체 명령 왕복 (격리 복사본에서)
+python tests\stress.py                                    :: 대형 분석·100만 줄 로그·깊은 그래프
+powershell -File tests\package_check.ps1 -Source <폴더> -Name pkg -Config Shipping [-InstallStateMonitor]
+```
+
+결과와 발견·수정한 결함은 [docs/QA-REPORT.md](docs/QA-REPORT.md)에 있습니다. 산출물은 `.qa/`(git 제외)에 생깁니다.
 
 ### 전제 조건
 

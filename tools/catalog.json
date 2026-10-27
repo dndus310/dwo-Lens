@@ -232,9 +232,27 @@
       "station": "ST-4",
       "kind": "build",
       "status": "ready",
-      "command": "sm-install, sm-remove",
-      "invocation": "installs the bundled StateMonitor plugin (prebuilt per engine, hidden from git) into Plugins/__StateMonitor; refuses removal while project code references it",
+      "command": "sm-install [--runtime], sm-remove",
+      "invocation": "installs the bundled StateMonitor (prebuilt editor binaries + source) into Plugins/__StateMonitor; editor/PIE only by default so packages are unaffected, --runtime keeps it in game targets; refuses removal while project code references it",
       "output": "runtime USTRUCT snapshots, change history, viewer; StateMonitor.* tests in verify"
+    },
+    {
+      "id": "selftest",
+      "station": "OPS",
+      "kind": "build",
+      "status": "ready",
+      "command": "selftest.bat",
+      "invocation": "unit tests, static checks, GUI build, full command cycle on an isolated project copy",
+      "output": ".qa/selftest/selftest-result.json"
+    },
+    {
+      "id": "package-check",
+      "station": "ST-3",
+      "kind": "wrap",
+      "status": "ready",
+      "command": "tests/package_check.ps1",
+      "invocation": "BuildCookRun (Shipping) with dwo-Assay attached, package inspection, smoke run, detach",
+      "output": ".qa/<name>/package-result.json"
     }
   ]
 }

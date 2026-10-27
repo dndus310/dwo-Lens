@@ -54,8 +54,10 @@ $log = Join-Path $work "buildcookrun-$Config.log"
 $sw.Restart()
 & cmd /c "`"$uat`" BuildCookRun -project=`"$uproject`" -noP4 -platform=Win64 -clientconfig=$Config -build -cook -stage -pak -archive -archivedirectory=`"$archive`" -unattended -utf8output -nocompileeditor > `"$log`" 2>&1"
 $pkgCode = $LASTEXITCODE
-$exe = Get-ChildItem -Recurse -Path $archive -Filter *.exe -ErrorAction SilentlyContinue |
-       Where-Object { $_.Name -notlike 'UnrealCEFSubProcess*' -and $_.Name -notlike 'CrashReportClient*' } | Sort-Object Length -Descending | Select-Object -First 1
+# The project launcher (<Project>.exe at the package root) passes the project to the engine binary;
+# starting UnrealGame-*.exe directly exits at once because it does not know which project to run.
+$projectName = [IO.Path]::GetFileNameWithoutExtension($uproject)
+$exe = Get-ChildItem -Recurse -Path $archive -Filter "$projectName.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
 Step 'package' ($pkgCode -eq 0 -and $exe -ne $null) "BuildCookRun $Config exit $pkgCode, exe: $(if ($exe) { $exe.FullName.Substring($archive.Length + 1) } else { 'none' })" $sw.Elapsed.TotalSeconds
 if (-not $exe) { Save; exit 1 }
 

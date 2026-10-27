@@ -84,12 +84,18 @@ function Invoke-Git([string[]]$GitArgs) {
     return $out
 }
 
+function Test-OwnRepository {
+    # An empty prefix means the project folder is the repository root. Comparing prefixes instead of paths
+    # stays correct when the same folder is reached through a junction, symlink or redirected profile path.
+    $prefix = & git -C $Project rev-parse --show-prefix 2>$null
+    return ($LASTEXITCODE -eq 0 -and [string]::IsNullOrEmpty(($prefix | Out-String).Trim()))
+}
+
 function Assert-OwnRepository {
     $top = Invoke-Git @('rev-parse', '--show-toplevel')
     if (-not $top) { Fail "$Project is not inside a git repository." }
-    $topNorm = ($top -replace '/', '\').TrimEnd('\')
-    if ($topNorm -ne $Project) {
-        Fail "The project is not its own git repository. Enclosing repository: $topNorm. Run 'git init' in the project or use its real clone."
+    if (-not (Test-OwnRepository)) {
+        Fail "The project is not its own git repository. Enclosing repository: $top. Run 'git init' in the project or use its real clone."
     }
 }
 
@@ -351,7 +357,7 @@ function Invoke-Doctor {
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     Check "engine UE $($engine.Version)" (Test-Path $engine.Cmd) 'UnrealEditor-Cmd.exe not found'
     $top = Invoke-Git @('rev-parse', '--show-toplevel')
-    Check 'project is its own git repository' ($top -and (($top -replace '/', '\').TrimEnd('\') -eq $Project)) 'run git init in the project'
+    Check 'project is its own git repository' ($top -and (Test-OwnRepository)) 'run git init in the project'
     $excl = Get-ExcludePath
     Check 'exclude block present' ((Test-Path $excl) -and ((Get-Content -Raw $excl) -like "*$BlockStart*")) 'run __dwo-assay.bat attach'
     Check 'plugin installed' (Test-Path (Join-Path $PluginDest 'Binaries\Win64\UnrealEditor-DwoAssayInspector.dll')) 'run __dwo-assay.bat attach'

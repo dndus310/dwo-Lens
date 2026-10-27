@@ -15,9 +15,9 @@ $Utf8 = New-Object System.Text.UTF8Encoding($false)
 
 $SystemDir   = Split-Path -Parent $PSScriptRoot
 $Project     = (Resolve-Path $Project).Path.TrimEnd('\')
-$dwo-AssayDir    = Join-Path $Project '__dwo-assay'
-$DataDir     = Join-Path $dwo-AssayDir 'data'
-$StatePath   = Join-Path $dwo-AssayDir 'state.json'
+$AssayDir    = Join-Path $Project '__dwo-assay'
+$DataDir     = Join-Path $AssayDir 'data'
+$StatePath   = Join-Path $AssayDir 'state.json'
 $PluginDest  = Join-Path $Project 'Plugins\__DwoAssayInspector'
 $Marker      = '.dwo-assay-managed'
 $BlockStart  = '# >>> dwo-assay managed (do not edit) >>>'
@@ -346,7 +346,7 @@ function Invoke-Detach {
         Say "Analysis data kept at $dest"
     }
     Set-Location $Project
-    if (Test-Path $dwo-AssayDir) { Remove-Item -Recurse -Force $dwo-AssayDir }
+    if (Test-Path $AssayDir) { Remove-Item -Recurse -Force $AssayDir }
 
     # __dwo-assay.bat deletes itself after this script returns; exclude it from the comparison.
     $after = (@((Get-ProjectStatus) -split "`n") | Where-Object { $_ -and $_ -notmatch '__dwo-assay\.bat$' }) -join "`n"

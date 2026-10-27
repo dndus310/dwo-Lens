@@ -32,7 +32,7 @@ if /i "%CMD%"=="sm-install" goto :handoff
 if /i "%CMD%"=="sm-remove" goto :handoff
 if /i "%CMD%"=="doctor" goto :handoff
 if /i "%CMD%"=="detach" goto :handoff
-echo Usage: __dwo-assay.bat [attach^|update^|status^|analyze^|verify^|logs^|tools^|gui^|sm-install^|sm-remove^|doctor^|detach] [--keep-data^|--force]
+echo Usage: __dwo-assay.bat [attach^|update^|status^|analyze^|verify^|logs^|tools^|gui^|sm-install^|sm-remove^|doctor^|detach] [--keep-data^|--force^|--runtime]
 exit /b 1
 
 :fetch

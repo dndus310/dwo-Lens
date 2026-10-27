@@ -265,12 +265,26 @@ function Invoke-SmInstall {
     $uplugin = Get-Content -Raw -Encoding UTF8 $upluginPath | ConvertFrom-Json
     $uplugin | Add-Member -NotePropertyName EnabledByDefault -NotePropertyValue $true -Force
     $uplugin | Add-Member -NotePropertyName Installed -NotePropertyValue $false -Force
+    $runtime = $Rest -contains '--runtime'
+    if (-not $runtime) {
+        # Default: editor and PIE only. Packaged games never load the module, so installing it cannot
+        # change or break a package. (A Blueprint-only package uses the stock UnrealGame executable,
+        # which cannot contain a plugin the .uproject does not list.)
+        foreach ($m in $uplugin.Modules) { $m | Add-Member -NotePropertyName TargetAllowList -NotePropertyValue @('Editor') -Force }
+    }
     [IO.File]::WriteAllText($upluginPath, ($uplugin | ConvertTo-Json -Depth 10), $Utf8)
     [IO.File]::WriteAllText((Join-Path $SmDest $Marker), "StateMonitor installed by dwo-Assay. Remove with '__dwo-assay.bat sm-remove'.`n", $Utf8)
-    Say "StateMonitor installed: Plugins\__StateMonitor (UE $($engine.Version), hidden from git)"
-    Say 'Blueprint: use the Submit State Snapshot / Show State Monitor nodes.'
-    Say 'C++: add "StateMonitor" to your module Build.cs, then UStateMonitorSubsystem::Get(this)->Submit(TEXT("Id"), State).'
-    Say 'Remove the Build.cs entry and calls before sm-remove or detach.'
+    if ($runtime) {
+        Say "StateMonitor installed for runtime: Plugins\__StateMonitor (UE $($engine.Version), hidden from git)"
+        Say 'Packaged games include it only when the project declares it:'
+        if ($uproject.IsCode) { Say '  C++ project: add "StateMonitor" to the Build.cs of the module that calls it.' }
+        else { Say '  Blueprint-only project: add {"Name": "StateMonitor", "Enabled": true} to Plugins in the .uproject.' }
+        Say 'Remove those entries before sm-remove or detach.'
+    } else {
+        Say "StateMonitor installed for editor and PIE: Plugins\__StateMonitor (UE $($engine.Version), hidden from git)"
+        Say 'Packaged builds are not affected. For packaged games use: __dwo-assay.bat sm-install --runtime'
+    }
+    Say 'Blueprint: Submit State Snapshot / Show State Monitor nodes. C++: UStateMonitorSubsystem::Get(this)->Submit(TEXT("Id"), State).'
 }
 
 function Remove-StateMonitor([bool]$Force) {

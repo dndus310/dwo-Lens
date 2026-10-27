@@ -185,6 +185,7 @@ footer { color: var(--ink-3); font-size: 12.5px; font-family: var(--f-mono); tex
       <li><a href="#statemonitor">StateMonitor 연계</a></li>
       <li><a href="#roadmap">구축 로드맵</a></li>
       <li><a href="#ops">운영 · 설정</a></li>
+      <li><a href="#qa">품질 검증</a></li>
       <li><a href="#checks">다음 확인</a></li>
     </ol>
   </nav>
@@ -197,8 +198,8 @@ footer { color: var(--ink-3); font-size: 12.5px; font-family: var(--f-mono); tex
       <div class="titleblock" role="group" aria-label="문서 정보">
         <div><span>검증 엔진</span><strong>UE 5.7.4</strong></div>
         <div><span>형상관리</span><strong>Git</strong></div>
-        <div><span>시스템 커밋</span><strong>93c47b4</strong></div>
-        <div><span>문서</span><strong>v1.4 · 2026-10-28</strong></div>
+        <div><span>시스템 커밋</span><strong>7d500bf</strong></div>
+        <div><span>문서</span><strong>v1.5 · 2026-10-28</strong></div>
       </div>
       <div class="legend" aria-label="범례">
         <span><i class="lg-det"></i>결정적 공정 (도구)</span>
@@ -283,7 +284,7 @@ footer { color: var(--ink-3); font-size: 12.5px; font-family: var(--f-mono); tex
       <div class="stack">
         <div class="kpis">
           <div class="kpi"><b>3</b><span>가동 라인 (analyze · verify · logs)</span></div>
-          <div class="kpi"><b>18</b><span>사용 가능 도구</span></div>
+          <div class="kpi"><b>21</b><span>사용 가능 도구</span></div>
           <div class="kpi"><b>7</b><span>계획 도구</span></div>
           <div class="kpi"><b>2</b><span>검증한 프로젝트 유형</span></div>
         </div>
@@ -513,11 +514,11 @@ footer { color: var(--ink-3); font-size: 12.5px; font-family: var(--f-mono); tex
       <div class="sec-head">
         <div class="eyebrow">09 · StateMonitor</div>
         <h2 id="t-sm">StateMonitor 연계</h2>
-        <p class="lead">StateMonitor는 프로젝트 코드가 USTRUCT 값을 제출하면 필드 트리, JSON, 변경 이력을 보여 주는 런타임 플러그인입니다. 프로젝트 코드가 호출해야 동작하므로 dwo-Assay가 주입하지 않고, 프로젝트가 이미 쓰고 있을 때만 연계합니다.</p>
+        <p class="lead">StateMonitor는 프로젝트 코드가 USTRUCT 값을 제출하면 필드 트리, JSON, 변경 이력을 보여 주는 런타임 플러그인입니다. dwo-Assay에 포함된 제공 도구로, <code>sm-install</code>로 설치하거나 프로젝트에 이미 있으면 그대로 연계합니다.</p>
       </div>
       <div class="grid-2">
         <div class="principle"><span class="k">역할 분석</span><h3>무엇을 하는 도구인가</h3><p><code>UStateMonitorSubsystem::Submit(SourceId, Struct)</code>로 받은 값을 복사해 트리·JSON·변경 이력으로 보관하고 Slate 뷰어로 보여 줍니다. 게임 인스턴스 서브시스템이라 레벨이 바뀌어도 이력이 남고, 자동화 테스트 <code>StateMonitor.*</code> 6개가 있습니다. 조사한 기성 도구 중 같은 일을 headless로 하는 것은 없었습니다.</p></div>
-        <div class="principle"><span class="k">연계 방식</span><h3>어댑터가 하는 일</h3><p><b>감지</b>: 플러그인 존재·활성 여부, C++·BP 제출 지점과 Source ID를 <code>statemonitor.json</code>으로 기록. <b>검증</b>: <code>verify</code>에 <code>StateMonitor.</code> 테스트를 자동 추가. <b>수집(계획)</b>: 실행 중 스냅샷을 JSONL로 내보내 같은 실행 ID의 로그·트레이스와 결합.</p></div>
+        <div class="principle"><span class="k">연계 방식</span><h3>어댑터가 하는 일</h3><p><b>설치</b>: <code>sm-install</code>은 에디터·PIE 전용(패키지 영향 없음), <code>sm-install --runtime</code>은 패키지 게임 포함(.uproject 또는 Build.cs 등록 필요). 코드가 참조 중이면 제거를 거부합니다. <b>감지</b>: 제출 지점과 Source ID를 <code>statemonitor.json</code>으로 기록. <b>검증</b>: <code>verify</code>에 <code>StateMonitor.</code> 테스트를 자동 추가.</p></div>
       </div>
       <div class="scroll" style="margin-top:14px">
         <table>
@@ -581,9 +582,48 @@ footer { color: var(--ink-3); font-size: 12.5px; font-family: var(--f-mono); tex
       </div>
     </section>
 
+    <section class="sheet" id="qa" aria-labelledby="t-qa">
+      <div class="sec-head">
+        <div class="eyebrow">12 · Quality</div>
+        <h2 id="t-qa">품질 검증</h2>
+        <p class="lead">단위 테스트, 자체 검증, 스트레스, Shipping 패키징까지 돌려 결함 9건을 찾아 고쳤습니다. 모든 검증은 원본 프로젝트가 아니라 격리 복사본에서 실행합니다. 자세한 내용은 저장소의 <code>docs/QA-REPORT.md</code>에 있습니다.</p>
+      </div>
+      <div class="stack">
+        <div class="kpis">
+          <div class="kpi"><b>28/28</b><span>단위 테스트</span></div>
+          <div class="kpi"><b>26/26</b><span>자체 검증 (selftest)</span></div>
+          <div class="kpi"><b>14.8초</b><span>대형 분석 (관계 43만)</span></div>
+          <div class="kpi"><b>0</b><span>Shipping 패키지 안 dwo-Assay 흔적</span></div>
+        </div>
+        <div class="scroll"><table>
+          <thead><tr><th>Shipping 시나리오</th><th>패키징</th><th>패키지 안 dwo-Assay</th><th>실행 20초</th><th>제거 후 흔적</th></tr></thead>
+          <tbody>
+            <tr><td>BP 전용 + StateMonitor (에디터 전용)</td><td>성공 · 635MB</td><td>파일 0 · 바이너리 0 · pak 0</td><td>정상</td><td>0</td></tr>
+            <tr><td>BP 전용 (기준)</td><td>성공 · 635MB</td><td>0 · 0 · 0</td><td>정상</td><td>0</td></tr>
+            <tr><td>C++ + 자체 StateMonitor</td><td>성공 · 551MB · 95초</td><td>0 · 0 · 0</td><td>정상</td><td>0</td></tr>
+            <tr><td>음성 대조: 런타임 StateMonitor, .uproject 미등록</td><td>성공</td><td>0 · 0 · 0</td><td><span class="badge b-skip">종료 코드 1</span></td><td>-</td></tr>
+          </tbody>
+        </table></div>
+        <div class="scroll"><table>
+          <thead><tr><th>발견 경로</th><th>고친 결함</th></tr></thead>
+          <tbody>
+            <tr><td>Shipping 패키징</td><td>검사 플러그인 설명 파일이 pak에 포함 → 기본 비활성 + 분석 때만 <code>-EnablePlugins</code></td></tr>
+            <tr><td>Shipping 패키징</td><td>런타임 StateMonitor가 BP 전용 패키지 게임을 종료시킴 → 기본 에디터 전용, <code>--runtime</code> 분리</td></tr>
+            <tr><td>스트레스</td><td>하드 참조 로드 수 O(N²) → SCC 축약 + 비트셋, 리포트 O(BP×관계) → 대형 분석 4배 개선</td></tr>
+            <tr><td>단위 테스트</td><td>순환 탐지·실행 체인 재귀 한계 (1,000단계) → 반복문</td></tr>
+            <tr><td>설치 테스트</td><td>플러그인 빌드가 clone을 더럽혀 update 실패, StateMonitor 단독 빌드 include 누락</td></tr>
+            <tr><td>패키징 QA</td><td>리디렉션·정션 경로에서 저장소 루트 오판정 → git prefix로 판정</td></tr>
+          </tbody>
+        </table></div>
+        <pre>selftest.bat "C:\Projects\MyGame"     <span style="color:var(--ink-3)"># 단위 · 정적 · GUI · 전체 명령 왕복</span>
+python tests\stress.py                  <span style="color:var(--ink-3)"># 대형 분석 · 100만 줄 로그 · 깊은 그래프</span>
+powershell -File tests\package_check.ps1 -Source &lt;폴더&gt; -Name pkg -Config Shipping</pre>
+      </div>
+    </section>
+
     <section class="sheet" id="checks" aria-labelledby="t-checks">
       <div class="sec-head">
-        <div class="eyebrow">12 · Next</div>
+        <div class="eyebrow">13 · Next</div>
         <h2 id="t-checks">확인 사항</h2>
         <p class="lead">완료한 항목은 채워진 상자, 남은 항목은 빈 상자입니다.</p>
       </div>
@@ -597,6 +637,6 @@ footer { color: var(--ink-3); font-size: 12.5px; font-family: var(--f-mono); tex
       </ul>
     </section>
 
-    <footer>dwo-Assay · 가이드 v1.4 · 시스템 93c47b4 · 2026-10-28</footer>
+    <footer>dwo-Assay · 가이드 v1.5 · 시스템 7d500bf · 2026-10-28</footer>
   </main>
 </div>

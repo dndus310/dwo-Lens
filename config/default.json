@@ -1,0 +1,75 @@
+{
+  "schema": "assay.config/0.1",
+  "_comment": "Defaults. A project can override any key with __dwo-assay/config.json (same shape, merged key by key).",
+
+  "naming": {
+    "_comment": "Asset class name -> allowed prefixes (UE5 style guide, allar/ue5-style-guide). Classes not listed are not checked.",
+    "prefixes": {
+      "Blueprint": ["BP_", "B_", "GA_", "GE_", "GC_", "AN_", "ANS_"],
+      "WidgetBlueprint": ["WBP_", "W_"],
+      "AnimBlueprint": ["ABP_"],
+      "BlueprintFunctionLibrary": ["BPFL_"],
+      "BlueprintInterface": ["BPI_"],
+      "Material": ["M_"],
+      "MaterialInstanceConstant": ["MI_"],
+      "MaterialFunction": ["MF_"],
+      "Texture2D": ["T_"],
+      "TextureCube": ["TC_", "HDR_"],
+      "StaticMesh": ["SM_", "S_"],
+      "SkeletalMesh": ["SK_", "SKM_"],
+      "Skeleton": ["SKEL_"],
+      "PhysicsAsset": ["PHYS_", "PA_"],
+      "AnimSequence": ["A_", "AS_"],
+      "AnimMontage": ["AM_"],
+      "BlendSpace": ["BS_"],
+      "SoundWave": ["S_", "SW_", "A_"],
+      "SoundCue": ["SC_", "S_"],
+      "NiagaraSystem": ["NS_", "FX_"],
+      "NiagaraEmitter": ["NE_"],
+      "DataTable": ["DT_"],
+      "DataAsset": ["DA_"],
+      "UserDefinedStruct": ["F", "S_", "ST_"],
+      "UserDefinedEnum": ["E", "E_"],
+      "CurveFloat": ["Curve_", "C_"],
+      "InputAction": ["IA_"],
+      "InputMappingContext": ["IMC_"],
+      "World": []
+    },
+    "forbidAssetsAtContentRoot": true,
+    "forbidNonAsciiNames": true,
+    "forbidSpaces": true,
+    "ignoreFolders": ["/Game/Developers", "/Game/Collections", "/Game/__ExternalActors__", "/Game/__ExternalObjects__"]
+  },
+
+  "complexity": {
+    "warnNodesPerGraph": 120,
+    "warnBranchesPerGraph": 25,
+    "warnExecChainLength": 60
+  },
+
+  "unused": {
+    "_comment": "Packages reachable from these roots are considered used. Maps and assets referenced from Config/*.ini are always roots.",
+    "extraRoots": [],
+    "ignoreFolders": ["/Game/Developers", "/Game/Collections"]
+  },
+
+  "verify": {
+    "compileBlueprints": true,
+    "dataValidation": true,
+    "automation": true,
+    "automationFilters": ["Project."],
+    "timeoutMinutes": 30
+  },
+
+  "logs": {
+    "maxFiles": 10,
+    "ignoreCategories": ["LogConfig", "LogInit", "LogPakFile", "LogStreaming", "LogShaderCompilers"],
+    "warnOnNewErrors": true
+  },
+
+  "stateMonitor": {
+    "_comment": "Optional adapter. Active only when the project itself contains the StateMonitor plugin.",
+    "pluginName": "StateMonitor",
+    "testFilter": "StateMonitor."
+  }
+}

@@ -11,8 +11,12 @@ import html
 import json
 import re
 import sqlite3
+import sys
 from collections import defaultdict
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import assay_quality  # noqa: E402
 
 SCHEMA = "assay.graph/0.1"
 EXTRACTOR_VERSION = "assay-analyze/0.1"
@@ -303,7 +307,8 @@ def build(raw: Path, project_file: Path):
     context = {
         "meta": meta, "roots": roots, "module_deps": module_deps, "bp_index": bp_index,
         "tick_users": tick_users, "unknown_calls": unknown_calls,
-        "asset_hard": asset_hard, "asset_class": asset_class,
+        "asset_hard": asset_hard, "asset_soft": asset_soft, "asset_class": asset_class,
+        "project_file": project_file,
     }
     return g, context
 
@@ -357,23 +362,19 @@ def run_checks(g: Graph, ctx: dict) -> dict:
     if replicated:
         add("info", "replication", f"복제 프로퍼티 {len(replicated)}개", [f"{a}.{b}" for a, b in replicated])
 
-    referenced = {r["target"] for r in g.edges("AssetHardRef", "AssetSoftRef")}
-    orphans = [s["package"] for s in g.symbols.values()
-               if s["kind"] == "asset" and s["key"] not in referenced
-               and "Blueprint" in s.get("asset_class", "") and "GeneratedClass" not in s.get("asset_class", "")]
-    if orphans:
-        add("info", "unreferenced-blueprint", f"다른 에셋이 참조하지 않는 Blueprint {len(orphans)}개", orphans)
-
-    verdict = "pass"
-    if any(f["severity"] == "fail" for f in findings):
-        verdict = "fail"
-    elif any(f["severity"] == "warn" for f in findings):
-        verdict = "warn"
     counts = defaultdict(int)
     for r in rels:
         counts[r["status"]] += r["count"]
-    return {"verdict": verdict, "findings": findings, "relationStatus": dict(counts),
+    return {"verdict": verdict_of(findings), "findings": findings, "relationStatus": dict(counts),
             "unknownRatio": round(ratio, 4)}
+
+
+def verdict_of(findings: list) -> str:
+    if any(f["severity"] == "fail" for f in findings):
+        return "fail"
+    if any(f["severity"] == "warn" for f in findings):
+        return "warn"
+    return "pass"
 
 
 # --------------------------------------------------------------------------- outputs
@@ -556,7 +557,7 @@ summary{cursor:pointer;color:var(--ink2)}code{font-family:Consolas,monospace;fon
 """
 
 
-def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, diagrams: dict):
+def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, diagrams: dict, quality_html: str = ""):
     meta = ctx["meta"]
     esc = html.escape
     project_syms = [s for s in g.symbols.values() if not s["external"]]
@@ -606,13 +607,14 @@ def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, dia
 <div class="kpi"><b>{status.get('unknown', 0)}</b><span>unknown 관계</span></div>
 </div></section>
 <section><h2>검증 게이트</h2><div class="scroll"><table><thead><tr><th>판정</th><th>규칙</th><th>내용</th></tr></thead><tbody>{findings_html}</tbody></table></div></section>
+{quality_html}
 <section><h2>클래스 구조</h2>{mermaid_block('클래스 UML', diagrams['classes'])}</section>
 <section><h2>모듈 의존성</h2>{mermaid_block('모듈 · 플러그인', diagrams['modules'])}</section>
 <section><h2>에셋 참조</h2>{mermaid_block('에셋 참조 (실선 hard · 점선 soft)', diagrams['assets'])}</section>
 <section><h2>Blueprint</h2><div class="scroll"><table><thead><tr><th>이름</th><th>종류</th><th>부모</th><th>그래프</th><th>호출 대상 클래스</th></tr></thead>
 <tbody>{''.join(bp_rows) or "<tr><td colspan='5'>없음</td></tr>"}</tbody></table></div>
 <h3>실행 흐름</h3>{''.join(flows_html) or "<p class='meta'>실행 흐름 없음</p>"}</section>
-<section class="meta">산출물: graph.json · index.db · class_uml.puml · class_uml.mmd · findings.json · flows/*.mmd</section>
+<section class="meta">산출물: graph.json · index.db · class_uml.puml · class_uml.mmd · findings.json · quality.json · statemonitor.json · flows/*.mmd</section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
 <script>mermaid.initialize({{startOnLoad:true,securityLevel:'strict',maxTextSize:200000,
@@ -629,11 +631,19 @@ def main() -> int:
     ap.add_argument("--project", required=True, type=Path)
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--run-id", default="manual")
+    ap.add_argument("--config", nargs="*", type=Path, default=[],
+                    help="config JSON files merged in order (system default first, project override last)")
     args = ap.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
 
     g, ctx = build(args.raw, args.project)
     result = run_checks(g, ctx)
+    cfg = assay_quality.load_config(args.config or [Path(__file__).resolve().parent.parent / "config" / "default.json"])
+    quality_findings, quality = assay_quality.run(ctx, cfg)
+    result["findings"] += quality_findings
+    result["verdict"] = verdict_of(result["findings"])
+    (args.out / "quality.json").write_text(json.dumps(quality, ensure_ascii=False, indent=1), encoding="utf-8")
+    (args.out / "statemonitor.json").write_text(json.dumps(quality["stateMonitor"], ensure_ascii=False, indent=1), encoding="utf-8")
 
     classes_mmd, classes_puml = class_diagram(g)
     flows = {}
@@ -660,7 +670,7 @@ def main() -> int:
     if diagrams["assets"]:
         (args.out / "assets.mmd").write_text(diagrams["assets"], encoding="utf-8")
     write_sqlite(g, args.out / "index.db", ctx["meta"])
-    render_report(args.out, args.run_id, g, ctx, result, diagrams)
+    render_report(args.out, args.run_id, g, ctx, result, diagrams, assay_quality.render_html(quality))
 
     print(f"[dwo-assay] symbols={len(g.symbols)} relations={len(g.relations)} verdict={result['verdict']} "
           f"findings={len(result['findings'])}")

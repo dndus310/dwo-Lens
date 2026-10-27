@@ -2,7 +2,7 @@
 # Windows PowerShell 5.1 compatible. Never modifies tracked project files.
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('attach', 'update', 'status', 'analyze', 'doctor', 'detach')]
+    [ValidateSet('attach', 'update', 'status', 'analyze', 'verify', 'logs', 'tools', 'doctor', 'detach')]
     [string]$Command,
     [Parameter(Mandatory = $true)]
     [string]$Project,
@@ -291,6 +291,163 @@ function Invoke-Doctor {
     return (-not $script:doctorFailed)
 }
 
+# ---------------------------------------------------------------- config / engine runs
+function Get-ConfigFiles {
+    $files = @(Join-Path $SystemDir 'config\default.json')
+    $override = Join-Path $AssayDir 'config.json'
+    if (Test-Path $override) { $files += $override }
+    return $files
+}
+
+function Get-Config {
+    # Two-level merge: project config.json overrides keys inside each section of default.json.
+    $cfg = Get-Content -Raw -Encoding UTF8 (Join-Path $SystemDir 'config\default.json') | ConvertFrom-Json
+    $override = Join-Path $AssayDir 'config.json'
+    if (Test-Path $override) {
+        $o = Get-Content -Raw -Encoding UTF8 $override | ConvertFrom-Json
+        foreach ($section in $o.PSObject.Properties) {
+            if ($cfg.PSObject.Properties[$section.Name] -and $section.Value -is [pscustomobject]) {
+                foreach ($k in $section.Value.PSObject.Properties) {
+                    $cfg.($section.Name) | Add-Member -NotePropertyName $k.Name -NotePropertyValue $k.Value -Force
+                }
+            } else {
+                $cfg | Add-Member -NotePropertyName $section.Name -NotePropertyValue $section.Value -Force
+            }
+        }
+    }
+    return $cfg
+}
+
+function Invoke-Engine($Engine, [string]$Arguments, [string]$RunDir, [string]$Name, [int]$TimeoutMinutes) {
+    # Runs UnrealEditor-Cmd headless with its log routed into the run folder. Returns exit code, -1 on timeout.
+    $log = Join-Path $RunDir "$Name.log"
+    $all = "$Arguments -unattended -nullrhi -nosplash -nopause -NoSound -ABSLOG=`"$log`""
+    $p = Start-Process -FilePath $Engine.Cmd -ArgumentList $all -NoNewWindow -PassThru `
+         -RedirectStandardOutput (Join-Path $RunDir "$Name.stdout.txt") -RedirectStandardError (Join-Path $RunDir "$Name.stderr.txt")
+    $null = $p.Handle
+    if (-not $p.WaitForExit($TimeoutMinutes * 60000)) {
+        try { $p.Kill() } catch { }
+        Say "$Name timed out after $TimeoutMinutes min"
+        return -1
+    }
+    return $p.ExitCode
+}
+
+function Find-StateMonitor($Config) {
+    $name = $Config.stateMonitor.pluginName
+    $plugins = Join-Path $Project 'Plugins'
+    if (-not (Test-Path $plugins)) { return $null }
+    return Get-ChildItem -Path $plugins -Recurse -Filter "$name.uplugin" -ErrorAction SilentlyContinue |
+           Where-Object { $_.FullName -notlike '*__Dwo*' } | Select-Object -First 1
+}
+
+function New-RunDir([string]$Prefix) {
+    $runId = "$Prefix-" + (Get-Date).ToString('yyyyMMdd-HHmmss')
+    $dir = Join-Path $DataDir "runs\$runId"
+    New-Item -ItemType Directory -Force $dir | Out-Null
+    return [pscustomobject]@{ Id = $runId; Dir = $dir }
+}
+
+function Get-PreviousOutput([string]$Prefix, [string]$File, [string]$ExceptId) {
+    $runs = Join-Path $DataDir 'runs'
+    if (-not (Test-Path $runs)) { return $null }
+    return Get-ChildItem $runs -Directory -Filter "$Prefix-*" | Where-Object { $_.Name -ne $ExceptId } |
+           Sort-Object Name -Descending | ForEach-Object { Join-Path $_.FullName "out\$File" } |
+           Where-Object { Test-Path $_ } | Select-Object -First 1
+}
+
+function Write-Run($Run, [string]$Line, $Stations, [string]$Final, $Engine) {
+    $state = Read-State
+    Write-Json (Join-Path $Run.Dir 'run.json') ([ordered]@{
+        schema = 'assay.run/0.1'; runId = $Run.Id; line = $Line; project = $state.project
+        engineVersion = $Engine.Version; systemCommit = Get-SystemCommit
+        finishedAt = (Get-Date).ToString('o'); stations = $Stations; final = $Final
+    })
+}
+
+function Invoke-Verify {
+    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-assay.bat attach first.' }
+    $uproject = Get-UProject
+    $engine = Resolve-Engine $uproject.Json.EngineAssociation
+    $cfg = Get-Config
+    $v = $cfg.verify
+    $run = New-RunDir 'verify'
+    $stations = New-Object System.Collections.Generic.List[object]
+    $up = "`"$($uproject.Path)`""
+
+    if ($v.compileBlueprints) {
+        Say "[$($run.Id)] V1 CompileAllBlueprints"
+        $sw = [Diagnostics.Stopwatch]::StartNew()
+        $code = Invoke-Engine $engine "$up -run=CompileAllBlueprints -ShowResultsOnly" $run.Dir 'compile' $v.timeoutMinutes
+        $stations.Add([ordered]@{ id = 'V1'; name = 'compile-blueprints'; exitCode = $code; ms = $sw.ElapsedMilliseconds; verdict = $null })
+    }
+    if ($v.dataValidation) {
+        Say "[$($run.Id)] V2 DataValidation"
+        $sw = [Diagnostics.Stopwatch]::StartNew()
+        $code = Invoke-Engine $engine "$up -run=DataValidation" $run.Dir 'datavalidation' $v.timeoutMinutes
+        $stations.Add([ordered]@{ id = 'V2'; name = 'data-validation'; exitCode = $code; ms = $sw.ElapsedMilliseconds; verdict = $null })
+    }
+    if ($v.automation) {
+        $filters = @($v.automationFilters)
+        $sm = Find-StateMonitor $cfg
+        if ($sm) {
+            $filters += $cfg.stateMonitor.testFilter
+            Say "StateMonitor detected ($($sm.FullName.Substring($Project.Length + 1))): adding '$($cfg.stateMonitor.testFilter)' tests"
+        }
+        $filterText = ($filters | Select-Object -Unique) -join '+'
+        Say "[$($run.Id)] V3 Automation RunTests $filterText"
+        $report = Join-Path $run.Dir 'automation'
+        New-Item -ItemType Directory -Force $report | Out-Null
+        $sw = [Diagnostics.Stopwatch]::StartNew()
+        $code = Invoke-Engine $engine "$up -ExecCmds=`"Automation RunTests $filterText;Quit`" -testexit=`"Automation Test Queue Empty`" -ReportExportPath=`"$report`"" $run.Dir 'automation' $v.timeoutMinutes
+        $stations.Add([ordered]@{ id = 'V3'; name = 'automation'; filter = $filterText; exitCode = $code; ms = $sw.ElapsedMilliseconds; verdict = $null })
+    }
+
+    & python (Join-Path $SystemDir 'tools\assay_verify.py') verify --run $run.Dir
+    $result = Get-Content -Raw -Encoding UTF8 (Join-Path $run.Dir 'out\verify.json') | ConvertFrom-Json
+    foreach ($s in $stations) {
+        $step = $result.steps | Where-Object { $_.id -eq $s.id } | Select-Object -First 1
+        if ($step) { $s.verdict = $step.verdict }
+    }
+    Write-Run $run 'verify' $stations $result.verdict $engine
+    Say "[$($run.Id)] verdict: $($result.verdict)"
+    Say "Report: $(Join-Path $run.Dir 'out\report.html')"
+    if ($result.verdict -eq 'fail') { exit 2 }
+}
+
+function Invoke-Logs {
+    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-assay.bat attach first.' }
+    $uproject = Get-UProject
+    $engine = Resolve-Engine $uproject.Json.EngineAssociation
+    $cfg = Get-Config
+    $run = New-RunDir 'logs'
+    $logDir = Join-Path $Project 'Saved\Logs'
+    $files = @()
+    if (Test-Path $logDir) {
+        $files = @(Get-ChildItem $logDir -Filter *.log -File | Sort-Object LastWriteTime -Descending |
+                   Select-Object -First $cfg.logs.maxFiles | ForEach-Object { $_.FullName })
+    }
+    Say "[$($run.Id)] ST-4 logs: $($files.Count) log files"
+    $pyArgs = @((Join-Path $SystemDir 'tools\assay_verify.py'), 'logs', '--run', $run.Dir, '--crashes', (Join-Path $Project 'Saved\Crashes'))
+    if ($files.Count -gt 0) { $pyArgs += '--files'; $pyArgs += $files }
+    $baseline = Get-PreviousOutput 'logs' 'logs.json' $run.Id
+    if ($baseline) { $pyArgs += @('--baseline', $baseline) }
+    $ignore = @($cfg.logs.ignoreCategories)
+    if ($ignore.Count -gt 0) { $pyArgs += '--ignore'; $pyArgs += $ignore }
+    & python @pyArgs
+    $summary = Get-Content -Raw -Encoding UTF8 (Join-Path $run.Dir 'out\logs.json') | ConvertFrom-Json
+    Write-Run $run 'logs' @([ordered]@{ id = 'ST-4'; name = 'logs'; verdict = $summary.verdict; files = $files.Count }) $summary.verdict $engine
+    Say "[$($run.Id)] verdict: $($summary.verdict)"
+    Say "Report: $(Join-Path $run.Dir 'out\report.html')"
+}
+
+function Invoke-Tools {
+    $catalog = Get-Content -Raw -Encoding UTF8 (Join-Path $SystemDir 'tools\catalog.json') | ConvertFrom-Json
+    foreach ($t in $catalog.tools) {
+        Write-Host ("  {0,-5} {1,-24} {2,-6} {3,-10} {4}" -f $t.station, $t.id, $t.kind, $t.status, $t.command)
+    }
+}
+
 function Invoke-Analyze {
     $state = Read-State
     if (-not $state) { Fail 'Not attached. Run __dwo-assay.bat attach first.' }
@@ -315,7 +472,7 @@ function Invoke-Analyze {
 
     Say "[$runId] ST-2/3 analyze and gate"
     $sw = [Diagnostics.Stopwatch]::StartNew()
-    & python (Join-Path $SystemDir 'tools\assay_analyze.py') --raw $rawDir --project $uproject.Path --out $outDir --run-id $runId
+    & python (Join-Path $SystemDir 'tools\assay_analyze.py') --raw $rawDir --project $uproject.Path --out $outDir --run-id $runId --config @(Get-ConfigFiles)
     $pyCode = $LASTEXITCODE
     $sw.Stop()
     $findingsPath = Join-Path $outDir 'findings.json'
@@ -364,5 +521,8 @@ switch ($Command) {
     'status'  { Invoke-Status }
     'doctor'  { if (-not (Invoke-Doctor)) { exit 1 } }
     'analyze' { Invoke-Analyze }
+    'verify'  { Invoke-Verify }
+    'logs'    { Invoke-Logs }
+    'tools'   { Invoke-Tools }
     'detach'  { Invoke-Detach }
 }

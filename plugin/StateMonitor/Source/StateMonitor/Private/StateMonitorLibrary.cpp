@@ -2,6 +2,8 @@
 
 #include "StateMonitorSubsystem.h"
 #include "UObject/Stack.h"
+#include "UObject/StrProperty.h"
+#include "UObject/TextProperty.h"
 #include "UObject/UnrealType.h"
 
 bool UStateMonitorLibrary::SubmitStateSnapshot(const UObject* WorldContextObject, FName SourceId, const FText& Label,

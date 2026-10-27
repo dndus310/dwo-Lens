@@ -4,6 +4,8 @@
 #include "StateMonitorSubsystem.h"
 #include "SStateMonitor.h"
 #include "UObject/Stack.h"
+#include "UObject/StrProperty.h"
+#include "UObject/TextProperty.h"
 #include "UObject/UnrealType.h"
 
 UStateMonitorWidget::UStateMonitorWidget(const FObjectInitializer& ObjectInitializer)

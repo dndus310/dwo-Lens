@@ -3,6 +3,8 @@
 #include "HAL/PlatformTime.h"
 #include "Misc/SecureHash.h"
 #include "UObject/EnumProperty.h"
+#include "UObject/StrProperty.h"
+#include "UObject/TextProperty.h"
 #include "UObject/UnrealType.h"
 
 namespace StateMonitor

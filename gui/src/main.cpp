@@ -4,7 +4,8 @@
 // so the GUI and the command line always show identical results.
 //
 //   dwo-assay-gui.exe [--project <folder with .uproject>] [--home <dwo-Assay repository>]
-//                     [--tab log|history|result] [--run <command>]   (--run starts a command on launch)
+//                     [--tab log|history|result] [--select <run id>] [--run <command>]   (--run starts a command on launch)
+//   dwo-assay-gui.exe --project <folder> --export-report <file.html>   (no window: latest analyze+verify+logs in one HTML)
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
@@ -23,6 +24,10 @@
 #include <chrono>
 #include <deque>
 #include <filesystem>
+#include <functional>
+#include <map>
+#include <regex>
+#include <set>
 #include <fstream>
 #include <mutex>
 #include <optional>
@@ -35,6 +40,8 @@ namespace fs = std::filesystem;
 using json = nlohmann::json;
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+static HWND g_hwnd = nullptr;
 
 // ============================================================================ text helpers
 
@@ -265,6 +272,151 @@ private:
 	std::chrono::steady_clock::time_point startedAt;
 };
 
+// ============================================================================ structure model (from graph.json and flows/*.mmd)
+
+struct ClassNode
+{
+	std::string name;
+	std::string kind;
+	bool external = false;
+	std::vector<std::string> props;
+	std::vector<std::string> funcs;
+	std::vector<std::string> children;
+};
+
+struct FlowEdge
+{
+	std::string to;
+	std::string pin;
+};
+
+struct Flow
+{
+	std::string title;
+	std::map<std::string, std::string> labels;
+	std::map<std::string, std::vector<FlowEdge>> out;
+	std::vector<std::string> starts;
+};
+
+struct Structure
+{
+	struct Ref
+	{
+		std::string src, dst, type;
+	};
+	bool loaded = false;
+	std::map<std::string, ClassNode> classes;
+	std::vector<std::string> classRoots;
+	std::vector<Ref> calls, assetRefs, moduleDeps;
+	std::vector<Flow> flows;
+};
+
+static std::string MermaidUnescape(std::string s)
+{
+	auto replaceAll = [&s](const std::string& a, const std::string& b) {
+		for (size_t p = s.find(a); p != std::string::npos; p = s.find(a, p + b.size())) s.replace(p, a.size(), b);
+	};
+	replaceAll("#quot;", "\"");
+	replaceAll("#lt;", "<");
+	replaceAll("#gt;", ">");
+	return s;
+}
+
+static Flow ParseFlow(const fs::path& file)
+{
+	Flow f;
+	f.title = PathUtf8(file.stem());
+	std::ifstream in(file, std::ios::binary);
+	std::string line;
+	std::set<std::string> hasIncoming;
+	std::vector<std::string> order;
+	static const std::regex edge(R"(^(\S+) -->(?:\|([^|]*)\|)? (\S+)$)");
+	std::smatch m;
+	while (std::getline(in, line))
+	{
+		if (!line.empty() && line.back() == '\r') line.pop_back();
+		if (line.rfind("flowchart", 0) == 0 || line.empty()) continue;
+		if (std::regex_match(line, m, edge))
+		{
+			f.out[m[1]].push_back({ m[3], MermaidUnescape(m[2]) });
+			hasIncoming.insert(m[3]);
+			continue;
+		}
+		size_t cut = line.find_first_of("[({");
+		size_t q1 = line.find('"'), q2 = line.rfind('"');
+		if (cut == std::string::npos || q1 == std::string::npos || q2 <= q1) continue;
+		std::string id = line.substr(0, cut);
+		f.labels[id] = MermaidUnescape(line.substr(q1 + 1, q2 - q1 - 1));
+		order.push_back(id);
+	}
+	for (auto& id : order)
+		if (!hasIncoming.count(id)) f.starts.push_back(id);
+	return f;
+}
+
+static void LoadStructure(const fs::path& outDir, Structure& s)
+{
+	s = Structure();
+	auto graph = ReadJson(outDir / "graph.json");
+	if (!graph) return;
+	std::map<std::string, std::string> names;
+	for (auto& sym : (*graph)["symbols"])
+	{
+		std::string key = Str(sym, "key"), kind = Str(sym, "kind");
+		std::string name = Str(sym, "name");
+		if (kind == "asset") name = Str(sym, "package", name);
+		names[key] = name;
+		if (kind != "class" && kind != "blueprint") continue;
+		ClassNode& n = s.classes[key];
+		n.name = name;
+		n.kind = kind;
+		n.external = sym.value("external", false);
+		if (sym.contains("properties"))
+			for (auto& p : sym["properties"]) n.props.push_back(Str(p, "type") + " " + Str(p, "name"));
+		if (sym.contains("functions"))
+			for (auto& fn : sym["functions"]) n.funcs.push_back(fn.get<std::string>());
+	}
+	auto nameOf = [&names](const std::string& key) {
+		auto it = names.find(key);
+		return it != names.end() ? it->second : key.substr(key.find(':') + 1);
+	};
+	std::set<std::string> hasParent;
+	for (auto& r : (*graph)["relations"])
+	{
+		std::string type = Str(r, "type"), src = Str(r, "source"), dst = Str(r, "target");
+		if (type == "Inherits")
+		{
+			if (!s.classes.count(dst)) { s.classes[dst].name = nameOf(dst); s.classes[dst].external = true; }
+			s.classes[dst].children.push_back(src);
+			hasParent.insert(src);
+		}
+		else if (type == "Calls")
+			s.calls.push_back({ nameOf(src), nameOf(dst), "호출 " + std::to_string(Num(r, "count")) + "회" });
+		else if (type == "AssetHardRef" || type == "AssetSoftRef")
+			s.assetRefs.push_back({ nameOf(src), nameOf(dst), type == "AssetHardRef" ? "하드 참조" : "소프트 참조" });
+		else if (type == "DependsOnModule" || type == "DependsOnPlugin")
+			s.moduleDeps.push_back({ nameOf(src), nameOf(dst), type == "DependsOnModule" ? "모듈" : "플러그인" });
+	}
+	// Roots: tops of inheritance chains that lead to at least one project class.
+	std::function<bool(const std::string&, int)> hasProject = [&](const std::string& key, int depth) {
+		const ClassNode& n = s.classes[key];
+		if (!n.external) return true;
+		if (depth > 30) return false;
+		for (auto& c : n.children)
+			if (hasProject(c, depth + 1)) return true;
+		return false;
+	};
+	for (auto& [key, n] : s.classes)
+		if (!hasParent.count(key) && hasProject(key, 0)) s.classRoots.push_back(key);
+
+	std::error_code ec;
+	if (fs::is_directory(outDir / "flows", ec))
+		for (auto& e : fs::directory_iterator(outDir / "flows", ec))
+			if (e.path().extension() == ".mmd") s.flows.push_back(ParseFlow(e.path()));
+	std::sort(s.flows.begin(), s.flows.end(), [](const Flow& a, const Flow& b) { return a.title < b.title; });
+	s.loaded = true;
+}
+
 // ============================================================================ app model
 
 struct RunInfo
@@ -301,6 +453,8 @@ struct App
 	bool confirmDetach = false;
 	std::string lastCommand;
 	bool latestReady = false;   // a line just finished; offer its result
+	Structure structure;        // class tree, flows and references of the selected analyze run
+	fs::path saved;             // last exported HTML report
 	Runner runner;
 
 	void LoadSettings()
@@ -432,6 +586,8 @@ struct App
 			fs::path out = r.dir / "out";
 			for (const char* name : { "findings", "quality", "verify", "logs" })
 				if (auto j = ReadJson(out / (std::string(name) + ".json"))) detail[name] = *j;
+			if (r.line == "architecture-report") LoadStructure(out, structure);
+			else structure = Structure();
 			detailFor = r.id;
 		}
 		return detail;
@@ -486,70 +642,6 @@ static bool BigButton(const char* label, const char* hint, bool enabled)
 
 static const ImGuiTableFlags kTable = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable |
                                       ImGuiTableFlags_SizingStretchProp;
-
-static void StringList(const json& items, const char* filter, int limit = 300)
-{
-	if (!items.is_array()) return;
-	int shown = 0;
-	for (auto& it : items)
-	{
-		std::string s = it.is_string() ? it.get<std::string>() : it.dump();
-		if (!ContainsNoCase(s, filter)) continue;
-		ImGui::BulletText("%s", s.c_str());
-		if (++shown >= limit) { ImGui::TextDisabled("... (%d개 이상)", limit); break; }
-	}
-	if (shown == 0) ImGui::TextDisabled("없음");
-}
-
-static void LogGroupsTable(const json& summary, const char* filter, const char* id)
-{
-	const json& groups = summary.contains("groups") ? summary["groups"] : json::array();
-	if (summary.contains("crashes") && summary["crashes"].is_array())
-		for (auto& c : summary["crashes"])
-		{
-			Badge("crash");
-			ImGui::SameLine();
-			ImGui::TextWrapped("%s  %s", Str(c, "folder").c_str(), Str(c, "error").c_str());
-			if (ImGui::TreeNode(&c, "콜스택"))
-			{
-				StringList(c.value("callstack", json::array()), nullptr);
-				ImGui::TreePop();
-			}
-		}
-	if (!ImGui::BeginTable(id, 4, kTable)) return;
-	ImGui::TableSetupColumn("심각도", ImGuiTableColumnFlags_WidthFixed, 90);
-	ImGui::TableSetupColumn("횟수", ImGuiTableColumnFlags_WidthFixed, 50);
-	ImGui::TableSetupColumn("카테고리", ImGuiTableColumnFlags_WidthFixed, 200);
-	ImGui::TableSetupColumn("내용");
-	ImGui::TableHeadersRow();
-	int rows = 0;
-	for (auto& g : groups)
-	{
-		std::string sample = Str(g, "sample"), cat = Str(g, "category");
-		if (!ContainsNoCase(sample + " " + cat, filter)) continue;
-		ImGui::TableNextRow();
-		ImGui::TableNextColumn();
-		Badge(Str(g, "severity"));
-		if (g.value("new", false)) { ImGui::SameLine(); Badge("new"); }
-		ImGui::TableNextColumn();
-		ImGui::Text("%lld", Num(g, "count"));
-		ImGui::TableNextColumn();
-		ImGui::TextUnformatted(cat.c_str());
-		ImGui::TableNextColumn();
-		ImGui::TextWrapped("%s", sample.c_str());
-		std::string where;
-		for (auto& w : g.value("where", json::array())) where += (where.empty() ? "" : ", ") + w.get<std::string>();
-		ImGui::TextDisabled("%s", where.c_str());
-		++rows;
-	}
-	if (rows == 0)
-	{
-		ImGui::TableNextRow();
-		ImGui::TableNextColumn();
-		ImGui::TextDisabled("없음");
-	}
-	ImGui::EndTable();
-}
 
 // ============================================================================ panels
 
@@ -670,11 +762,20 @@ static const char* LineName(const std::string& line)
 	return line.c_str();
 }
 
+static void SaveBundleReport(App& app);
+static void DrawSavedNotice(App& app);
+
 static void DrawHistory(App& app)
 {
 	if (ImGui::Button("새로고침")) app.LoadRuns();
 	ImGui::SameLine();
+	ImGui::BeginDisabled(app.runs.empty());
+	if (ImGui::Button("종합 리포트 저장...")) SaveBundleReport(app);
+	ImGui::EndDisabled();
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("최신 분석·검증·로그 결과를 HTML 파일 하나로 저장");
+	ImGui::SameLine();
 	ImGui::TextDisabled("실행 %d개 · 행을 두 번 클릭하면 결과 탭으로 이동", (int)app.runs.size());
+	DrawSavedNotice(app);
 	if (!ImGui::BeginTable("runs", 5, kTable | ImGuiTableFlags_ScrollY)) return;
 	ImGui::TableSetupScrollFreeze(0, 1);
 	ImGui::TableSetupColumn("실행 ID", ImGuiTableColumnFlags_WidthStretch, 2.0f);
@@ -710,144 +811,357 @@ static void DrawHistory(App& app)
 	ImGui::EndTable();
 }
 
-static void DrawAnalyzeResult(App& app, const json& d)
+// Arrays are always taken by reference from the cached detail document. Never iterate a copy:
+// ImGui widget ids must stay stable between frames or tree/header open state is lost.
+static const json& Arr(const json& j, const char* key)
 {
-	const char* f = app.filter;
-	if (d.contains("findings"))
+	static const json empty = json::array();
+	if (!j.is_object()) return empty;
+	auto it = j.find(key);
+	return (it != j.end() && it->is_array()) ? *it : empty;
+}
+
+static const json& Obj(const json& j, const char* key)
+{
+	static const json empty = json::object();
+	if (!j.is_object()) return empty;
+	auto it = j.find(key);
+	return (it != j.end() && it->is_object()) ? *it : empty;
+}
+
+static void StringList(const json& items, const char* filter, int limit = 300)
+{
+	if (!items.is_array()) return;
+	int shown = 0;
+	for (auto& it : items)
 	{
-		const json& fin = d["findings"];
-		SectionTitle("검증 게이트");
-		std::string rel;
-		for (auto& [k, v] : fin.value("relationStatus", json::object()).items()) rel += k + " " + v.dump() + " · ";
-		if (rel.size() > 4) rel.resize(rel.size() - 4);
-		ImGui::TextDisabled("관계 상태");
+		std::string s = it.is_string() ? it.get<std::string>() : it.dump();
+		if (!ContainsNoCase(s, filter)) continue;
+		ImGui::BulletText("%s", s.c_str());
+		if (++shown >= limit) { ImGui::TextDisabled("... (%d개 이상)", limit); break; }
+	}
+	if (shown == 0) ImGui::TextDisabled("없음");
+}
+
+static void LogGroupsTable(const json& summary, const char* filter, const char* id)
+{
+	const json& crashes = Arr(summary, "crashes");
+	for (int i = 0; i < (int)crashes.size(); ++i)
+	{
+		const json& c = crashes[i];
+		ImGui::PushID(i);
+		Badge("crash");
 		ImGui::SameLine();
-		ImGui::TextUnformatted(rel.empty() ? "-" : rel.c_str());
-		for (auto& item : fin.value("findings", json::array()))
+		ImGui::TextWrapped("%s  %s", Str(c, "folder").c_str(), Str(c, "error").c_str());
+		if (ImGui::TreeNode("callstack", "콜스택"))
 		{
-			ImGui::PushID(&item);
-			Badge(Str(item, "severity"));
-			ImGui::SameLine();
-			bool open = ImGui::TreeNodeEx("##f", ImGuiTreeNodeFlags_SpanAvailWidth, "%s  ·  %s", Str(item, "rule").c_str(), Str(item, "message").c_str());
-			if (open)
+			StringList(Arr(c, "callstack"), nullptr);
+			ImGui::TreePop();
+		}
+		ImGui::PopID();
+	}
+	if (!ImGui::BeginTable(id, 4, kTable)) return;
+	ImGui::TableSetupColumn("심각도", ImGuiTableColumnFlags_WidthFixed, 110);
+	ImGui::TableSetupColumn("횟수", ImGuiTableColumnFlags_WidthFixed, 50);
+	ImGui::TableSetupColumn("카테고리", ImGuiTableColumnFlags_WidthFixed, 200);
+	ImGui::TableSetupColumn("내용");
+	ImGui::TableHeadersRow();
+	int rows = 0;
+	for (auto& g : Arr(summary, "groups"))
+	{
+		std::string sample = Str(g, "sample"), cat = Str(g, "category");
+		if (!ContainsNoCase(sample + " " + cat, filter)) continue;
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn();
+		Badge(Str(g, "severity"));
+		if (g.value("new", false)) { ImGui::SameLine(); Badge("new"); }
+		ImGui::TableNextColumn();
+		ImGui::Text("%lld", Num(g, "count"));
+		ImGui::TableNextColumn();
+		ImGui::TextUnformatted(cat.c_str());
+		ImGui::TableNextColumn();
+		ImGui::TextWrapped("%s", sample.c_str());
+		std::string where;
+		for (auto& w : Arr(g, "where")) where += (where.empty() ? "" : ", ") + w.get<std::string>();
+		ImGui::TextDisabled("%s", where.c_str());
+		++rows;
+	}
+	if (rows == 0)
+	{
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn();
+		ImGui::TextDisabled("없음");
+	}
+	ImGui::EndTable();
+}
+
+// ============================================================================ structure views (GUI form of the HTML diagrams)
+
+static void DrawClassNode(const Structure& s, const std::string& key, int depth)
+{
+	auto it = s.classes.find(key);
+	if (it == s.classes.end() || depth > 30) return;
+	const ClassNode& n = it->second;
+	bool hasBody = !n.children.empty() || !n.props.empty() || !n.funcs.empty();
+	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_DefaultOpen;
+	if (!hasBody) flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+	if (n.external) ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+	bool open = ImGui::TreeNodeEx(key.c_str(), flags, "%s%s", n.name.c_str(),
+	                              n.external ? "  (엔진)" : (n.kind == "blueprint" ? "  [BP]" : "  [C++]"));
+	if (n.external) ImGui::PopStyleColor();
+	if (!hasBody || !open) return;
+	if (!n.props.empty() || !n.funcs.empty())
+	{
+		if (ImGui::TreeNodeEx("members", ImGuiTreeNodeFlags_SpanAvailWidth, "멤버 (프로퍼티 %d · 함수 %d)", (int)n.props.size(), (int)n.funcs.size()))
+		{
+			for (auto& p : n.props) ImGui::BulletText("%s", p.c_str());
+			for (auto& f : n.funcs) ImGui::BulletText("%s()", f.c_str());
+			ImGui::TreePop();
+		}
+	}
+	for (auto& c : n.children) DrawClassNode(s, c, depth + 1);
+	ImGui::TreePop();
+}
+
+static void DrawFlowNode(const Flow& f, const std::string& id, const std::string& pin, std::vector<std::string>& path)
+{
+	auto label = f.labels.find(id);
+	std::string text = (pin.empty() ? "" : "[" + pin + "]  ") + (label != f.labels.end() ? label->second : id);
+	bool repeat = std::find(path.begin(), path.end(), id) != path.end();
+	auto out = f.out.find(id);
+	bool leaf = repeat || path.size() > 40 || out == f.out.end() || out->second.empty();
+	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_DefaultOpen;
+	if (leaf) flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+	bool open = ImGui::TreeNodeEx(id.c_str(), flags, "%s%s", text.c_str(), repeat ? "  (위로 돌아감)" : "");
+	if (leaf || !open) return;
+	path.push_back(id);
+	for (int i = 0; i < (int)out->second.size(); ++i)
+	{
+		ImGui::PushID(i);
+		DrawFlowNode(f, out->second[i].to, out->second[i].pin, path);
+		ImGui::PopID();
+	}
+	path.pop_back();
+	ImGui::TreePop();
+}
+
+static void RefTable(const char* id, const std::vector<Structure::Ref>& refs, const char* a, const char* b, const char* filter)
+{
+	if (!ImGui::BeginTable(id, 3, kTable)) return;
+	ImGui::TableSetupColumn(a);
+	ImGui::TableSetupColumn(b);
+	ImGui::TableSetupColumn("관계", ImGuiTableColumnFlags_WidthFixed, 150);
+	ImGui::TableHeadersRow();
+	int rows = 0;
+	for (auto& r : refs)
+	{
+		if (!ContainsNoCase(r.src + " " + r.dst, filter)) continue;
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn(); ImGui::TextUnformatted(r.src.c_str());
+		ImGui::TableNextColumn(); ImGui::TextUnformatted(r.dst.c_str());
+		ImGui::TableNextColumn(); ImGui::TextUnformatted(r.type.c_str());
+		++rows;
+	}
+	if (rows == 0) { ImGui::TableNextRow(); ImGui::TableNextColumn(); ImGui::TextDisabled("없음"); }
+	ImGui::EndTable();
+}
+
+static void DrawStructure(App& app)
+{
+	const Structure& s = app.structure;
+	const char* f = app.filter;
+	SectionTitle("구조 (HTML 리포트의 다이어그램과 같은 데이터)");
+	if (!s.loaded) { ImGui::TextDisabled("graph.json이 없습니다."); return; }
+	if (ImGui::CollapsingHeader("클래스 계층"))
+	{
+		if (s.classRoots.empty()) ImGui::TextDisabled("프로젝트 클래스 없음");
+		for (auto& root : s.classRoots) DrawClassNode(s, root, 0);
+	}
+	if (ImGui::CollapsingHeader("BP 실행 흐름"))
+	{
+		if (s.flows.empty()) ImGui::TextDisabled("실행 흐름 없음");
+		for (int i = 0; i < (int)s.flows.size(); ++i)
+		{
+			const Flow& fl = s.flows[i];
+			if (!ContainsNoCase(fl.title, f)) continue;
+			ImGui::PushID(i);
+			if (ImGui::TreeNodeEx("flow", ImGuiTreeNodeFlags_SpanAvailWidth, "%s", fl.title.c_str()))
 			{
-				StringList(item.value("items", json::array()), f);
+				std::vector<std::string> path;
+				for (int k = 0; k < (int)fl.starts.size(); ++k)
+				{
+					ImGui::PushID(k);
+					DrawFlowNode(fl, fl.starts[k], "", path);
+					ImGui::PopID();
+				}
 				ImGui::TreePop();
 			}
 			ImGui::PopID();
 		}
 	}
-	if (!d.contains("quality")) return;
-	const json& q = d["quality"];
+	if (ImGui::CollapsingHeader("BP 호출 관계")) RefTable("calls", s.calls, "Blueprint", "호출 대상 클래스", f);
+	if (ImGui::CollapsingHeader("에셋 참조")) RefTable("assets", s.assetRefs, "에셋", "참조 대상", f);
+	if (ImGui::CollapsingHeader("모듈 · 플러그인 의존성")) RefTable("modules", s.moduleDeps, "모듈", "의존 대상", f);
+}
 
-	if (ImGui::CollapsingHeader("BP 복잡도", ImGuiTreeNodeFlags_DefaultOpen) && ImGui::BeginTable("cx", 6, kTable))
+// ============================================================================ result views
+
+static void DrawAnalyzeResult(App& app, const json& d)
+{
+	const char* f = app.filter;
+	const json& fin = Obj(d, "findings");
+	if (!fin.empty())
 	{
-		for (const char* h : { "Blueprint", "그래프", "노드", "분기", "실행 체인", "기준 초과" }) ImGui::TableSetupColumn(h);
-		ImGui::TableHeadersRow();
-		for (auto& r : q.value("complexity", json::object()).value("graphs", json::array()))
+		SectionTitle("검증 게이트");
+		std::string rel;
+		for (auto& [k, v] : Obj(fin, "relationStatus").items()) rel += k + " " + v.dump() + " · ";
+		if (rel.size() > 4) rel.resize(rel.size() - 4);
+		ImGui::TextDisabled("관계 상태");
+		ImGui::SameLine();
+		ImGui::TextUnformatted(rel.empty() ? "-" : rel.c_str());
+		const json& items = Arr(fin, "findings");
+		for (int i = 0; i < (int)items.size(); ++i)
 		{
-			if (!ContainsNoCase(Str(r, "blueprint") + Str(r, "graph"), f)) continue;
-			ImGui::TableNextRow();
-			ImGui::TableNextColumn(); ImGui::TextUnformatted(Str(r, "blueprint").c_str());
-			ImGui::TableNextColumn(); ImGui::TextUnformatted(Str(r, "graph").c_str());
-			ImGui::TableNextColumn(); ImGui::Text("%lld", Num(r, "nodes"));
-			ImGui::TableNextColumn(); ImGui::Text("%lld", Num(r, "branches"));
-			ImGui::TableNextColumn(); ImGui::Text("%lld", Num(r, "execChain"));
-			ImGui::TableNextColumn();
-			std::string over;
-			for (auto& o : r.value("over", json::array())) over += o.get<std::string>() + " ";
-			if (over.empty()) ImGui::TextDisabled("-"); else Badge(over);
-		}
-		ImGui::EndTable();
-	}
-	if (ImGui::CollapsingHeader("이름 · 폴더 규칙") && ImGui::BeginTable("nm", 3, kTable))
-	{
-		for (const char* h : { "에셋", "클래스", "문제" }) ImGui::TableSetupColumn(h);
-		ImGui::TableHeadersRow();
-		for (auto& v : q.value("naming", json::object()).value("violations", json::array()))
-		{
-			std::string problems;
-			for (auto& p : v.value("problems", json::array())) problems += p.get<std::string>() + "  ";
-			if (!ContainsNoCase(Str(v, "asset") + problems, f)) continue;
-			ImGui::TableNextRow();
-			ImGui::TableNextColumn(); ImGui::TextUnformatted(Str(v, "asset").c_str());
-			ImGui::TableNextColumn(); ImGui::TextUnformatted(Str(v, "class").c_str());
-			ImGui::TableNextColumn(); ImGui::TextWrapped("%s", problems.c_str());
-		}
-		ImGui::EndTable();
-	}
-	if (ImGui::CollapsingHeader("미사용 후보 · 리다이렉터"))
-	{
-		ImGui::TextDisabled("도달할 수 없는 에셋");
-		StringList(q.value("unused", json::object()).value("unused", json::array()), f);
-		ImGui::TextDisabled("리다이렉터");
-		StringList(q.value("unused", json::object()).value("redirectors", json::array()), f);
-	}
-	const json& sm = q.value("stateMonitor", json::object());
-	if (sm.value("present", false) && ImGui::CollapsingHeader("StateMonitor 연계", ImGuiTreeNodeFlags_DefaultOpen))
-	{
-		KeyValue("플러그인", Str(sm, "plugin"));
-		std::string ids;
-		for (auto& s : sm.value("sourceIds", json::array())) ids += s.get<std::string>() + "  ";
-		KeyValue("Source ID", ids);
-		KeyValue("테스트 필터", Str(sm, "testFilter"));
-		if (ImGui::BeginTable("sm", 3, kTable))
-		{
-			for (const char* h : { "위치", "종류", "코드" }) ImGui::TableSetupColumn(h);
-			ImGui::TableHeadersRow();
-			for (auto& r : sm.value("cppRefs", json::array()))
+			const json& item = items[i];
+			ImGui::PushID(i);
+			Badge(Str(item, "severity"));
+			ImGui::SameLine();
+			const json& list = Arr(item, "items");
+			ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth;
+			if (list.empty()) flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+			bool open = ImGui::TreeNodeEx("finding", flags, "%s  ·  %s%s", Str(item, "rule").c_str(), Str(item, "message").c_str(),
+			                              list.empty() ? "" : "  (펼치기)");
+			if (open && !list.empty())
 			{
-				ImGui::TableNextRow();
-				ImGui::TableNextColumn(); ImGui::Text("%s:%lld", Str(r, "file").c_str(), Num(r, "line"));
-				ImGui::TableNextColumn(); ImGui::TextUnformatted(r.value("submit", false) ? "제출" : "참조");
-				ImGui::TableNextColumn(); ImGui::TextWrapped("%s", Str(r, "code").c_str());
+				StringList(list, f);
+				ImGui::TreePop();
 			}
-			for (auto& b : sm.value("bpCalls", json::array()))
+			ImGui::PopID();
+		}
+	}
+
+	const json& q = Obj(d, "quality");
+	if (!q.empty())
+	{
+		SectionTitle("품질 점검");
+		if (ImGui::CollapsingHeader("BP 복잡도", ImGuiTreeNodeFlags_DefaultOpen) && ImGui::BeginTable("cx", 6, kTable))
+		{
+			for (const char* h : { "Blueprint", "그래프", "노드", "분기", "실행 체인", "기준 초과" }) ImGui::TableSetupColumn(h);
+			ImGui::TableHeadersRow();
+			for (auto& r : Arr(Obj(q, "complexity"), "graphs"))
 			{
+				if (!ContainsNoCase(Str(r, "blueprint") + Str(r, "graph"), f)) continue;
 				ImGui::TableNextRow();
-				ImGui::TableNextColumn(); ImGui::Text("BP %s.%s", Str(b, "blueprint").c_str(), Str(b, "graph").c_str());
-				ImGui::TableNextColumn(); ImGui::TextUnformatted("호출");
-				ImGui::TableNextColumn(); ImGui::TextUnformatted(Str(b, "function").c_str());
+				ImGui::TableNextColumn(); ImGui::TextUnformatted(Str(r, "blueprint").c_str());
+				ImGui::TableNextColumn(); ImGui::TextUnformatted(Str(r, "graph").c_str());
+				ImGui::TableNextColumn(); ImGui::Text("%lld", Num(r, "nodes"));
+				ImGui::TableNextColumn(); ImGui::Text("%lld", Num(r, "branches"));
+				ImGui::TableNextColumn(); ImGui::Text("%lld", Num(r, "execChain"));
+				ImGui::TableNextColumn();
+				std::string over;
+				for (auto& o : Arr(r, "over")) over += o.get<std::string>() + " ";
+				if (over.empty()) ImGui::TextDisabled("-"); else Badge(over);
 			}
 			ImGui::EndTable();
 		}
+		const json& violations = Arr(Obj(q, "naming"), "violations");
+		std::string namingTitle = "이름 · 폴더 규칙 (" + std::to_string(violations.size()) + ")###naming";
+		if (ImGui::CollapsingHeader(namingTitle.c_str()) && ImGui::BeginTable("nm", 3, kTable))
+		{
+			for (const char* h : { "에셋", "클래스", "문제" }) ImGui::TableSetupColumn(h);
+			ImGui::TableHeadersRow();
+			for (auto& v : violations)
+			{
+				std::string problems;
+				for (auto& p : Arr(v, "problems")) problems += p.get<std::string>() + "  ";
+				if (!ContainsNoCase(Str(v, "asset") + problems, f)) continue;
+				ImGui::TableNextRow();
+				ImGui::TableNextColumn(); ImGui::TextUnformatted(Str(v, "asset").c_str());
+				ImGui::TableNextColumn(); ImGui::TextUnformatted(Str(v, "class").c_str());
+				ImGui::TableNextColumn(); ImGui::TextWrapped("%s", problems.c_str());
+			}
+			ImGui::EndTable();
+		}
+		const json& unused = Obj(q, "unused");
+		std::string unusedTitle = "미사용 후보 " + std::to_string(Arr(unused, "unused").size()) + " · 리다이렉터 " +
+		                          std::to_string(Arr(unused, "redirectors").size()) + "###unused";
+		if (ImGui::CollapsingHeader(unusedTitle.c_str()))
+		{
+			ImGui::TextDisabled("도달할 수 없는 에셋");
+			StringList(Arr(unused, "unused"), f);
+			ImGui::TextDisabled("리다이렉터");
+			StringList(Arr(unused, "redirectors"), f);
+		}
+		const json& sm = Obj(q, "stateMonitor");
+		if (sm.value("present", false) && ImGui::CollapsingHeader("StateMonitor 연계", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			KeyValue("플러그인", Str(sm, "plugin"));
+			std::string ids;
+			for (auto& s : Arr(sm, "sourceIds")) ids += s.get<std::string>() + "  ";
+			KeyValue("Source ID", ids);
+			KeyValue("테스트 필터", Str(sm, "testFilter"));
+			if (ImGui::BeginTable("sm", 3, kTable))
+			{
+				for (const char* h : { "위치", "종류", "코드" }) ImGui::TableSetupColumn(h);
+				ImGui::TableHeadersRow();
+				for (auto& r : Arr(sm, "cppRefs"))
+				{
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn(); ImGui::Text("%s:%lld", Str(r, "file").c_str(), Num(r, "line"));
+					ImGui::TableNextColumn(); ImGui::TextUnformatted(r.value("submit", false) ? "제출" : "참조");
+					ImGui::TableNextColumn(); ImGui::TextWrapped("%s", Str(r, "code").c_str());
+				}
+				for (auto& b : Arr(sm, "bpCalls"))
+				{
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn(); ImGui::Text("BP %s.%s", Str(b, "blueprint").c_str(), Str(b, "graph").c_str());
+					ImGui::TableNextColumn(); ImGui::TextUnformatted("호출");
+					ImGui::TableNextColumn(); ImGui::TextUnformatted(Str(b, "function").c_str());
+				}
+				ImGui::EndTable();
+			}
+		}
 	}
+	DrawStructure(app);
 }
 
 static void DrawVerifyResult(App& app, const json& v)
 {
-	for (auto& step : v.value("steps", json::array()))
+	const json& steps = Arr(v, "steps");
+	for (int i = 0; i < (int)steps.size(); ++i)
 	{
-		ImGui::PushID(&step);
+		const json& step = steps[i];
+		ImGui::PushID(i);
 		Badge(Str(step, "verdict"));
 		ImGui::SameLine();
-		std::string title = Str(step, "id") + "  " + Str(step, "name");
+		std::string title = Str(step, "id") + "  " + Str(step, "name") + "###step";
 		if (ImGui::CollapsingHeader(title.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			if (step.contains("summary") && step["summary"].is_object())
+			const json& summary = Obj(step, "summary");
+			const json& automation = Obj(step, "automation");
+			if (!summary.empty())
 			{
-				const json& c = step["summary"]["counts"];
+				const json& c = Obj(summary, "counts");
 				ImGui::Text("Error %lld · Warning %lld · Fatal %lld", Num(c, "Error"), Num(c, "Warning"), Num(c, "Fatal"));
-				LogGroupsTable(step["summary"], app.filter, "groups");
+				LogGroupsTable(summary, app.filter, "groups");
 			}
-			else if (step.contains("automation") && step["automation"].is_object())
+			else if (!automation.empty())
 			{
-				const json& a = step["automation"];
-				const json& s = a["summary"];
+				const json& s = Obj(automation, "summary");
 				ImGui::Text("성공 %lld · 경고 포함 %lld · 실패 %lld · 미실행 %lld  %s", Num(s, "succeeded"), Num(s, "succeededWithWarnings"),
 				            Num(s, "failed"), Num(s, "notRun"), Str(step, "note").c_str());
 				if (ImGui::BeginTable("tests", 3, kTable))
 				{
 					for (const char* h : { "테스트", "결과", "오류" }) ImGui::TableSetupColumn(h);
 					ImGui::TableHeadersRow();
-					for (auto& t : a.value("tests", json::array()))
+					for (auto& t : Arr(automation, "tests"))
 					{
 						if (!ContainsNoCase(Str(t, "name"), app.filter)) continue;
 						ImGui::TableNextRow();
 						ImGui::TableNextColumn(); ImGui::TextUnformatted(Str(t, "name").c_str());
 						ImGui::TableNextColumn(); Badge(Str(t, "state") == "Success" ? "pass" : "fail");
 						ImGui::TableNextColumn();
-						for (auto& e : t.value("errors", json::array())) ImGui::TextWrapped("%s", e.get<std::string>().c_str());
+						for (auto& e : Arr(t, "errors")) ImGui::TextWrapped("%s", e.get<std::string>().c_str());
 					}
 					ImGui::EndTable();
 				}
@@ -859,6 +1173,147 @@ static void DrawVerifyResult(App& app, const json& v)
 		}
 		ImGui::PopID();
 	}
+}
+
+// ============================================================================ HTML export
+
+static bool PickSaveFile(HWND owner, const std::wstring& defaultName, fs::path& out)
+{
+	IFileSaveDialog* dialog = nullptr;
+	if (FAILED(CoCreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_ALL, IID_PPV_ARGS(&dialog)))) return false;
+	COMDLG_FILTERSPEC types[] = { { L"HTML 리포트", L"*.html" } };
+	dialog->SetFileTypes(1, types);
+	dialog->SetDefaultExtension(L"html");
+	dialog->SetFileName(defaultName.c_str());
+	dialog->SetTitle(L"HTML 리포트 저장");
+	bool ok = false;
+	if (SUCCEEDED(dialog->Show(owner)))
+	{
+		IShellItem* item = nullptr;
+		if (SUCCEEDED(dialog->GetResult(&item)))
+		{
+			PWSTR path = nullptr;
+			if (SUCCEEDED(item->GetDisplayName(SIGDN_FILESYSPATH, &path)))
+			{
+				out = path;
+				CoTaskMemFree(path);
+				ok = true;
+			}
+			item->Release();
+		}
+	}
+	dialog->Release();
+	return ok;
+}
+
+static std::string ReadText(const fs::path& path)
+{
+	std::ifstream in(path, std::ios::binary);
+	return std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+}
+
+static std::string Between(const std::string& s, const std::string& open, const std::string& close)
+{
+	size_t a = s.find(open);
+	size_t b = s.rfind(close);
+	if (a == std::string::npos || b == std::string::npos || b < a) return {};
+	return s.substr(a + open.size(), b - a - open.size());
+}
+
+static std::string HtmlEscape(const std::string& s)
+{
+	std::string o;
+	for (char c : s)
+	{
+		if (c == '<') o += "&lt;";
+		else if (c == '>') o += "&gt;";
+		else if (c == '&') o += "&amp;";
+		else if (c == '"') o += "&quot;";
+		else o += c;
+	}
+	return o;
+}
+
+static void SaveRunReport(App& app, const RunInfo& r)
+{
+	fs::path src = r.dir / "out" / "report.html";
+	std::error_code ec;
+	if (!fs::exists(src, ec)) { app.message = "이 실행에는 report.html이 없습니다."; return; }
+	fs::path dest;
+	std::wstring name = ToWide(app.projectName + "_" + r.id + ".html");
+	if (!PickSaveFile(g_hwnd, name, dest)) return;
+	if (!CopyFileW(src.wstring().c_str(), dest.wstring().c_str(), FALSE))
+	{
+		app.message = "저장 실패: error " + std::to_string(GetLastError());
+		return;
+	}
+	app.saved = dest;
+}
+
+// One self-contained page with the latest analyze, verify and logs reports. Returns an error message or "".
+static std::string WriteBundleReport(App& app, const fs::path& dest)
+{
+	struct Part { const char* line; const char* title; const RunInfo* run; };
+	Part parts[] = { { "architecture-report", "아키텍처 분석", nullptr }, { "verify", "검증", nullptr }, { "logs", "로그", nullptr } };
+	for (auto& r : app.runs)
+		for (auto& p : parts)
+			if (!p.run && r.line == p.line && !r.verdict.empty() && r.verdict != "incomplete") p.run = &r;
+	if (!parts[0].run && !parts[1].run && !parts[2].run) return "묶을 실행 기록이 없습니다.";
+
+	std::string style, body, mermaid;
+	std::string cover = "<section><div class='meta'>dwo-Assay 종합 리포트</div><h1>" + HtmlEscape(app.projectName) +
+	                    "</h1><div class='scroll'><table><thead><tr><th>라인</th><th>실행 ID</th><th>판정</th></tr></thead><tbody>";
+	for (auto& p : parts)
+	{
+		if (!p.run)
+		{
+			cover += std::string("<tr><td>") + p.title + "</td><td colspan='2'>실행 기록 없음</td></tr>";
+			continue;
+		}
+		cover += std::string("<tr><td>") + p.title + "</td><td><code>" + HtmlEscape(p.run->id) + "</code></td><td><span class='badge " +
+		         HtmlEscape(p.run->verdict) + "'>" + HtmlEscape(p.run->verdict) + "</span></td></tr>";
+		std::string html = ReadText(p.run->dir / "out" / "report.html");
+		if (style.empty()) style = Between(html, "<style>", "</style>");
+		std::string main = Between(html, "<main>", "</main>");
+		body += std::string("<section><h1>") + p.title + "</h1><div class='meta'>" + HtmlEscape(p.run->id) + "</div></section>" + main;
+		if (mermaid.empty() && html.find("mermaid.min.js") != std::string::npos)
+		{
+			size_t at = html.find("<script src=");
+			size_t end = html.rfind("</script>");
+			if (at != std::string::npos && end != std::string::npos) mermaid = html.substr(at, end + 9 - at);
+		}
+	}
+	cover += "</tbody></table></div></section>";
+	std::string page = "<!doctype html><html lang='ko'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
+	                   "<title>" + HtmlEscape(app.projectName) + " · dwo-Assay 종합 리포트</title><style>" + style +
+	                   "</style></head><body><main>" + cover + body + "</main>" + mermaid + "</body></html>";
+	std::ofstream out(dest, std::ios::binary);
+	out << page;
+	if (!out) return "저장 실패: " + PathUtf8(dest);
+	return "";
+}
+
+static void SaveBundleReport(App& app)
+{
+	fs::path dest;
+	if (!PickSaveFile(g_hwnd, ToWide(app.projectName + "_dwo-assay_report.html"), dest)) return;
+	std::string err = WriteBundleReport(app, dest);
+	if (err.empty()) app.saved = dest;
+	else app.message = err;
+}
+
+static void DrawSavedNotice(App& app)
+{
+	if (app.saved.empty()) return;
+	ImGui::PushStyleColor(ImGuiCol_Text, VerdictColor("pass"));
+	ImGui::TextWrapped("저장됨: %s", PathUtf8(app.saved).c_str());
+	ImGui::PopStyleColor();
+	ImGui::SameLine();
+	if (ImGui::SmallButton("열기")) OpenWithShell(app.saved);
+	ImGui::SameLine();
+	if (ImGui::SmallButton("폴더")) OpenWithShell(app.saved.parent_path());
+	ImGui::SameLine();
+	if (ImGui::SmallButton("닫기")) app.saved.clear();
 }
 
 static void DrawResult(App& app)
@@ -876,11 +1331,16 @@ static void DrawResult(App& app)
 	ImGui::SameLine();
 	if (ImGui::Button("리포트 열기")) OpenWithShell(r.dir / "out" / "report.html");
 	ImGui::SameLine();
-	if (ImGui::Button("폴더 열기")) OpenWithShell(r.dir);
+	if (ImGui::Button("HTML 저장...")) SaveRunReport(app, r);
 	ImGui::SameLine();
-	ImGui::SetNextItemWidth(260);
-	ImGui::InputTextWithHint("##filter", "필터 (에셋, 규칙, 메시지...)", app.filter, sizeof(app.filter));
-	ImGui::TextDisabled("UML·실행 흐름 다이어그램은 '리포트 열기'로 브라우저에서 볼 수 있습니다.");
+	if (ImGui::Button("종합 리포트 저장...")) SaveBundleReport(app);
+	ImGui::SameLine();
+	if (ImGui::Button("폴더 열기")) OpenWithShell(r.dir);
+	ImGui::SetNextItemWidth(320);
+	ImGui::InputTextWithHint("##filter", "필터 (에셋, 규칙, 메시지, 클래스...)", app.filter, sizeof(app.filter));
+	ImGui::SameLine();
+	ImGui::TextDisabled("다이어그램 원본은 '리포트 열기'로 브라우저에서 볼 수 있습니다.");
+	DrawSavedNotice(app);
 
 	if (r.run.contains("stations") && ImGui::BeginTable("stations", 4, kTable))
 	{
@@ -898,12 +1358,13 @@ static void DrawResult(App& app)
 	}
 
 	ImGui::BeginChild("detail", ImVec2(0, 0), ImGuiChildFlags_None);
-	if (r.line == "verify" && d.contains("verify")) DrawVerifyResult(app, d["verify"]);
-	else if (r.line == "logs" && d.contains("logs"))
+	if (r.line == "verify") DrawVerifyResult(app, Obj(d, "verify"));
+	else if (r.line == "logs")
 	{
-		const json& c = d["logs"]["counts"];
-		ImGui::Text("Fatal %lld · Error %lld · Warning %lld · 새 그룹 %lld", Num(c, "Fatal"), Num(c, "Error"), Num(c, "Warning"), Num(d["logs"], "newGroups"));
-		LogGroupsTable(d["logs"], app.filter, "loggroups");
+		const json& logs = Obj(d, "logs");
+		const json& c = Obj(logs, "counts");
+		ImGui::Text("Fatal %lld · Error %lld · Warning %lld · 새 그룹 %lld", Num(c, "Fatal"), Num(c, "Error"), Num(c, "Warning"), Num(logs, "newGroups"));
+		LogGroupsTable(logs, app.filter, "loggroups");
 	}
 	else DrawAnalyzeResult(app, d);
 	ImGui::EndChild();
@@ -1152,6 +1613,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 	std::wstring homeArg = ArgValue(argc, argv, L"--home");
 	std::wstring tabArg = ArgValue(argc, argv, L"--tab");
 	std::wstring runArg = ArgValue(argc, argv, L"--run");
+	std::wstring selectArg = ArgValue(argc, argv, L"--select");
+	std::wstring exportArg = ArgValue(argc, argv, L"--export-report");
 	LocalFree(argv);
 	if (homeArg.empty())
 	{
@@ -1160,9 +1623,19 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 	}
 	app.home = homeArg;
 
+	// Headless export: write the combined HTML report and exit without opening a window.
+	if (!exportArg.empty())
+	{
+		app.project = projectArg.empty() ? fs::current_path() : fs::path(projectArg);
+		app.Refresh();
+		std::string err = app.hasUProject ? WriteBundleReport(app, exportArg) : "no .uproject in " + PathUtf8(app.project);
+		CoUninitialize();
+		return err.empty() ? 0 : 1;
+	}
+
 	WNDCLASSEXW wc{ sizeof(wc), CS_CLASSDC, WndProc, 0, 0, hInstance, nullptr, LoadCursor(nullptr, IDC_ARROW), nullptr, nullptr, L"DwoAssayGui", nullptr };
 	RegisterClassExW(&wc);
-	HWND hwnd = CreateWindowW(wc.lpszClassName, L"dwo-Assay", WS_OVERLAPPEDWINDOW, 100, 80, 1360, 860, nullptr, nullptr, wc.hInstance, nullptr);
+	HWND hwnd = g_hwnd = CreateWindowW(wc.lpszClassName, L"dwo-Assay", WS_OVERLAPPEDWINDOW, 100, 80, 1360, 860, nullptr, nullptr, wc.hInstance, nullptr);
 	if (!CreateDeviceD3D(hwnd))
 	{
 		CleanupDeviceD3D();
@@ -1206,6 +1679,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 	}
 	if (tabArg == L"history") app.requestTab = 1;
 	else if (tabArg == L"result") { app.requestTab = 2; if (!app.runs.empty()) app.selectedRun = 0; }
+	if (!selectArg.empty())
+		for (int i = 0; i < (int)app.runs.size(); ++i)
+			if (app.runs[i].id == ToUtf8(selectArg)) { app.selectedRun = i; app.requestTab = 2; }
 	if (!runArg.empty() && app.hasUProject) app.Run(ToUtf8(runArg).c_str());
 
 	bool done = false;

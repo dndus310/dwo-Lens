@@ -204,10 +204,11 @@ function Install-Plugin($Build) {
     New-Item -ItemType Directory -Force $PluginDest | Out-Null
     # Prebuilt binaries only: the project's own build never compiles this plugin.
     Copy-Item (Join-Path $Build.Dir 'DwoAssayInspector.uplugin') $PluginDest
-    # BuildPlugin drops EnabledByDefault; restore it so the project never needs a .uproject entry.
+    # Disabled by default: the editor, cooks and packages never load or stage it. dwo-Assay enables it only
+    # for its own commandlet runs (-EnablePlugins=DwoAssayInspector), so the project needs no .uproject entry.
     $upluginPath = Join-Path $PluginDest 'DwoAssayInspector.uplugin'
     $uplugin = Get-Content -Raw -Encoding UTF8 $upluginPath | ConvertFrom-Json
-    $uplugin | Add-Member -NotePropertyName EnabledByDefault -NotePropertyValue $true -Force
+    $uplugin | Add-Member -NotePropertyName EnabledByDefault -NotePropertyValue $false -Force
     [IO.File]::WriteAllText($upluginPath, ($uplugin | ConvertTo-Json -Depth 10), $Utf8)
     Copy-Item -Recurse (Join-Path $Build.Dir 'Binaries') $PluginDest
     if (Test-Path (Join-Path $Build.Dir 'Resources')) { Copy-Item -Recurse (Join-Path $Build.Dir 'Resources') $PluginDest }
@@ -257,11 +258,13 @@ function Invoke-SmInstall {
     $build = Get-PluginBuild $engine 'StateMonitor'
     if (Test-Path $SmDest) { Remove-Item -Recurse -Force $SmDest }
     New-Item -ItemType Directory -Force $SmDest | Out-Null
-    # Source and headers stay so C++ code can include StateMonitor; Binaries make Blueprint-only projects work without compiling.
+    # Installed as a source plugin with prebuilt editor binaries: the editor opens without compiling, and
+    # packaging (including Blueprint-only projects) builds a game target that contains StateMonitor.
     Get-ChildItem $build.Dir | Where-Object { $_.Name -ne 'Intermediate' } | ForEach-Object { Copy-Item -Recurse $_.FullName $SmDest }
     $upluginPath = Join-Path $SmDest 'StateMonitor.uplugin'
     $uplugin = Get-Content -Raw -Encoding UTF8 $upluginPath | ConvertFrom-Json
     $uplugin | Add-Member -NotePropertyName EnabledByDefault -NotePropertyValue $true -Force
+    $uplugin | Add-Member -NotePropertyName Installed -NotePropertyValue $false -Force
     [IO.File]::WriteAllText($upluginPath, ($uplugin | ConvertTo-Json -Depth 10), $Utf8)
     [IO.File]::WriteAllText((Join-Path $SmDest $Marker), "StateMonitor installed by dwo-Assay. Remove with '__dwo-assay.bat sm-remove'.`n", $Utf8)
     Say "StateMonitor installed: Plugins\__StateMonitor (UE $($engine.Version), hidden from git)"
@@ -366,7 +369,7 @@ function Invoke-Doctor {
     $py = Get-Command python -ErrorAction SilentlyContinue
     Check 'python available' ($py -ne $null) 'install Python 3.10+'
     if ($uproject.IsCode) {
-        Write-Host '  [note] code project: confirm your own builds ignore Plugins/__DwoAssayInspector (prebuilt, no Source).'
+        Write-Host '  [note] code project: Plugins/__DwoAssayInspector is prebuilt, editor-only and disabled by default.'
     }
     if (Test-Path $SmDest) { Write-Host '  [info] StateMonitor installed by dwo-Assay (Plugins/__StateMonitor)' }
     elseif (Find-OwnStateMonitor) { Write-Host '  [info] StateMonitor is part of the project itself' }
@@ -546,7 +549,7 @@ function Invoke-Analyze {
     Say "[$runId] ST-1 collect: running DwoAssayInspector commandlet"
     $log = Join-Path $runDir 'commandlet.log'
     $sw = [Diagnostics.Stopwatch]::StartNew()
-    & cmd /c "`"$($engine.Cmd)`" `"$($uproject.Path)`" -run=DwoAssayInspector -AssayOut=`"$rawDir`" -ABSLOG=`"$(Join-Path $runDir 'editor.log')`" -unattended -nullrhi -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput > `"$log`" 2>&1"
+    & cmd /c "`"$($engine.Cmd)`" `"$($uproject.Path)`" -run=DwoAssayInspector -EnablePlugins=DwoAssayInspector -AssayOut=`"$rawDir`" -ABSLOG=`"$(Join-Path $runDir 'editor.log')`" -unattended -nullrhi -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput > `"$log`" 2>&1"
     $code = $LASTEXITCODE
     $sw.Stop()
     $collected = Test-Path (Join-Path $rawDir 'meta.json')

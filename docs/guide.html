@@ -1,0 +1,554 @@
+<title>dwo-Assay 가이드</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: 공장 도면 — 좌측 고정 목차 + 우측 도면 시트, 공정 번호(ST)는 실제 처리 순서 */
+:root {
+  --paper: #f5f7f8; --sheet: #ffffff; --ink: #16212b; --ink-2: #4a5a68; --ink-3: #7b8a97;
+  --rule: #d9e0e5; --grid: #e9eef1;
+  --det: #0f6e66; --det-bg: #e3f3f1; --ai: #b45c0c; --ai-bg: #fcefdf;
+  --human: #3f4d5a; --human-bg: #e8edf1; --build: #1d5fa8; --build-bg: #e4eefa;
+  --skip: #8a4b55; --skip-bg: #f6e8ea; --code-bg: #eef2f4;
+  --f-display: "Gothic A1", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --f-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --f-mono: "JetBrains Mono", Consolas, "D2Coding", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f151a; --sheet: #151d24; --ink: #e6edf2; --ink-2: #a9b7c2; --ink-3: #7d8c98;
+    --rule: #2a3742; --grid: #1a242c; --det: #5fc9bd; --det-bg: #12312e; --ai: #f0a557; --ai-bg: #3a2711;
+    --human: #b9c6d1; --human-bg: #24303a; --build: #7fb1ea; --build-bg: #172a40;
+    --skip: #e59aa6; --skip-bg: #3a1d22; --code-bg: #1b252d; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f151a; --sheet: #151d24; --ink: #e6edf2; --ink-2: #a9b7c2; --ink-3: #7d8c98;
+  --rule: #2a3742; --grid: #1a242c; --det: #5fc9bd; --det-bg: #12312e; --ai: #f0a557; --ai-bg: #3a2711;
+  --human: #b9c6d1; --human-bg: #24303a; --build: #7fb1ea; --build-bg: #172a40;
+  --skip: #e59aa6; --skip-bg: #3a1d22; --code-bg: #1b252d; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--paper);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px; color: var(--ink); font-family: var(--f-body); font-size: 15.5px; line-height: 1.75;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 64px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 32px; align-items: start; }
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); font-size: 13.5px; }
+nav.toc .tag { font-family: var(--f-mono); font-size: 11px; letter-spacing: .08em; color: var(--ink-3); text-transform: uppercase; margin-bottom: 10px; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; border-left: 1px solid var(--rule); }
+nav.toc a { display: block; padding: 4px 12px; color: var(--ink-2); text-decoration: none; border-left: 2px solid transparent; margin-left: -1px; }
+nav.toc a:hover, nav.toc a:focus-visible { color: var(--ink); border-left-color: var(--det); outline: none; }
+main { display: grid; gap: 28px; min-width: 0; }
+.sheet { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 32px clamp(18px, 4vw, 40px); min-width: 0; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; color: var(--ink); }
+h1 { font-size: clamp(30px, 4.6vw, 44px); font-weight: 800; line-height: 1.2; letter-spacing: -0.01em; }
+h2 { font-size: 24px; font-weight: 800; line-height: 1.3; }
+h3 { font-size: 17px; font-weight: 700; line-height: 1.4; }
+p { margin: 0; max-width: 68ch; }
+.eyebrow { font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); display: flex; gap: 10px; align-items: center; }
+.eyebrow b { color: var(--det); font-weight: 500; }
+.sec-head { display: grid; gap: 8px; margin-bottom: 22px; padding-bottom: 16px; border-bottom: 1px dashed var(--rule); }
+.lead { color: var(--ink-2); font-size: 16.5px; }
+.stack { display: grid; gap: 14px; }
+code, .mono { font-family: var(--f-mono); font-size: .88em; }
+:not(pre) > code { background: var(--code-bg); padding: 1px 6px; border-radius: 4px; overflow-wrap: anywhere; }
+pre { margin: 0; background: var(--code-bg); border-radius: 6px; padding: 14px 16px; overflow-x: auto; font-family: var(--f-mono); font-size: 13px; line-height: 1.6; color: var(--ink); }
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 620px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); font-weight: 500; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hero { display: grid; gap: 18px; }
+.titleblock { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--ink); border-radius: 4px; margin-top: 8px; }
+.titleblock div { padding: 10px 14px; border-right: 1px solid var(--ink); min-width: 0; }
+.titleblock div:last-child { border-right: 0; }
+.titleblock span { display: block; font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.titleblock strong { font-family: var(--f-display); font-weight: 700; font-size: 15px; }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--ink-2); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1.5px solid; }
+.lg-det { background: var(--det-bg); border-color: var(--det); }
+.lg-ai { background: var(--ai-bg); border-color: var(--ai); }
+.lg-hu { background: var(--human-bg); border-color: var(--human); }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.kpi { border: 1px solid var(--rule); border-radius: 6px; padding: 12px 16px; display: grid; gap: 2px; }
+.kpi b { font-family: var(--f-display); font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.kpi span { font-size: 12.5px; color: var(--ink-3); }
+.diagram { overflow-x: auto; margin: 6px -4px 0; padding: 4px; }
+.diagram svg { display: block; min-width: 860px; width: 100%; height: auto; }
+.d-box-det { fill: var(--det-bg); stroke: var(--det); }
+.d-box-ai { fill: var(--ai-bg); stroke: var(--ai); }
+.d-box-hu { fill: var(--human-bg); stroke: var(--human); }
+.d-zone { fill: none; stroke: var(--ink-3); stroke-dasharray: 5 5; }
+.d-t { fill: var(--ink); font-family: var(--f-display); font-weight: 700; font-size: 14px; }
+.d-s { fill: var(--ink-2); font-family: var(--f-body); font-size: 12px; }
+.d-m { fill: var(--ink-3); font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .06em; }
+.d-line { stroke: var(--ink-3); stroke-width: 1.4; fill: none; }
+.d-line-ai { stroke: var(--ai); stroke-width: 1.4; fill: none; stroke-dasharray: 5 4; }
+.d-head { fill: var(--ink-3); }
+.d-head-ai { fill: var(--ai); }
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.principle { border: 1px solid var(--rule); border-radius: 6px; padding: 18px; display: grid; gap: 8px; align-content: start; }
+.principle .k { font-family: var(--f-mono); font-size: 11px; color: var(--det); letter-spacing: .08em; }
+.principle p { color: var(--ink-2); font-size: 14.5px; }
+.steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.step { border-top: 3px solid var(--det); background: var(--det-bg); padding: 14px; border-radius: 0 0 6px 6px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.step .n { font-family: var(--f-mono); font-size: 11px; color: var(--det); letter-spacing: .08em; }
+.step strong { font-family: var(--f-display); font-size: 15px; }
+.step p { font-size: 13.5px; color: var(--ink-2); }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.note { border-left: 3px solid var(--ai); background: var(--ai-bg); padding: 12px 16px; font-size: 14px; color: var(--ink); }
+.note strong { color: var(--ai); }
+.stations { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.station { border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.station header { padding: 12px 16px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; border-bottom: 1px solid var(--rule); }
+.station header .code { font-family: var(--f-mono); font-size: 11px; color: var(--ink-3); }
+.station.det header { background: var(--det-bg); }
+.station.ai header { background: var(--ai-bg); }
+.station.hu header { background: var(--human-bg); }
+.station ul { list-style: none; margin: 0; padding: 4px 16px 10px; }
+.station li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: 14px; }
+.station li:last-child { border-bottom: 0; }
+.station li small { display: block; color: var(--ink-3); font-size: 12px; font-family: var(--f-mono); overflow-wrap: anywhere; }
+.station li .tags { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.badge { font-family: var(--f-mono); font-size: 10.5px; padding: 2px 8px; border-radius: 3px; white-space: nowrap; letter-spacing: .04em; }
+.b-build { background: var(--build-bg); color: var(--build); }
+.b-wrap { background: var(--det-bg); color: var(--det); }
+.b-ai { background: var(--ai-bg); color: var(--ai); }
+.b-skip { background: var(--skip-bg); color: var(--skip); }
+.b-ready { background: var(--det); color: var(--sheet); }
+.b-plan { background: transparent; color: var(--ink-3); border: 1px dashed var(--ink-3); }
+.lines { display: grid; gap: 12px; }
+.line { border: 1px solid var(--rule); border-radius: 6px; padding: 14px 16px; display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 16px; align-items: center; }
+.line h3 { font-size: 15.5px; }
+.line .out { font-size: 12.5px; color: var(--ink-3); margin-top: 2px; }
+.line.planned { border-style: dashed; }
+.flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip { font-size: 12.5px; padding: 4px 10px; border-radius: 3px; border: 1px solid; white-space: nowrap; }
+.c-det { background: var(--det-bg); border-color: var(--det); color: var(--det); }
+.c-ai { background: var(--ai-bg); border-color: var(--ai); color: var(--ai); }
+.c-hu { background: var(--human-bg); border-color: var(--human); color: var(--human); }
+.flow .arr { color: var(--ink-3); font-size: 12px; }
+.phases { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.phase { padding: 16px; border-right: 1px solid var(--rule); display: grid; gap: 10px; align-content: start; min-width: 0; }
+.phase:last-child { border-right: 0; }
+.phase .p { font-family: var(--f-mono); font-size: 11px; color: var(--build); letter-spacing: .08em; display: flex; justify-content: space-between; gap: 8px; }
+.phase ul { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--ink-2); }
+.phase li.done { color: var(--ink); }
+.phase li.done::marker { content: "✓ "; color: var(--det); }
+.phase .done-box { font-size: 13px; border-top: 1px dashed var(--rule); padding-top: 8px; }
+.phase .done-box b { font-family: var(--f-mono); font-size: 10.5px; color: var(--ink-3); font-weight: 500; letter-spacing: .06em; display: block; }
+.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.checks li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 6px; font-size: 14.5px; }
+.checks li::before { content: ""; width: 14px; height: 14px; border: 1.5px solid var(--ink-3); border-radius: 3px; margin-top: 5px; }
+.checks li.ok::before { background: var(--det); border-color: var(--det); }
+.checks small { color: var(--ink-3); display: block; font-size: 13px; }
+footer { color: var(--ink-3); font-size: 12.5px; font-family: var(--f-mono); text-align: center; }
+@media (max-width: 900px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); }
+  nav.toc { position: static; }
+  nav.toc ol { grid-template-columns: repeat(2, minmax(0, 1fr)); border-left: 0; }
+  .stations, .steps, .phases, .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .phase:nth-child(2) { border-right: 0; }
+  .phase:nth-child(-n+2) { border-bottom: 1px solid var(--rule); }
+}
+@media (max-width: 600px) {
+  .grid-2, .split, .stations, .steps, .phases { grid-template-columns: minmax(0, 1fr); }
+  .phase { border-right: 0; border-bottom: 1px solid var(--rule); }
+  .titleblock { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .titleblock div:nth-child(2) { border-right: 0; }
+  .titleblock div:nth-child(-n+2) { border-bottom: 1px solid var(--ink); }
+  .line { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="wrap">
+  <nav class="toc" aria-label="목차">
+    <div class="tag">dwo-Assay / guide</div>
+    <ol>
+      <li><a href="#overview">한눈에 보기</a></li>
+      <li><a href="#status">구축 현황</a></li>
+      <li><a href="#principles">설계 원칙</a></li>
+      <li><a href="#attach">프로젝트 부착</a></li>
+      <li><a href="#stations">공정과 도구</a></li>
+      <li><a href="#lines">생산 라인</a></li>
+      <li><a href="#benchmark">경쟁 도구 비교</a></li>
+      <li><a href="#statemonitor">StateMonitor 연계</a></li>
+      <li><a href="#roadmap">구축 로드맵</a></li>
+      <li><a href="#ops">운영 · 설정</a></li>
+      <li><a href="#checks">다음 확인</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section class="sheet hero" aria-labelledby="t-hero">
+      <div class="eyebrow"><b>●</b> Unreal Engine 분석 · 로그 · 검증 팩토리</div>
+      <h1 id="t-hero">dwo-Assay 가이드</h1>
+      <p class="lead">언리얼 프로젝트에 흔적 없이 붙었다가 언제든 떨어지는 분석 공장입니다. 결정적 공정이 프로젝트를 읽고 검증하며, AI는 공정의 양 끝에서 계획과 판단만 맡습니다.</p>
+      <div class="titleblock" role="group" aria-label="문서 정보">
+        <div><span>검증 엔진</span><strong>UE 5.7.4</strong></div>
+        <div><span>형상관리</span><strong>Git</strong></div>
+        <div><span>시스템 커밋</span><strong>214a085</strong></div>
+        <div><span>문서</span><strong>v1.3 · 2026-10-28</strong></div>
+      </div>
+      <div class="legend" aria-label="범례">
+        <span><i class="lg-det"></i>결정적 공정 (도구)</span>
+        <span><i class="lg-ai"></i>AI 개입</span>
+        <span><i class="lg-hu"></i>사람 · 저장소</span>
+      </div>
+    </section>
+
+    <section class="sheet" id="overview" aria-labelledby="t-overview">
+      <div class="sec-head">
+        <div class="eyebrow">01 · Overview</div>
+        <h2 id="t-overview">한눈에 보기</h2>
+        <p class="lead">요구사항 접수부터 보고까지 하나의 흐름입니다. 중간 공정은 같은 입력이면 같은 결과가 나오는 도구로만 돌아가고, 검증 게이트를 통과한 결과만 AI 판단으로 넘어갑니다.</p>
+      </div>
+      <div class="diagram">
+        <svg viewBox="0 0 960 430" role="img" aria-labelledby="dg1t dg1d">
+          <title id="dg1t">dwo-Assay 전체 흐름</title>
+          <desc id="dg1d">A 프로젝트 부착과 요구사항 접수가 오케스트레이터로 모이고, 수집·분석·검증·로그 공정을 거쳐 검증 게이트에서 판정된 뒤 AI 해석과 산출물 저장소를 거쳐 종합 판정, 사람 승인으로 이어진다.</desc>
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="d-head"/></marker>
+            <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="d-head-ai"/></marker>
+          </defs>
+          <rect x="10" y="40" width="170" height="60" rx="5" class="d-box-hu"/>
+          <text x="95" y="66" text-anchor="middle" class="d-t">A 프로젝트</text>
+          <text x="95" y="86" text-anchor="middle" class="d-s">__dwo-assay.bat 부착</text>
+          <rect x="10" y="130" width="170" height="60" rx="5" class="d-box-hu"/>
+          <text x="95" y="156" text-anchor="middle" class="d-t">요구사항 접수</text>
+          <text x="95" y="176" text-anchor="middle" class="d-s">타입 · 범위 · 수용 기준</text>
+          <path d="M180 70 H200 V115 H218" class="d-line" marker-end="url(#ah)"/>
+          <path d="M180 160 H200 V115 H218" class="d-line"/>
+          <rect x="220" y="85" width="150" height="60" rx="5" class="d-box-ai"/>
+          <text x="295" y="111" text-anchor="middle" class="d-t">오케스트레이터</text>
+          <text x="295" y="131" text-anchor="middle" class="d-s">라인 선택 · 예산</text>
+          <path d="M370 115 H398" class="d-line" marker-end="url(#ah)"/>
+          <rect x="400" y="20" width="200" height="300" rx="8" class="d-zone"/>
+          <text x="414" y="40" class="d-m">결정적 공정 · AI 미사용</text>
+          <rect x="416" y="54" width="168" height="54" rx="5" class="d-box-det"/>
+          <text x="500" y="77" text-anchor="middle" class="d-t">ST-1 수집</text>
+          <text x="500" y="96" text-anchor="middle" class="d-s">리플렉션 · BP · 에셋</text>
+          <rect x="416" y="118" width="168" height="54" rx="5" class="d-box-det"/>
+          <text x="500" y="141" text-anchor="middle" class="d-t">ST-2 분석</text>
+          <text x="500" y="160" text-anchor="middle" class="d-s">그래프 · 품질 점검</text>
+          <rect x="416" y="182" width="168" height="54" rx="5" class="d-box-det"/>
+          <text x="500" y="205" text-anchor="middle" class="d-t">ST-3 검증</text>
+          <text x="500" y="224" text-anchor="middle" class="d-s">BP 컴파일 · 검증 · 테스트</text>
+          <rect x="416" y="246" width="168" height="54" rx="5" class="d-box-det"/>
+          <text x="500" y="269" text-anchor="middle" class="d-t">ST-4 로그 · 런타임</text>
+          <text x="500" y="288" text-anchor="middle" class="d-s">로그 · 크래시 · StateMonitor</text>
+          <path d="M600 170 H628" class="d-line" marker-end="url(#ah)"/>
+          <rect x="630" y="140" width="150" height="60" rx="5" class="d-box-det"/>
+          <text x="705" y="166" text-anchor="middle" class="d-t">검증 게이트</text>
+          <text x="705" y="186" text-anchor="middle" class="d-s">pass · warn · fail</text>
+          <path d="M780 155 H800 V80 H818" class="d-line-ai" marker-end="url(#ah2)"/>
+          <path d="M780 185 H800 V260 H818" class="d-line" marker-end="url(#ah)"/>
+          <rect x="820" y="50" width="130" height="60" rx="5" class="d-box-ai"/>
+          <text x="885" y="76" text-anchor="middle" class="d-t">AI 해석</text>
+          <text x="885" y="96" text-anchor="middle" class="d-s">unknown · 원인</text>
+          <rect x="820" y="230" width="130" height="60" rx="5" class="d-box-hu"/>
+          <text x="885" y="256" text-anchor="middle" class="d-t">산출물 저장소</text>
+          <text x="885" y="276" text-anchor="middle" class="d-s">run.json · out/</text>
+          <path d="M885 110 V228" class="d-line-ai" marker-end="url(#ah2)"/>
+          <path d="M885 290 V360 H782" class="d-line" marker-end="url(#ah)"/>
+          <rect x="610" y="330" width="170" height="60" rx="5" class="d-box-ai"/>
+          <text x="695" y="356" text-anchor="middle" class="d-t">종합 판정</text>
+          <text x="695" y="376" text-anchor="middle" class="d-s">통과한 결과만 판단</text>
+          <path d="M610 360 H442" class="d-line" marker-end="url(#ah)"/>
+          <rect x="270" y="330" width="170" height="60" rx="5" class="d-box-hu"/>
+          <text x="355" y="356" text-anchor="middle" class="d-t">사람 승인 · 보고</text>
+          <text x="355" y="376" text-anchor="middle" class="d-s">비가역 작업은 필수</text>
+          <path d="M270 360 H95 V192" class="d-line" stroke-dasharray="2 4" marker-end="url(#ah)"/>
+          <text x="104" y="350" class="d-m">다음 작업 → 접수</text>
+        </svg>
+      </div>
+    </section>
+
+    <section class="sheet" id="status" aria-labelledby="t-status">
+      <div class="sec-head">
+        <div class="eyebrow">02 · Status</div>
+        <h2 id="t-status">구축 현황</h2>
+        <p class="lead">결정적 공정 세 라인이 가동 중입니다. 블루프린트 전용 프로젝트(temp_proj)와 StateMonitor를 쓰는 C++ 프로젝트(SMHost 복사본)에서 부착부터 제거까지 확인했습니다.</p>
+      </div>
+      <div class="stack">
+        <div class="kpis">
+          <div class="kpi"><b>3</b><span>가동 라인 (analyze · verify · logs)</span></div>
+          <div class="kpi"><b>17</b><span>사용 가능 도구</span></div>
+          <div class="kpi"><b>7</b><span>계획 도구</span></div>
+          <div class="kpi"><b>2</b><span>검증한 프로젝트 유형</span></div>
+        </div>
+        <div class="scroll">
+          <table>
+            <thead><tr><th>라인</th><th>temp_proj (BP 전용)</th><th>SMHost 복사본 (C++ · StateMonitor)</th></tr></thead>
+            <tbody>
+              <tr><td><code>attach</code> / <code>detach</code></td><td>doctor 6/6 통과, 제거 후 git 상태 동일, batch 자기 삭제</td><td>doctor 6/6 통과, 제거 후 git 상태 동일</td></tr>
+              <tr><td><code>analyze</code></td><td class="num">수집 8.1초 · 분석 0.3초 · <span class="badge b-skip">warn</span> 루트 위치 에셋 3개</td><td class="num"><span class="badge b-wrap">pass</span> StateMonitor 제출 지점 2곳 감지</td></tr>
+              <tr><td><code>verify</code></td><td class="num">BP 컴파일 52초 · 데이터 검증 10초 · 테스트 27초 · <span class="badge b-wrap">pass</span></td><td class="num">테스트 7/7 통과 (StateMonitor.* 6개 포함) · <span class="badge b-wrap">pass</span></td></tr>
+              <tr><td><code>logs</code></td><td>로그 4개, 오류 4 · 경고 5 → 6개 그룹 · <span class="badge b-skip">warn</span></td><td>미실행</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="sheet" id="principles" aria-labelledby="t-principles">
+      <div class="sec-head">
+        <div class="eyebrow">03 · Principles</div>
+        <h2 id="t-principles">설계 원칙</h2>
+        <p class="lead">모든 공정과 도구는 아래 네 가지를 지킵니다. 새 도구를 추가할 때도 이 기준으로 판단합니다.</p>
+      </div>
+      <div class="grid-2">
+        <div class="principle"><span class="k">P1 · 무결합</span><h3>언제 떼어 내도 프로젝트는 그대로</h3><p>모든 공정은 A 프로젝트를 읽기만 합니다. 시스템 파일은 <code>.git/info/exclude</code>로 이력에 잡히지 않고, <code>.uproject</code>는 건드리지 않습니다. 패키지를 수정하는 엔진 도구(ResavePackages 등)는 실행하지 않습니다.</p></div>
+        <div class="principle"><span class="k">P2 · 결정적 우선</span><h3>도구가 먼저, AI는 마지막</h3><p>사실은 도구가 추출하고 UE 규칙으로 확정합니다. 검증 게이트를 통과한 결과 중 도구로 확정할 수 없는 것만 AI가 해석합니다.</p></div>
+        <div class="principle"><span class="k">P3 · 산출물 계약</span><h3>공정 간 전달은 JSON으로만</h3><p>각 공정의 입출력은 버전이 있는 스키마(<code>assay.raw</code>, <code>assay.graph</code>, <code>assay.logs</code> 등)로 정합니다.</p></div>
+        <div class="principle"><span class="k">P4 · 실행 기록</span><h3>모든 결론을 추적하고 재현</h3><p>실행마다 <code>run.json</code>에 실행 ID, 공정별 판정과 소요 시간, 시스템 커밋을 남깁니다.</p></div>
+      </div>
+    </section>
+
+    <section class="sheet" id="attach" aria-labelledby="t-attach">
+      <div class="sec-head">
+        <div class="eyebrow">04 · Attach</div>
+        <h2 id="t-attach">프로젝트 부착</h2>
+        <p class="lead">PC마다 <code>setup.bat</code>을 한 번 실행해 <code>DWO_ASSAY_HOME</code>을 등록합니다. 그다음 <code>__dwo-assay.bat</code> 하나를 대상 프로젝트 루트에 복사해 실행합니다. 시스템 본체는 git clone으로 들어가므로 버전 확인, 업데이트, 제거를 git이 맡습니다.</p>
+      </div>
+      <div class="stack">
+        <div class="steps">
+          <div class="step"><span class="n">STEP 1</span><strong>사전 확인</strong><p><code>.uproject</code>, 프로젝트 자체 git 저장소 여부, git, <code>DWO_ASSAY_HOME</code></p></div>
+          <div class="step"><span class="n">STEP 2</span><strong>exclude 등록</strong><p>파일을 만들기 전에 표식 블록을 먼저 기록합니다</p></div>
+          <div class="step"><span class="n">STEP 3</span><strong>clone 또는 pull</strong><p>시스템 저장소를 <code>__dwo-assay/system</code>으로 가져옵니다</p></div>
+          <div class="step"><span class="n">STEP 4</span><strong>플러그인 설치</strong><p>엔진 버전별로 캐시된 바이너리 복사, <code>state.json</code>, doctor</p></div>
+        </div>
+        <div class="split">
+          <div class="stack">
+            <h3>A 프로젝트 안의 구조</h3>
+            <pre>A/
+├─ __dwo-assay.bat              <span style="color:var(--ink-3)"># 제어 진입점</span>
+├─ __dwo-assay/
+│  ├─ system/                   <span style="color:var(--ink-3)"># 시스템 clone</span>
+│  ├─ data/runs/&lt;id&gt;/           <span style="color:var(--ink-3)"># raw · out · run.json</span>
+│  ├─ config.json               <span style="color:var(--ink-3)"># (선택) 규칙 덮어쓰기</span>
+│  └─ state.json
+└─ Plugins/__DwoAssayInspector  <span style="color:var(--ink-3)"># 바이너리만, Source 없음</span></pre>
+          </div>
+          <div class="stack">
+            <h3>exclude 표식 블록</h3>
+            <pre># 팀원이 직접 쓴 줄은 건드리지 않음
+*.log
+
+# &gt;&gt;&gt; dwo-assay managed (do not edit) &gt;&gt;&gt;
+/__dwo-assay/
+/__dwo-assay.bat
+/Plugins/__DwoAssayInspector/
+# &lt;&lt;&lt; dwo-assay managed &lt;&lt;&lt;</pre>
+            <p style="font-size:13.5px;color:var(--ink-2)">경로는 <code>git rev-parse --path-format=absolute --git-path info/exclude</code>로 구하므로 worktree에서도 동작합니다.</p>
+          </div>
+        </div>
+        <div class="scroll">
+          <table>
+            <thead><tr><th>명령</th><th>동작</th></tr></thead>
+            <tbody>
+              <tr><td><code>attach</code> / <code>update</code></td><td>사전 확인 → exclude → clone/pull → 플러그인 설치 → doctor. 다시 실행하면 업데이트로 동작합니다.</td></tr>
+              <tr><td><code>analyze</code></td><td>아키텍처 리포트와 품질 점검</td></tr>
+              <tr><td><code>verify</code></td><td>BP 전체 컴파일, 데이터 검증, 자동화 테스트</td></tr>
+              <tr><td><code>logs</code></td><td><code>Saved/Logs</code>, <code>Saved/Crashes</code> 분석, 이전 실행 대비 새 오류 표시</td></tr>
+              <tr><td><code>tools</code> / <code>status</code> / <code>doctor</code></td><td>도구 카탈로그, 부착 버전·업데이트 여부, 환경 점검</td></tr>
+              <tr><td><code>detach [--keep-data]</code></td><td>플러그인·exclude 블록·작업 폴더 제거, git 상태 비교, batch 자기 삭제</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note"><strong>주의</strong> 대상 프로젝트는 자체 git 저장소여야 합니다. 상위 폴더 저장소(예: 홈 폴더 전체가 저장소인 경우)에 포함되어 있으면 부착을 거부합니다. C++ 프로젝트는 에디터 바이너리가 빌드된 상태여야 하며, <code>Build.cs</code>·<code>Target.cs</code>에 시스템 관련 내용이 섞이지 않았는지는 커밋 전에 작업자가 확인합니다.</div>
+      </div>
+    </section>
+
+    <section class="sheet" id="stations" aria-labelledby="t-stations">
+      <div class="sec-head">
+        <div class="eyebrow">05 · Stations</div>
+        <h2 id="t-stations">공정과 도구</h2>
+        <p class="lead"><span class="badge b-build">BUILD</span> 직접 만든 도구, <span class="badge b-wrap">WRAP</span> 엔진 도구를 headless로 감싼 도구, <span class="badge b-ai">AI</span> 해석. <span class="badge b-ready">ready</span>는 가동 중, <span class="badge b-plan">planned</span>는 계획입니다. 같은 내용이 <code>tools/catalog.json</code>에 있습니다.</p>
+      </div>
+      <div class="stations">
+        <article class="station det"><header><h3>수집</h3><span class="code">ST-1</span></header><ul>
+          <li><div>리플렉션 덤프<small>-run=DwoAssayInspector</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-ready">ready</span></span></li>
+          <li><div>BP 그래프 덤프<small>노드 · 핀 · exec/data 링크</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-ready">ready</span></span></li>
+          <li><div>에셋 참조 스캔<small>IAssetRegistry hard/soft</small></div><span class="tags"><span class="badge b-wrap">WRAP</span><span class="badge b-ready">ready</span></span></li>
+          <li><div>모듈 · 플러그인 스캔<small>Build.cs · .uplugin</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-ready">ready</span></span></li>
+        </ul></article>
+        <article class="station det"><header><h3>분석</h3><span class="code">ST-2</span></header><ul>
+          <li><div>아키텍처 그래프<small>graph.json · index.db · UML · 흐름</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-ready">ready</span></span></li>
+          <li><div>순환 · 하드 참조 체인<small>모듈 · 에셋 SCC</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-ready">ready</span></span></li>
+          <li><div>미사용 에셋 · 리다이렉터<small>맵 · ini에서 도달 가능성</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-ready">ready</span></span></li>
+          <li><div>BP 복잡도<small>노드 · 분기 · 최장 실행 체인</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-ready">ready</span></span></li>
+          <li><div>IWYU 리포트<small>UBT -Mode=IWYU (쓰기 없음)</small></div><span class="tags"><span class="badge b-wrap">WRAP</span><span class="badge b-plan">planned</span></span></li>
+        </ul></article>
+        <article class="station det"><header><h3>검증</h3><span class="code">ST-3</span></header><ul>
+          <li><div>BP 전체 컴파일<small>-run=CompileAllBlueprints</small></div><span class="tags"><span class="badge b-wrap">WRAP</span><span class="badge b-ready">ready</span></span></li>
+          <li><div>에셋 데이터 검증<small>-run=DataValidation</small></div><span class="tags"><span class="badge b-wrap">WRAP</span><span class="badge b-ready">ready</span></span></li>
+          <li><div>자동화 테스트<small>Automation RunTests · index.json</small></div><span class="tags"><span class="badge b-wrap">WRAP</span><span class="badge b-ready">ready</span></span></li>
+          <li><div>이름 · 폴더 규칙<small>UE5 스타일 가이드 기본값</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-ready">ready</span></span></li>
+          <li><div>정적 분석<small>UBT -StaticAnalyzer=VisualCpp</small></div><span class="tags"><span class="badge b-wrap">WRAP</span><span class="badge b-plan">planned</span></span></li>
+        </ul></article>
+        <article class="station det"><header><h3>로그 · 런타임</h3><span class="code">ST-4</span></header><ul>
+          <li><div>구조화 로그 파서<small>지문 그룹 · 이전 대비 새 오류</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-ready">ready</span></span></li>
+          <li><div>크래시 수집<small>CrashContext.runtime-xml</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-ready">ready</span></span></li>
+          <li><div>StateMonitor 어댑터<small>제출 지점 · 테스트 연계</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-ready">ready</span></span></li>
+          <li><div>Insights · 트레이스 요약<small>ExportTimerStatistics · SummarizeTrace</small></div><span class="tags"><span class="badge b-wrap">WRAP</span><span class="badge b-plan">planned</span></span></li>
+          <li><div>CSV 성능 리포트<small>PerfreportTool</small></div><span class="tags"><span class="badge b-wrap">WRAP</span><span class="badge b-plan">planned</span></span></li>
+        </ul></article>
+        <article class="station ai"><header><h3>AI 해석</h3><span class="code">ST-5</span></header><ul>
+          <li><div>미확정 경로 해석<small>unknown 관계만</small></div><span class="tags"><span class="badge b-ai">AI</span><span class="badge b-plan">planned</span></span></li>
+          <li><div>원인 추정<small>로그 그룹 + 영향 범위</small></div><span class="tags"><span class="badge b-ai">AI</span><span class="badge b-plan">planned</span></span></li>
+          <li><div>종합 판정<small>게이트 통과 결과만</small></div><span class="tags"><span class="badge b-ai">AI</span><span class="badge b-plan">planned</span></span></li>
+        </ul></article>
+        <article class="station hu"><header><h3>공장 운영</h3><span class="code">OPS</span></header><ul>
+          <li><div>부착 · 제거 · 업데이트<small>__dwo-assay.bat · assay.ps1</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-ready">ready</span></span></li>
+          <li><div>실행 기록<small>run.json · 공정별 판정 · 시간</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-ready">ready</span></span></li>
+          <li><div>플러그인 캐시<small>엔진 버전 × 소스 해시</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-ready">ready</span></span></li>
+          <li><div>오케스트레이터 · 예산<small>라인 선택 · 토큰 상한</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-plan">planned</span></span></li>
+        </ul></article>
+      </div>
+    </section>
+
+    <section class="sheet" id="lines" aria-labelledby="t-lines">
+      <div class="sec-head">
+        <div class="eyebrow">06 · Lines</div>
+        <h2 id="t-lines">생산 라인</h2>
+        <p class="lead">명령 하나가 라인 하나입니다. 실선 테두리는 가동 중, 점선은 계획입니다.</p>
+      </div>
+      <div class="lines">
+        <div class="line"><div><h3><code>analyze</code> 아키텍처 리포트</h3><div class="out">report.html · graph.json · quality.json</div></div>
+          <div class="flow"><span class="chip c-det">Commandlet 수집</span><span class="arr">→</span><span class="chip c-det">통합 그래프</span><span class="arr">→</span><span class="chip c-det">순환·참조 체인</span><span class="arr">→</span><span class="chip c-det">미사용·복잡도·이름</span><span class="arr">→</span><span class="chip c-det">StateMonitor 감지</span><span class="arr">→</span><span class="chip c-det">게이트</span></div></div>
+        <div class="line"><div><h3><code>verify</code> 품질 검증</h3><div class="out">verify.json · 테스트 리포트</div></div>
+          <div class="flow"><span class="chip c-det">CompileAllBlueprints</span><span class="arr">→</span><span class="chip c-det">DataValidation</span><span class="arr">→</span><span class="chip c-det">Automation RunTests</span><span class="arr">→</span><span class="chip c-det">로그 파서 판정</span></div></div>
+        <div class="line"><div><h3><code>logs</code> 로그 점검</h3><div class="out">logs.json · 새 오류 그룹</div></div>
+          <div class="flow"><span class="chip c-det">Saved/Logs 최근 N개</span><span class="arr">→</span><span class="chip c-det">크래시 수집</span><span class="arr">→</span><span class="chip c-det">지문 그룹</span><span class="arr">→</span><span class="chip c-det">이전 실행 대비</span></div></div>
+        <div class="line planned"><div><h3><code>perf</code> 성능 회귀</h3><div class="out">계획</div></div>
+          <div class="flow"><span class="chip c-det">CSV 캡처</span><span class="arr">→</span><span class="chip c-det">PerfreportTool</span><span class="arr">→</span><span class="chip c-det">Insights 내보내기</span><span class="arr">→</span><span class="chip c-det">StateMonitor 이력 결합</span></div></div>
+        <div class="line planned"><div><h3><code>explain</code> AI 해석</h3><div class="out">계획</div></div>
+          <div class="flow"><span class="chip c-det">게이트 결과</span><span class="arr">→</span><span class="chip c-ai">원인 추정</span><span class="arr">→</span><span class="chip c-ai">종합 판정</span><span class="arr">→</span><span class="chip c-hu">사람 승인</span></div></div>
+      </div>
+    </section>
+
+    <section class="sheet" id="benchmark" aria-labelledby="t-benchmark">
+      <div class="sec-head">
+        <div class="eyebrow">07 · Benchmark</div>
+        <h2 id="t-benchmark">커뮤니티 · 경쟁 도구 비교</h2>
+        <p class="lead">공개 도구와 Epic 내장 도구를 조사해 감쌀지, 직접 만들지, 제외할지 정했습니다. 명령과 플래그는 이 PC의 UE 5.7 엔진 소스로 확인했습니다.</p>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>기존 도구</th><th>판단</th><th>dwo-Assay에서</th><th>이유</th></tr></thead>
+          <tbody>
+            <tr><td>CompileAllBlueprints · DataValidation · Automation</td><td><span class="badge b-wrap">WRAP</span></td><td><code>verify</code></td><td>공식 headless 경로가 있고, 결과를 BP 그래프·로그 파서와 합칠 수 있음</td></tr>
+            <tr><td>Unreal Insights CLI · SummarizeTrace</td><td><span class="badge b-wrap">WRAP</span></td><td><code>perf</code> 계획</td><td>utrace를 CSV로 바꾸는 공식 경로</td></tr>
+            <tr><td>CSV Profiler + PerfreportTool</td><td><span class="badge b-wrap">WRAP</span></td><td><code>perf</code> 계획</td><td>엔진에 포함된 무료 성능 회귀 리포트</td></tr>
+            <tr><td>UBT StaticAnalyzer · IWYU</td><td><span class="badge b-wrap">WRAP</span></td><td>계획 (야간)</td><td>C++ 품질 신호. 느려서 야간 전용, IWYU는 쓰기 없이 리포트만</td></tr>
+            <tr><td>Allar Linter</td><td><span class="badge b-build">BUILD</span></td><td>이름 · 폴더 규칙</td><td>UE5 지원이 확인되지 않음. UE5 스타일 가이드 규칙을 설정 파일로 재구현</td></tr>
+            <tr><td>Project Cleaner · Asset Cleaner</td><td><span class="badge b-build">BUILD</span></td><td>미사용 에셋</td><td>상용이거나 UI 전용. 이미 가진 참조 그래프로 도달 가능성만 계산</td></tr>
+            <tr><td>Blueprint Complexity Analyzer (Fab)</td><td><span class="badge b-build">BUILD</span></td><td>BP 복잡도</td><td>상용·에디터 버튼 방식. BP 덤프로 headless 계산 가능</td></tr>
+            <tr><td>unreal_log_parser · LogCheck</td><td><span class="badge b-build">BUILD</span></td><td>로그 파서</td><td>실행 기록 스키마에 맞는 지문 그룹과 이전 대비 비교가 필요</td></tr>
+            <tr><td>ResavePackages -FixupRedirects</td><td><span class="badge b-skip">SKIP 실행</span></td><td>리다이렉터 탐지만</td><td>패키지를 수정하므로 무결합 원칙 위반</td></tr>
+            <tr><td>Visual Logger · Rewind Debugger · Cog · Gameplay Debugger</td><td><span class="badge b-skip">SKIP</span></td><td>StateMonitor로 대체</td><td>임의 USTRUCT 스냅샷·변경 이력·JSON 내보내기를 headless로 하지 못함</td></tr>
+            <tr><td>BuildGraph · Horde · UnrealGameSync</td><td><span class="badge b-skip">SKIP</span></td><td>-</td><td>오케스트레이션이 겹치거나 서버·Perforce 전제. Horde 결과 포맷만 참고</td></tr>
+            <tr><td>CodeQL · PVS-Studio · scip-clang</td><td><span class="badge b-skip">SKIP</span></td><td>-</td><td>매크로 많은 UE 코드에서 정확도 낮음, 유료, UE 적용 사례 없음. 리플렉션 덤프가 더 높은 수준 정보를 제공</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="sheet" id="statemonitor" aria-labelledby="t-sm">
+      <div class="sec-head">
+        <div class="eyebrow">08 · StateMonitor</div>
+        <h2 id="t-sm">StateMonitor 연계</h2>
+        <p class="lead">StateMonitor는 프로젝트 코드가 USTRUCT 값을 제출하면 필드 트리, JSON, 변경 이력을 보여 주는 런타임 플러그인입니다. 프로젝트 코드가 호출해야 동작하므로 dwo-Assay가 주입하지 않고, 프로젝트가 이미 쓰고 있을 때만 연계합니다.</p>
+      </div>
+      <div class="grid-2">
+        <div class="principle"><span class="k">역할 분석</span><h3>무엇을 하는 도구인가</h3><p><code>UStateMonitorSubsystem::Submit(SourceId, Struct)</code>로 받은 값을 복사해 트리·JSON·변경 이력으로 보관하고 Slate 뷰어로 보여 줍니다. 게임 인스턴스 서브시스템이라 레벨이 바뀌어도 이력이 남고, 자동화 테스트 <code>StateMonitor.*</code> 6개가 있습니다. 조사한 기성 도구 중 같은 일을 headless로 하는 것은 없었습니다.</p></div>
+        <div class="principle"><span class="k">연계 방식</span><h3>어댑터가 하는 일</h3><p><b>감지</b>: 플러그인 존재·활성 여부, C++·BP 제출 지점과 Source ID를 <code>statemonitor.json</code>으로 기록. <b>검증</b>: <code>verify</code>에 <code>StateMonitor.</code> 테스트를 자동 추가. <b>수집(계획)</b>: 실행 중 스냅샷을 JSONL로 내보내 같은 실행 ID의 로그·트레이스와 결합.</p></div>
+      </div>
+      <div class="scroll" style="margin-top:14px">
+        <table>
+          <thead><tr><th>SMHost 복사본 결과</th><th>내용</th></tr></thead>
+          <tbody>
+            <tr><td>감지</td><td>플러그인 활성, 제출 지점 2곳 <code>StandaloneHost.cpp:12</code>, <code>:13</code>, Source ID <code>Host</code>, <code>HostLibrary</code></td></tr>
+            <tr><td>검증</td><td><code>Automation RunTests Project.+StateMonitor.</code> → 7/7 통과 (Api, Model 4종, View, PIE)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="sheet" id="roadmap" aria-labelledby="t-roadmap">
+      <div class="sec-head">
+        <div class="eyebrow">09 · Roadmap</div>
+        <h2 id="t-roadmap">구축 로드맵</h2>
+        <p class="lead">라인 하나를 끝까지 자동화한 뒤 같은 규격으로 라인을 늘립니다. 기간은 측정값이 쌓인 뒤 산정합니다.</p>
+      </div>
+      <div class="phases">
+        <div class="phase"><span class="p"><span>PHASE 1</span><span>완료</span></span><h3>첫 라인 가동</h3><ul><li class="done">부착 · 제거 · 업데이트</li><li class="done">리플렉션 · BP · 에셋 추출</li><li class="done">그래프 · UML · 흐름 · 리포트</li><li class="done">실행 기록 · 플러그인 캐시</li></ul><div class="done-box"><b>완료 기준</b>AI 없이 아키텍처 리포트 생성 ✓</div></div>
+        <div class="phase"><span class="p"><span>PHASE 2</span><span>진행 중</span></span><h3>실무 라인</h3><ul><li class="done">verify · logs 라인</li><li class="done">품질 점검 4종</li><li class="done">StateMonitor 어댑터</li><li>C++ 호출 그래프 (컴파일 DB)</li><li>변경 영향 분석 (git diff)</li></ul><div class="done-box"><b>완료 기준</b>변경 영향 분석 라인 가동</div></div>
+        <div class="phase"><span class="p"><span>PHASE 3</span><span>계획</span></span><h3>AI 연결</h3><ul><li>오케스트레이터 · 예산</li><li>미확정 경로 · 원인 추정</li><li>MCP 도구 노출</li></ul><div class="done-box"><b>완료 기준</b>explain 라인 가동</div></div>
+        <div class="phase"><span class="p"><span>PHASE 4</span><span>계획</span></span><h3>런타임 · 성능</h3><ul><li>Insights · CSV 성능 리포트</li><li>StateMonitor 이력 수집</li><li>정적 분석 · IWYU (야간)</li></ul><div class="done-box"><b>완료 기준</b>perf 라인 가동</div></div>
+      </div>
+    </section>
+
+    <section class="sheet" id="ops" aria-labelledby="t-ops">
+      <div class="sec-head">
+        <div class="eyebrow">10 · Operations</div>
+        <h2 id="t-ops">운영 · 설정</h2>
+        <p class="lead">규칙과 기준값은 <code>config/default.json</code>에 있습니다. 프로젝트별로 바꿀 키만 <code>__dwo-assay/config.json</code>에 적으면 섹션 단위로 덮어씁니다.</p>
+      </div>
+      <div class="split">
+        <div class="stack">
+          <h3>프로젝트 설정 예시</h3>
+          <pre>{
+  "naming": { "forbidAssetsAtContentRoot": false },
+  "complexity": { "warnNodesPerGraph": 200 },
+  "verify": {
+    "automationFilters": ["Project.", "MyGame."],
+    "timeoutMinutes": 45
+  },
+  "logs": { "maxFiles": 20 }
+}</pre>
+        </div>
+        <div class="stack">
+          <h3>실행 기록 예시</h3>
+          <pre>{
+  "schema": "assay.run/0.1",
+  "runId": "verify-20261028-014051",
+  "line": "verify",
+  "systemCommit": "e0c329f",
+  "stations": [
+    {"id": "V1", "name": "compile-blueprints", "ms": 52012, "verdict": "pass"},
+    {"id": "V2", "name": "data-validation",    "ms": 9940,  "verdict": "pass"},
+    {"id": "V3", "name": "automation",         "ms": 27003, "verdict": "pass"}
+  ],
+  "final": "pass"
+}</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="sheet" id="checks" aria-labelledby="t-checks">
+      <div class="sec-head">
+        <div class="eyebrow">11 · Next</div>
+        <h2 id="t-checks">확인 사항</h2>
+        <p class="lead">완료한 항목은 채워진 상자, 남은 항목은 빈 상자입니다.</p>
+      </div>
+      <ul class="checks">
+        <li class="ok"><div>BP 하나를 JSON으로 덤프<small>Commandlet이 5.7.4에서 동작, BP 2개·에셋 150개 추출</small></div></li>
+        <li class="ok"><div>UE 내장 검증 명령 확인<small>CompileAllBlueprints, DataValidation, Automation RunTests, -ReportExportPath를 5.7 소스와 실행으로 확인</small></div></li>
+        <li class="ok"><div>부착 · 제거 왕복 테스트<small>BP 전용·C++ 프로젝트 모두 제거 후 git 상태 동일</small></div></li>
+        <li><div>C++ 프로젝트에서 사전 빌드 플러그인과 프로젝트 빌드의 공존 확인<small>Source 없는 플러그인이 프로젝트 빌드(UBT)에 영향을 주지 않는지 실제 빌드로 확인</small></div></li>
+        <li><div>Clang 파싱 실패율 측정<small>C++ 호출 그래프(Phase 2) 착수 전, 대상 프로젝트로 컴파일 DB 생성 후 시범 파싱</small></div></li>
+        <li><div>Gauntlet 테스트 노드 이름, memreport·LLM 플래그, 크래시 폴더 형식<small>리서치에서 확인 필요로 남은 항목</small></div></li>
+      </ul>
+    </section>
+
+    <footer>dwo-Assay · 가이드 v1.3 · 시스템 214a085 · 2026-10-28</footer>
+  </main>
+</div>

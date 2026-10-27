@@ -23,17 +23,35 @@ __dwo-assay.bat analyze    :: ST-1~2 아키텍처 리포트 + 품질 점검
 __dwo-assay.bat verify     :: ST-3 BP 전체 컴파일, 데이터 검증, 자동화 테스트
 __dwo-assay.bat logs       :: ST-4 Saved/Logs, Saved/Crashes 분석 (이전 실행 대비 새 오류)
 __dwo-assay.bat tools      :: 도구 카탈로그 (ready / planned)
+__dwo-assay.bat gui        :: 제어판 창 열기
 __dwo-assay.bat status     :: 부착 버전·엔진 확인
 __dwo-assay.bat doctor     :: 환경 점검
 __dwo-assay.bat update     :: 시스템 최신화
 __dwo-assay.bat detach     :: 제거 (--keep-data 로 분석 데이터 보존)
 ```
 
+## 제어판 (GUI)
+
+명령어 대신 창에서 쓰려면 둘 중 하나를 실행합니다.
+
+- dwo-Assay 폴더의 **`gui.bat`을 더블클릭** → 창이 열리면 `찾아보기...`로 프로젝트 폴더 선택. 부착되지 않은 프로젝트는 `부착` 버튼으로 부착합니다.
+- 부착된 프로젝트에서 `__dwo-assay.bat gui`
+
+| 영역 | 내용 |
+|---|---|
+| 왼쪽 | 프로젝트 정보(엔진, 시스템 커밋), 라인 버튼(분석·검증·로그), 관리(점검·상태·업데이트·도구·제거), 실행 중 취소 |
+| 실행 로그 | 명령 출력이 실시간으로 표시. 끝나면 `결과 보기` 버튼 |
+| 실행 이력 | 모든 실행의 라인·판정·소요 시간·공정별 판정. 두 번 클릭하면 결과로 이동 |
+| 결과 | 공정 표, 발견 사항, BP 복잡도, 이름 규칙, 미사용 후보, StateMonitor, 테스트·로그 그룹. 필터 검색, `리포트 열기`로 UML·흐름 다이어그램 |
+
+처음 실행할 때 Visual Studio C++ 도구로 한 번 빌드합니다(약 1분, `%LOCALAPPDATA%\dwo-Assay\gui-cache`). GUI는 `__dwo-assay.bat`을 그대로 실행하고 같은 결과 파일을 읽으므로 명령줄과 결과가 같습니다.
+
 ### 전제 조건
 
 - 대상 프로젝트는 **자체 git 저장소**여야 합니다 (상위 폴더 저장소에 포함된 경우 거부).
 - Epic Launcher 또는 소스 빌드로 프로젝트의 `EngineAssociation` 엔진이 설치되어 있어야 합니다.
 - Python 3.10 이상, git 2.31 이상.
+- GUI를 쓰려면 Visual Studio 2022(C++ 데스크톱 개발 워크로드). UE C++ 개발 환경이면 이미 있습니다.
 - C++ 프로젝트는 에디터 바이너리가 빌드된 상태여야 Commandlet이 실행됩니다.
 
 ## 부착 시 프로젝트에 생기는 것
@@ -86,6 +104,7 @@ A/
 | `tools/assay_logs.py` | UE 로그·크래시 파서 |
 | `tools/assay_verify.py` | 검증·로그 라인 판정과 리포트 |
 | `tools/catalog.json` | 도구 레지스트리 |
+| `gui/`, `gui.bat`, `tools/gui.ps1` | ImGui 제어판 (Dear ImGui 1.91.9b, nlohmann/json 3.11.3, MIT) |
 | `config/default.json` | 규칙과 기준값 |
 | `plugin/DwoAssayInspector` | 추출 Commandlet (읽기 전용, 패키지를 저장하지 않음) |
 

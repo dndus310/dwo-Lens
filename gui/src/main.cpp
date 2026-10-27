@@ -299,6 +299,8 @@ struct App
 	int tab = 0;                 // 0 log, 1 history, 2 result
 	int requestTab = -1;
 	bool confirmDetach = false;
+	std::string lastCommand;
+	bool latestReady = false;   // a line just finished; offer its result
 	Runner runner;
 
 	void LoadSettings()
@@ -414,6 +416,8 @@ struct App
 		if (runner.Start(cmd, project, std::string("__dwo-assay.bat ") + command))
 		{
 			message.clear();
+			lastCommand = command;
+			latestReady = false;
 			requestTab = 0;
 		}
 	}
@@ -628,6 +632,14 @@ static void DrawLog(App& app)
 	static bool follow = true;
 	ImGui::SameLine();
 	ImGui::Checkbox("자동 스크롤", &follow);
+	if (app.latestReady && !app.runs.empty())
+	{
+		ImGui::SameLine();
+		std::string label = "결과 보기  " + app.runs[0].id + "  " + app.runs[0].verdict;
+		ImGui::PushStyleColor(ImGuiCol_Button, VerdictColor(app.runs[0].verdict));
+		if (ImGui::Button(label.c_str())) { app.selectedRun = 0; app.requestTab = 2; }
+		ImGui::PopStyleColor();
+	}
 	ImGui::BeginChild("log", ImVec2(0, 0), ImGuiChildFlags_Borders, ImGuiWindowFlags_HorizontalScrollbar);
 	static size_t lastVersion = 0;
 	app.runner.WithLines([&](std::deque<std::string>& lines) {
@@ -705,7 +717,12 @@ static void DrawAnalyzeResult(App& app, const json& d)
 	{
 		const json& fin = d["findings"];
 		SectionTitle("검증 게이트");
-		ImGui::Text("관계 상태: %s", fin.value("relationStatus", json::object()).dump().c_str());
+		std::string rel;
+		for (auto& [k, v] : fin.value("relationStatus", json::object()).items()) rel += k + " " + v.dump() + " · ";
+		if (rel.size() > 4) rel.resize(rel.size() - 4);
+		ImGui::TextDisabled("관계 상태");
+		ImGui::SameLine();
+		ImGui::TextUnformatted(rel.empty() ? "-" : rel.c_str());
 		for (auto& item : fin.value("findings", json::array()))
 		{
 			ImGui::PushID(&item);
@@ -922,7 +939,16 @@ static bool PickFolder(HWND owner, fs::path& out)
 
 static void DrawApp(App& app, HWND hwnd)
 {
-	if (app.runner.ConsumeFinished()) app.Refresh();
+	if (app.runner.ConsumeFinished())
+	{
+		app.Refresh();
+		bool isLine = app.lastCommand == "analyze" || app.lastCommand == "verify" || app.lastCommand == "logs";
+		if (isLine && !app.runs.empty())
+		{
+			app.selectedRun = 0;
+			app.latestReady = true;
+		}
+	}
 
 	ImGuiViewport* vp = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(vp->WorkPos);

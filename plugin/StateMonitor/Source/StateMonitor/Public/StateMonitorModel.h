@@ -2,7 +2,10 @@
 
 #include "CoreMinimal.h"
 
+class FProperty;
+class UObject;
 class UScriptStruct;
+class UStruct;
 
 enum class EStateMonitorChange : uint8
 {
@@ -52,11 +55,17 @@ struct STATEMONITOR_API FStateMonitorSource
 	FName SourceId;
 	FText Label;
 	FString StructType;
+	/** @brief Object snapshot only: path of the captured object. Empty for struct snapshots. */
+	FString ObjectPath;
+	/** @brief Object snapshot only: owner actor path, or the outer actor for components. */
+	FString OwnerPath;
 	FString CurrentJson;
 	uint64 Sequence = 0;
 	double TimeSeconds = 0.0;
 	int32 OmittedChanges = 0;
 	bool bTruncated = false;
+	/** @brief true when the value was captured from a UObject instead of a USTRUCT value. */
+	bool bObject = false;
 };
 
 struct STATEMONITOR_API FStateMonitorSettings
@@ -79,6 +88,14 @@ public:
 	bool SubmitSnapshot(FName SourceId, const FText& Label, const UScriptStruct* StructType, const void* StructData,
 	                    bool bRecordHistory = true);
 
+	/**
+	 * @brief Captures the reflected properties of a UObject (any UClass).
+	 * By default only properties declared by project code are included: owner class is a Blueprint class,
+	 * or a native class whose module is not under the engine directory. bIncludeEngineProperties includes all.
+	 */
+	bool SubmitObjectSnapshot(FName SourceId, const FText& Label, const UObject* Object, bool bRecordHistory = true,
+	                          bool bIncludeEngineProperties = false);
+
 	bool RemoveSource(FName SourceId);
 
 	void ClearHistory(FName SourceId);
@@ -95,7 +112,19 @@ public:
 
 	const FStateMonitorSettings& GetSettings() const;
 
+	/** @brief Object capture filter for one top-level property. Deprecated, editor-only and delegate properties are always skipped. */
+	static bool IsObjectPropertyIncluded(const FProperty* Property, bool bIncludeEngineProperties);
+
+	/** @brief Number of top-level properties of Type that IsObjectPropertyIncluded accepts. */
+	static int32 CountIncludedProperties(const UStruct* Type, bool bIncludeEngineProperties);
+
+	/** @brief true when Type was declared by project code (Blueprint class, or a native module outside the engine directory). */
+	static bool IsProjectType(const UStruct* Type);
+
 private:
+	bool SubmitCaptured(FName SourceId, const FText& Label, const UStruct* Type, const void* Data, bool bRecordHistory,
+	                    bool bObject, bool bIncludeEngineProperties, const FString& ObjectPath, const FString& OwnerPath);
+
 	FStateMonitorSettings Settings;
 	TArray<TSharedPtr<FStateMonitorSource>> Sources;
 	uint64 Revision;

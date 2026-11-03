@@ -20,7 +20,9 @@ public class StateMonitor : ModuleRules
         {
             "Json",
             "ApplicationCore",
-            "InputCore"
+            "InputCore",
+            "Projects",
+            "Sockets"
         });
     }
 }

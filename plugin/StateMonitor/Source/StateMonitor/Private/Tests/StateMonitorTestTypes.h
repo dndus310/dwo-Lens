@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
 #include "StateMonitorTestTypes.generated.h"
 
 USTRUCT()
@@ -55,6 +56,33 @@ struct FStateMonitorTestState
 
 	UPROPERTY()
 	int32 StaticItems[3] = {1, 2, 3};
+
+	int32 Unreflected = 17;
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FStateMonitorTestEvent);
+
+/** @brief Object capture tests: a project-declared component on top of engine-declared UActorComponent properties. */
+UCLASS(NotBlueprintable, NotPlaceable)
+class UStateMonitorTestComponent : public UActorComponent
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY()
+	float Health = 100.0f;
+
+	UPROPERTY()
+	FStateMonitorTestNested Nested;
+
+	UPROPERTY()
+	TObjectPtr<UObject> Target;
+
+	UPROPERTY(Transient)
+	int32 RuntimeCounter = 3;
+
+	UPROPERTY()
+	FStateMonitorTestEvent OnTestEvent;
 
 	int32 Unreflected = 17;
 };

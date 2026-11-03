@@ -69,6 +69,20 @@ bool UStateMonitorLibrary::ToggleStateMonitor(const UObject* WorldContextObject)
 	return Monitor && Monitor->ToggleMonitor();
 }
 
+bool UStateMonitorLibrary::WatchStateObject(const UObject* WorldContextObject, UObject* Object)
+{
+	UStateMonitorSubsystem* Monitor = UStateMonitorSubsystem::Get(WorldContextObject ? WorldContextObject : Object);
+	return Monitor && Monitor->WatchObject(Object);
+}
+
+void UStateMonitorLibrary::UnwatchStateObject(const UObject* WorldContextObject, UObject* Object)
+{
+	if (UStateMonitorSubsystem* Monitor = UStateMonitorSubsystem::Get(WorldContextObject ? WorldContextObject : Object))
+	{
+		Monitor->UnwatchObject(Object);
+	}
+}
+
 bool UStateMonitorLibrary::SubmitStructSnapshot(const UObject* WorldContextObject, FName SourceId, const FText& Label,
                                                 const UScriptStruct* StructType, const void* StructData)
 {

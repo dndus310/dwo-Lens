@@ -1,8 +1,21 @@
 #include "StateMonitorModel.h"
 
+#include "Components/ActorComponent.h"
+#include "Engine/BlueprintGeneratedClass.h"
+#include "GameFramework/Actor.h"
 #include "HAL/PlatformTime.h"
+#include "Interfaces/IPluginManager.h"
+#include "Interfaces/IProjectManager.h"
+#include "Misc/Paths.h"
 #include "Misc/SecureHash.h"
+#include "Modules/ModuleManager.h"
+#include "ModuleDescriptor.h"
+#include "PluginDescriptor.h"
+#include "ProjectDescriptor.h"
+#include "UObject/Class.h"
 #include "UObject/EnumProperty.h"
+#include "UObject/Object.h"
+#include "UObject/Package.h"
 #include "UObject/StrProperty.h"
 #include "UObject/TextProperty.h"
 #include "UObject/UnrealType.h"
@@ -99,10 +112,17 @@ class FReflectionCapture
 public:
 	explicit FReflectionCapture(const FStateMonitorSettings& InSettings);
 
-	FCapturedValue CaptureStruct(const UScriptStruct* StructType, const void* Data, const FString& Name,
+	FCapturedValue CaptureStruct(const UStruct* StructType, const void* Data, const FString& Name,
 	                             const FString& Path, int32 Depth);
 
+	/** @brief CaptureStruct와 같지만 최상위 프로퍼티는 FStateMonitorModel::IsObjectPropertyIncluded를 통과해야 한다. */
+	FCapturedValue CaptureObject(const UStruct* Type, const void* Data, const FString& Name,
+	                             bool bIncludeEngineProperties);
+
 private:
+	FCapturedValue CaptureFields(const UStruct* StructType, const void* Data, const FString& Name, const FString& Path,
+	                             int32 Depth, bool bFilter, bool bIncludeEngineProperties);
+
 	FReflectionCapture(const FStateMonitorSettings& InSettings, int32& InRemainingKeyNodes,
 	                   int32& InRemainingContainerSlots);
 
@@ -170,8 +190,21 @@ FCapturedValue FReflectionCapture::CreateValue(const FString& Name, const FStrin
 	return Result;
 }
 
-FCapturedValue FReflectionCapture::CaptureStruct(const UScriptStruct* StructType, const void* Data, const FString& Name,
+FCapturedValue FReflectionCapture::CaptureStruct(const UStruct* StructType, const void* Data, const FString& Name,
                                                  const FString& Path, int32 Depth)
+{
+	return CaptureFields(StructType, Data, Name, Path, Depth, false, true);
+}
+
+FCapturedValue FReflectionCapture::CaptureObject(const UStruct* Type, const void* Data, const FString& Name,
+                                                 bool bIncludeEngineProperties)
+{
+	return CaptureFields(Type, Data, Name, TEXT("$"), 0, true, bIncludeEngineProperties);
+}
+
+FCapturedValue FReflectionCapture::CaptureFields(const UStruct* StructType, const void* Data, const FString& Name,
+                                                 const FString& Path, int32 Depth, bool bFilter,
+                                                 bool bIncludeEngineProperties)
 {
 	FCapturedValue Result = CreateValue(Name, Path, StructType->GetName());
 	if (Depth >= Settings.MaxDepth)
@@ -191,6 +224,10 @@ FCapturedValue FReflectionCapture::CaptureStruct(const UScriptStruct* StructType
 		}
 
 		const FProperty* Property = *Field;
+		if (bFilter && !FStateMonitorModel::IsObjectPropertyIncluded(Property, bIncludeEngineProperties))
+		{
+			continue;
+		}
 		const FString PropertyPath = ChildPath(Path, Property->GetName());
 		FCapturedValue Child;
 		if (Property->ArrayDim > 1)
@@ -206,10 +243,11 @@ FCapturedValue FReflectionCapture::CaptureStruct(const UScriptStruct* StructType
 		AddChild(Result, Child, Fields, true);
 	}
 
-	if (Fields.IsEmpty() && !Result.Node->bTruncated)
+	const UScriptStruct* ScriptStruct = Cast<UScriptStruct>(StructType);
+	if (ScriptStruct && !bFilter && Fields.IsEmpty() && !Result.Node->bTruncated)
 	{
 		FString Exported;
-		StructType->ExportText(Exported, Data, nullptr, nullptr, PPF_None, nullptr);
+		ScriptStruct->ExportText(Exported, Data, nullptr, nullptr, PPF_None, nullptr);
 		SetText(Result, Exported);
 		return Result;
 	}
@@ -778,6 +816,45 @@ bool FStateMonitorModel::SubmitSnapshot(FName SourceId, const FText& Label, cons
 		return false;
 	}
 
+	return SubmitCaptured(SourceId, Label, StructType, StructData, bRecordHistory, false, true, FString(), FString());
+}
+
+bool FStateMonitorModel::SubmitObjectSnapshot(FName SourceId, const FText& Label, const UObject* Object,
+                                              bool bRecordHistory, bool bIncludeEngineProperties)
+{
+	check(IsInGameThread());
+	if (SourceId.IsNone())
+	{
+		return false;
+	}
+	if (!IsValid(Object))
+	{
+		return false;
+	}
+
+	// 액터는 Owner를, 컴포넌트와 그 밖의 객체는 바깥 액터를 소유자로 기록한다.
+	const AActor* Owner = nullptr;
+	if (const AActor* Actor = Cast<AActor>(Object))
+	{
+		Owner = Actor->GetOwner();
+	}
+	else if (const UActorComponent* Component = Cast<UActorComponent>(Object))
+	{
+		Owner = Component->GetOwner();
+	}
+	else
+	{
+		Owner = Object->GetTypedOuter<AActor>();
+	}
+	const FString OwnerPath = IsValid(Owner) ? Owner->GetPathName() : FString();
+	return SubmitCaptured(SourceId, Label, Object->GetClass(), Object, bRecordHistory, true, bIncludeEngineProperties,
+	                      Object->GetPathName(), OwnerPath);
+}
+
+bool FStateMonitorModel::SubmitCaptured(FName SourceId, const FText& Label, const UStruct* Type, const void* Data,
+                                        bool bRecordHistory, bool bObject, bool bIncludeEngineProperties,
+                                        const FString& ObjectPath, const FString& OwnerPath)
+{
 	TSharedPtr<FStateMonitorSource> Previous = FindSource(SourceId);
 	if (!Previous.IsValid())
 	{
@@ -789,13 +866,17 @@ bool FStateMonitorModel::SubmitSnapshot(FName SourceId, const FText& Label, cons
 
 	StateMonitor::FReflectionCapture Capture(Settings);
 	StateMonitor::FCapturedValue Value =
-	    Capture.CaptureStruct(StructType, StructData, StructType->GetName(), TEXT("$"), 0);
+	    bObject ? Capture.CaptureObject(Type, Data, Type->GetName(), bIncludeEngineProperties)
+	            : Capture.CaptureStruct(Type, Data, Type->GetName(), TEXT("$"), 0);
 	TSharedPtr<FStateMonitorSource> Current = MakeShared<FStateMonitorSource>();
 	Current->Root = Value.Node;
 	Current->CurrentJson = MoveTemp(Value.Json);
 	Current->SourceId = SourceId;
 	Current->Label = Label;
-	Current->StructType = StructType->GetPathName();
+	Current->StructType = Type->GetPathName();
+	Current->ObjectPath = ObjectPath;
+	Current->OwnerPath = OwnerPath;
+	Current->bObject = bObject;
 	Current->bTruncated = Value.Node->bTruncated;
 	if (Previous.IsValid())
 	{
@@ -807,7 +888,9 @@ bool FStateMonitorModel::SubmitSnapshot(FName SourceId, const FText& Label, cons
 		const bool bSameValues = Current->Changes.IsEmpty() && Current->CurrentJson == Previous->CurrentJson;
 		const bool bSameType = Current->StructType == Previous->StructType;
 		const bool bSameLabel = Current->Label.EqualTo(Previous->Label);
-		if (bSameValues && bSameType && bSameLabel)
+		const bool bSameObject = Current->ObjectPath == Previous->ObjectPath &&
+		                         Current->OwnerPath == Previous->OwnerPath && Current->bObject == Previous->bObject;
+		if (bSameValues && bSameType && bSameLabel && bSameObject)
 		{
 			return true;
 		}
@@ -916,4 +999,117 @@ const FStateMonitorSettings& FStateMonitorModel::GetSettings() const
 {
 	check(IsInGameThread());
 	return Settings;
+}
+
+bool FStateMonitorModel::IsProjectType(const UStruct* Type)
+{
+	check(IsInGameThread());
+	if (!Type)
+	{
+		return false;
+	}
+	if (Type->IsA<UBlueprintGeneratedClass>())
+	{
+		return true;
+	}
+
+	const FString PackageName = Type->GetOutermost()->GetName();
+	const FString ScriptPrefix = TEXT("/Script/");
+	if (!PackageName.StartsWith(ScriptPrefix))
+	{
+		// 콘텐츠에서 로드한 타입(사용자 정의 구조체 등)은 엔진 콘텐츠만 엔진 쪽으로 본다.
+		return !PackageName.StartsWith(TEXT("/Engine/"));
+	}
+
+	// 네이티브 타입은 모듈 단위로 판정해 캐시한다. 게임 스레드 전용이라 잠금이 없다.
+	static TMap<FName, bool> ProjectModules;
+	const FName ModuleName(*PackageName.RightChop(ScriptPrefix.Len()));
+	if (const bool* Cached = ProjectModules.Find(ModuleName))
+	{
+		return *Cached;
+	}
+
+	bool bProject = false;
+	FModuleStatus Status;
+	const bool bKnownFile = FModuleManager::Get().QueryModule(ModuleName, Status) &&
+	                        !FPaths::GetExtension(Status.FilePath).IsEmpty();
+	if (bKnownFile)
+	{
+		const FString EngineDir = FPaths::ConvertRelativePathToFull(FPaths::EngineDir());
+		bProject = !FPaths::IsUnderDirectory(FPaths::ConvertRelativePathToFull(Status.FilePath), EngineDir);
+	}
+	else
+	{
+		// Monolithic 빌드에는 모듈 파일이 없으므로 모듈을 선언한 플러그인이나 프로젝트로 판정한다.
+		const auto DeclaresModule = [ModuleName](const TArray<FModuleDescriptor>& Modules)
+		{
+			return Modules.ContainsByPredicate(
+			    [ModuleName](const FModuleDescriptor& Module)
+			    {
+				    return Module.Name == ModuleName;
+			    });
+		};
+		bool bFoundPlugin = false;
+		for (const TSharedRef<IPlugin>& Plugin : IPluginManager::Get().GetEnabledPlugins())
+		{
+			if (DeclaresModule(Plugin->GetDescriptor().Modules))
+			{
+				bFoundPlugin = true;
+				bProject = Plugin->GetLoadedFrom() != EPluginLoadedFrom::Engine;
+				break;
+			}
+		}
+		const FProjectDescriptor* Project = IProjectManager::Get().GetCurrentProject();
+		if (!bFoundPlugin && Project)
+		{
+			bProject = DeclaresModule(Project->Modules);
+		}
+	}
+	ProjectModules.Add(ModuleName, bProject);
+	return bProject;
+}
+
+bool FStateMonitorModel::IsObjectPropertyIncluded(const FProperty* Property, bool bIncludeEngineProperties)
+{
+	if (!Property)
+	{
+		return false;
+	}
+	if (Property->HasAnyPropertyFlags(CPF_Deprecated | CPF_EditorOnly))
+	{
+		return false;
+	}
+	if (Property->IsA<FDelegateProperty>() || Property->IsA<FMulticastDelegateProperty>())
+	{
+		return false;
+	}
+	// Blueprint 실행 프레임은 상태가 아니다.
+	static const FName UberGraphFrameName(TEXT("UberGraphFrame"));
+	if (Property->GetFName() == UberGraphFrameName)
+	{
+		return false;
+	}
+	if (IsProjectType(Property->GetOwnerStruct()))
+	{
+		// 프로젝트 코드의 Transient 프로퍼티는 런타임 상태인 경우가 많으므로 남긴다.
+		return true;
+	}
+	return bIncludeEngineProperties && !Property->HasAnyPropertyFlags(CPF_Transient);
+}
+
+int32 FStateMonitorModel::CountIncludedProperties(const UStruct* Type, bool bIncludeEngineProperties)
+{
+	int32 Count = 0;
+	if (!Type)
+	{
+		return Count;
+	}
+	for (TFieldIterator<FProperty> Field(Type); Field; ++Field)
+	{
+		if (IsObjectPropertyIncluded(*Field, bIncludeEngineProperties))
+		{
+			++Count;
+		}
+	}
+	return Count;
 }

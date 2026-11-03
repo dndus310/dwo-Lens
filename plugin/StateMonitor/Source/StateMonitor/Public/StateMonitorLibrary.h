@@ -36,6 +36,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "State Monitor", meta = (WorldContext = "WorldContextObject"))
 	static bool ToggleStateMonitor(const UObject* WorldContextObject);
 
+	/**
+	 * @brief Object를 자동 관찰 목록에 넣는다. dwo-Lens 뷰어가 자동 관찰을 켰거나 모니터가 보이는 동안 주기적으로
+	 * 프로젝트 프로퍼티를 스냅샷하고, 객체가 사라지면 소스를 지운다. Source ID는 객체 이름(컴포넌트는 "<액터>.<컴포넌트>").
+	 */
+	UFUNCTION(BlueprintCallable, Category = "State Monitor", meta = (WorldContext = "WorldContextObject", DisplayName = "Watch State Object"))
+	static bool WatchStateObject(const UObject* WorldContextObject, UObject* Object);
+
+	UFUNCTION(BlueprintCallable, Category = "State Monitor", meta = (WorldContext = "WorldContextObject", DisplayName = "Unwatch State Object"))
+	static void UnwatchStateObject(const UObject* WorldContextObject, UObject* Object);
+
 	/** @brief Native 호출용. Blueprint의 SubmitStateSnapshot과 같은 동작을 한다. */
 	static bool SubmitStructSnapshot(const UObject* WorldContextObject, FName SourceId, const FText& Label, const UScriptStruct* StructType, const void* StructData);
 };

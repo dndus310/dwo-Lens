@@ -1,6 +1,6 @@
 {
-  "schema": "assay.catalog/0.1",
-  "_comment": "Tool registry. kind: build = implemented by dwo-Assay, wrap = Epic/engine tool driven headless, ai = interpretation. status: ready | planned.",
+  "schema": "lens.catalog/0.1",
+  "_comment": "Tool registry. kind: build = implemented by dwo-Lens, wrap = Epic/engine tool driven headless, ai = interpretation. status: ready | planned.",
   "tools": [
     {
       "id": "reflection-dump",
@@ -8,7 +8,7 @@
       "kind": "build",
       "status": "ready",
       "command": "analyze",
-      "invocation": "UnrealEditor-Cmd <uproject> -run=DwoAssayInspector -AssayOut=<dir>",
+      "invocation": "UnrealEditor-Cmd <uproject> -run=DwoLensInspector -LensOut=<dir>",
       "output": "raw/reflection.json"
     },
     {
@@ -44,7 +44,7 @@
       "kind": "build",
       "status": "ready",
       "command": "analyze",
-      "invocation": "assay_analyze.py",
+      "invocation": "lens_analyze.py",
       "output": "graph.json, index.db, class_uml.puml/.mmd, flows/*.mmd"
     },
     {
@@ -143,7 +143,7 @@
       "kind": "build",
       "status": "ready",
       "command": "logs, verify",
-      "invocation": "assay_logs.py: severity, category, fingerprint groups, new-vs-baseline",
+      "invocation": "lens_logs.py: severity, category, fingerprint groups, new-vs-baseline",
       "output": "logs.json"
     },
     {
@@ -224,7 +224,7 @@
       "kind": "build",
       "status": "ready",
       "command": "gui",
-      "invocation": "gui.bat (repository) or __dwo-assay.bat gui; Dear ImGui + DirectX 11, built once with MSVC",
+      "invocation": "gui.bat (repository) or __dwo-lens.bat gui; Dear ImGui + DirectX 11, built once with MSVC",
       "output": "interactive runs, history, results"
     },
     {
@@ -251,7 +251,7 @@
       "kind": "wrap",
       "status": "ready",
       "command": "tests/package_check.ps1",
-      "invocation": "BuildCookRun (Shipping) with dwo-Assay attached, package inspection, smoke run, detach",
+      "invocation": "BuildCookRun (Shipping) with dwo-Lens attached, package inspection, smoke run, detach",
       "output": ".qa/<name>/package-result.json"
     }
   ]

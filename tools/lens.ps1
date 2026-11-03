@@ -1,4 +1,4 @@
-# dwo-Assay control script. Invoked by __dwo-assay.bat from the project root.
+# dwo-Lens control script. Invoked by __dwo-lens.bat from the project root.
 # Windows PowerShell 5.1 compatible. Never modifies tracked project files.
 param(
     [Parameter(Mandatory = $true)]
@@ -15,18 +15,18 @@ $Utf8 = New-Object System.Text.UTF8Encoding($false)
 
 $SystemDir   = Split-Path -Parent $PSScriptRoot
 $Project     = (Resolve-Path $Project).Path.TrimEnd('\')
-$AssayDir    = Join-Path $Project '__dwo-assay'
-$DataDir     = Join-Path $AssayDir 'data'
-$StatePath   = Join-Path $AssayDir 'state.json'
-$PluginDest  = Join-Path $Project 'Plugins\__DwoAssayInspector'
-$Marker      = '.dwo-assay-managed'
-$BlockStart  = '# >>> dwo-assay managed (do not edit) >>>'
-$BlockEnd    = '# <<< dwo-assay managed <<<'
+$LensDir    = Join-Path $Project '__dwo-lens'
+$DataDir     = Join-Path $LensDir 'data'
+$StatePath   = Join-Path $LensDir 'state.json'
+$PluginDest  = Join-Path $Project 'Plugins\__DwoLensInspector'
+$Marker      = '.dwo-lens-managed'
+$BlockStart  = '# >>> dwo-lens managed (do not edit) >>>'
+$BlockEnd    = '# <<< dwo-lens managed <<<'
 $SmDest      = Join-Path $Project 'Plugins\__StateMonitor'
-$ManagedPaths = @('/__dwo-assay/', '/__dwo-assay.bat', '/Plugins/__DwoAssayInspector/', '/Plugins/__StateMonitor/')
+$ManagedPaths = @('/__dwo-lens/', '/__dwo-lens.bat', '/Plugins/__DwoLensInspector/', '/Plugins/__StateMonitor/')
 
-function Say([string]$Message) { Write-Host "[dwo-assay] $Message" }
-function Fail([string]$Message) { Write-Host "[dwo-assay] ERROR: $Message" -ForegroundColor Red; exit 1 }
+function Say([string]$Message) { Write-Host "[dwo-lens] $Message" }
+function Fail([string]$Message) { Write-Host "[dwo-lens] ERROR: $Message" -ForegroundColor Red; exit 1 }
 
 function Write-Json($Path, $Object) {
     $dir = Split-Path -Parent $Path
@@ -125,8 +125,8 @@ function Remove-Block([string[]]$Lines) {
     $out = New-Object System.Collections.Generic.List[string]
     $inside = $false
     foreach ($line in $Lines) {
-        if ($line -like '# >>> dwo-assay managed*') { $inside = $true; continue }
-        if ($line -like '# <<< dwo-assay managed*') { $inside = $false; continue }
+        if ($line -like '# >>> dwo-lens managed*') { $inside = $true; continue }
+        if ($line -like '# <<< dwo-lens managed*') { $inside = $false; continue }
         if (-not $inside) { $out.Add($line) }
     }
     while ($out.Count -gt 0 -and [string]::IsNullOrWhiteSpace($out[$out.Count - 1])) { $out.RemoveAt($out.Count - 1) }
@@ -158,7 +158,7 @@ function Get-ProjectStatus {
 }
 
 # ---------------------------------------------------------------- plugin
-function Get-PluginSourceHash([string]$Name = 'DwoAssayInspector') {
+function Get-PluginSourceHash([string]$Name = 'DwoLensInspector') {
     $src = Join-Path $SystemDir "plugin\$Name"
     $sha = [Security.Cryptography.SHA256]::Create()
     $sb = New-Object System.Text.StringBuilder
@@ -171,9 +171,9 @@ function Get-PluginSourceHash([string]$Name = 'DwoAssayInspector') {
     return (($bytes | ForEach-Object { $_.ToString('x2') }) -join '').Substring(0, 12)
 }
 
-function Get-PluginBuild($Engine, [string]$Name = 'DwoAssayInspector') {
+function Get-PluginBuild($Engine, [string]$Name = 'DwoLensInspector') {
     $hash = Get-PluginSourceHash $Name
-    $cacheRoot = Join-Path $env:LOCALAPPDATA 'dwo-Assay\plugin-cache'
+    $cacheRoot = Join-Path $env:LOCALAPPDATA 'dwo-Lens\plugin-cache'
     $cache = Join-Path $cacheRoot "$($Engine.Version)-$Name-$hash"
     $dll = Join-Path $cache "Binaries\Win64\UnrealEditor-$Name.dll"
     if (Test-Path $dll) { return [pscustomobject]@{ Dir = $cache; Hash = $hash } }
@@ -203,22 +203,22 @@ function Install-Plugin($Build) {
     Remove-Plugin
     New-Item -ItemType Directory -Force $PluginDest | Out-Null
     # Prebuilt binaries only: the project's own build never compiles this plugin.
-    Copy-Item (Join-Path $Build.Dir 'DwoAssayInspector.uplugin') $PluginDest
-    # Disabled by default: the editor, cooks and packages never load or stage it. dwo-Assay enables it only
-    # for its own commandlet runs (-EnablePlugins=DwoAssayInspector), so the project needs no .uproject entry.
-    $upluginPath = Join-Path $PluginDest 'DwoAssayInspector.uplugin'
+    Copy-Item (Join-Path $Build.Dir 'DwoLensInspector.uplugin') $PluginDest
+    # Disabled by default: the editor, cooks and packages never load or stage it. dwo-Lens enables it only
+    # for its own commandlet runs (-EnablePlugins=DwoLensInspector), so the project needs no .uproject entry.
+    $upluginPath = Join-Path $PluginDest 'DwoLensInspector.uplugin'
     $uplugin = Get-Content -Raw -Encoding UTF8 $upluginPath | ConvertFrom-Json
     $uplugin | Add-Member -NotePropertyName EnabledByDefault -NotePropertyValue $false -Force
     [IO.File]::WriteAllText($upluginPath, ($uplugin | ConvertTo-Json -Depth 10), $Utf8)
     Copy-Item -Recurse (Join-Path $Build.Dir 'Binaries') $PluginDest
     if (Test-Path (Join-Path $Build.Dir 'Resources')) { Copy-Item -Recurse (Join-Path $Build.Dir 'Resources') $PluginDest }
-    [IO.File]::WriteAllText((Join-Path $PluginDest $Marker), "Managed by dwo-Assay. Removed by '__dwo-assay.bat detach'.`n", $Utf8)
+    [IO.File]::WriteAllText((Join-Path $PluginDest $Marker), "Managed by dwo-Lens. Removed by '__dwo-lens.bat detach'.`n", $Utf8)
 }
 
 function Remove-Plugin {
     if (-not (Test-Path $PluginDest)) { return }
     if (-not (Test-Path (Join-Path $PluginDest $Marker))) {
-        Fail "$PluginDest exists but is not managed by dwo-Assay. Leaving it untouched."
+        Fail "$PluginDest exists but is not managed by dwo-Lens. Leaving it untouched."
     }
     Remove-Item -Recurse -Force $PluginDest
     $plugins = Join-Path $Project 'Plugins'
@@ -234,14 +234,14 @@ function Get-StateMonitorReferences {
         $path = Join-Path $Project $dir
         if (-not (Test-Path $path)) { continue }
         $refs += Get-ChildItem -Path $path -Recurse -File -Include *.h, *.cpp, *.cs -ErrorAction SilentlyContinue |
-                 Where-Object { $_.FullName -notlike '*__StateMonitor*' -and $_.FullName -notlike '*__DwoAssay*' } |
+                 Where-Object { $_.FullName -notlike '*__StateMonitor*' -and $_.FullName -notlike '*__DwoLens*' } |
                  Select-String -Pattern 'StateMonitor' -List | ForEach-Object { $_.Path.Substring($Project.Length + 1) + ':' + $_.LineNumber }
     }
     return $refs
 }
 
 function Find-OwnStateMonitor {
-    # A StateMonitor that belongs to the project itself (not installed by dwo-Assay).
+    # A StateMonitor that belongs to the project itself (not installed by dwo-Lens).
     $plugins = Join-Path $Project 'Plugins'
     if (-not (Test-Path $plugins)) { return $null }
     return Get-ChildItem -Path $plugins -Recurse -Filter 'StateMonitor.uplugin' -ErrorAction SilentlyContinue |
@@ -249,7 +249,7 @@ function Find-OwnStateMonitor {
 }
 
 function Invoke-SmInstall {
-    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-assay.bat attach first.' }
+    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-lens.bat attach first.' }
     $own = Find-OwnStateMonitor
     if ($own) { Fail "The project already contains StateMonitor ($($own.FullName.Substring($Project.Length + 1))). Nothing to install." }
     $uproject = Get-UProject
@@ -273,7 +273,7 @@ function Invoke-SmInstall {
         foreach ($m in $uplugin.Modules) { $m | Add-Member -NotePropertyName TargetAllowList -NotePropertyValue @('Editor') -Force }
     }
     [IO.File]::WriteAllText($upluginPath, ($uplugin | ConvertTo-Json -Depth 10), $Utf8)
-    [IO.File]::WriteAllText((Join-Path $SmDest $Marker), "StateMonitor installed by dwo-Assay. Remove with '__dwo-assay.bat sm-remove'.`n", $Utf8)
+    [IO.File]::WriteAllText((Join-Path $SmDest $Marker), "StateMonitor installed by dwo-Lens. Remove with '__dwo-lens.bat sm-remove'.`n", $Utf8)
     if ($runtime) {
         Say "StateMonitor installed for runtime: Plugins\__StateMonitor (UE $($engine.Version), hidden from git)"
         Say 'Packaged games include it only when the project declares it:'
@@ -282,14 +282,14 @@ function Invoke-SmInstall {
         Say 'Remove those entries before sm-remove or detach.'
     } else {
         Say "StateMonitor installed for editor and PIE: Plugins\__StateMonitor (UE $($engine.Version), hidden from git)"
-        Say 'Packaged builds are not affected. For packaged games use: __dwo-assay.bat sm-install --runtime'
+        Say 'Packaged builds are not affected. For packaged games use: __dwo-lens.bat sm-install --runtime'
     }
     Say 'Blueprint: Submit State Snapshot / Show State Monitor nodes. C++: UStateMonitorSubsystem::Get(this)->Submit(TEXT("Id"), State).'
 }
 
 function Remove-StateMonitor([bool]$Force) {
     if (-not (Test-Path $SmDest)) { return $true }
-    if (-not (Test-Path (Join-Path $SmDest $Marker))) { Fail "$SmDest is not managed by dwo-Assay. Leaving it untouched." }
+    if (-not (Test-Path (Join-Path $SmDest $Marker))) { Fail "$SmDest is not managed by dwo-Lens. Leaving it untouched." }
     $refs = @(Get-StateMonitorReferences)
     if ($refs.Count -gt 0 -and -not $Force) {
         Say 'Project code still uses StateMonitor. Removing the plugin would break the build:'
@@ -305,7 +305,7 @@ function Remove-StateMonitor([bool]$Force) {
 }
 
 function Invoke-SmRemove {
-    if (-not (Test-Path $SmDest)) { Say 'StateMonitor is not installed by dwo-Assay.'; return }
+    if (-not (Test-Path $SmDest)) { Say 'StateMonitor is not installed by dwo-Lens.'; return }
     if (-not (Remove-StateMonitor ($Rest -contains '--force'))) { exit 1 }
 }
 
@@ -330,7 +330,7 @@ function Invoke-Attach([string]$Mode) {
     Install-Plugin $build
 
     $state = [ordered]@{
-        schema                = 'assay.state/0.1'
+        schema                = 'lens.state/0.1'
         project               = $uproject.Name
         projectType           = $(if ($uproject.IsCode) { 'code' } else { 'blueprint-only' })
         engineVersion         = $engine.Version
@@ -352,14 +352,14 @@ function Invoke-Status {
     Say "Project        : $($state.project) ($($state.projectType))"
     Say "Engine         : UE $($state.engineVersion)"
     Say "System commit  : $($state.systemCommit)"
-    if ($env:DWO_ASSAY_HOME -and (Test-Path (Join-Path $env:DWO_ASSAY_HOME '.git'))) {
-        $latest = & git -C $env:DWO_ASSAY_HOME rev-parse --short HEAD 2>$null
-        if ($latest -and $latest -ne $state.systemCommit) { Say "Update available: $latest (run __dwo-assay.bat update)" }
+    if ($env:DWO_LENS_HOME -and (Test-Path (Join-Path $env:DWO_LENS_HOME '.git'))) {
+        $latest = & git -C $env:DWO_LENS_HOME rev-parse --short HEAD 2>$null
+        if ($latest -and $latest -ne $state.systemCommit) { Say "Update available: $latest (run __dwo-lens.bat update)" }
         else { Say 'System is up to date.' }
     }
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
-    if ($engine.Version -ne $state.engineVersion) { Say "Engine changed to $($engine.Version). Run __dwo-assay.bat update." }
+    if ($engine.Version -ne $state.engineVersion) { Say "Engine changed to $($engine.Version). Run __dwo-lens.bat update." }
     Say "Attached at    : $($state.attachedAt)"
 }
 
@@ -376,25 +376,25 @@ function Invoke-Doctor {
     $top = Invoke-Git @('rev-parse', '--show-toplevel')
     Check 'project is its own git repository' ($top -and (Test-OwnRepository)) 'run git init in the project'
     $excl = Get-ExcludePath
-    Check 'exclude block present' ((Test-Path $excl) -and ((Get-Content -Raw $excl) -like "*$BlockStart*")) 'run __dwo-assay.bat attach'
-    Check 'plugin installed' (Test-Path (Join-Path $PluginDest 'Binaries\Win64\UnrealEditor-DwoAssayInspector.dll')) 'run __dwo-assay.bat attach'
-    $leaks = Invoke-Git @('status', '--porcelain', '--untracked-files=all', '--', '__dwo-assay', '__dwo-assay.bat', 'Plugins/__DwoAssayInspector', 'Plugins/__StateMonitor')
-    Check 'dwo-assay files hidden from git' (-not $leaks) "visible to git: $leaks"
+    Check 'exclude block present' ((Test-Path $excl) -and ((Get-Content -Raw $excl) -like "*$BlockStart*")) 'run __dwo-lens.bat attach'
+    Check 'plugin installed' (Test-Path (Join-Path $PluginDest 'Binaries\Win64\UnrealEditor-DwoLensInspector.dll')) 'run __dwo-lens.bat attach'
+    $leaks = Invoke-Git @('status', '--porcelain', '--untracked-files=all', '--', '__dwo-lens', '__dwo-lens.bat', 'Plugins/__DwoLensInspector', 'Plugins/__StateMonitor')
+    Check 'dwo-lens files hidden from git' (-not $leaks) "visible to git: $leaks"
     $py = Get-Command python -ErrorAction SilentlyContinue
     Check 'python available' ($py -ne $null) 'install Python 3.10+'
     if ($uproject.IsCode) {
-        Write-Host '  [note] code project: Plugins/__DwoAssayInspector is prebuilt, editor-only and disabled by default.'
+        Write-Host '  [note] code project: Plugins/__DwoLensInspector is prebuilt, editor-only and disabled by default.'
     }
-    if (Test-Path $SmDest) { Write-Host '  [info] StateMonitor installed by dwo-Assay (Plugins/__StateMonitor)' }
+    if (Test-Path $SmDest) { Write-Host '  [info] StateMonitor installed by dwo-Lens (Plugins/__StateMonitor)' }
     elseif (Find-OwnStateMonitor) { Write-Host '  [info] StateMonitor is part of the project itself' }
-    else { Write-Host '  [info] StateMonitor not installed (optional: __dwo-assay.bat sm-install)' }
+    else { Write-Host '  [info] StateMonitor not installed (optional: __dwo-lens.bat sm-install)' }
     return (-not $script:doctorFailed)
 }
 
 # ---------------------------------------------------------------- config / engine runs
 function Get-ConfigFiles {
     $files = @(Join-Path $SystemDir 'config\default.json')
-    $override = Join-Path $AssayDir 'config.json'
+    $override = Join-Path $LensDir 'config.json'
     if (Test-Path $override) { $files += $override }
     return $files
 }
@@ -402,7 +402,7 @@ function Get-ConfigFiles {
 function Get-Config {
     # Two-level merge: project config.json overrides keys inside each section of default.json.
     $cfg = Get-Content -Raw -Encoding UTF8 (Join-Path $SystemDir 'config\default.json') | ConvertFrom-Json
-    $override = Join-Path $AssayDir 'config.json'
+    $override = Join-Path $LensDir 'config.json'
     if (Test-Path $override) {
         $o = Get-Content -Raw -Encoding UTF8 $override | ConvertFrom-Json
         foreach ($section in $o.PSObject.Properties) {
@@ -459,14 +459,14 @@ function Get-PreviousOutput([string]$Prefix, [string]$File, [string]$ExceptId) {
 function Write-Run($Run, [string]$Line, $Stations, [string]$Final, $Engine) {
     $state = Read-State
     Write-Json (Join-Path $Run.Dir 'run.json') ([ordered]@{
-        schema = 'assay.run/0.1'; runId = $Run.Id; line = $Line; project = $state.project
+        schema = 'lens.run/0.1'; runId = $Run.Id; line = $Line; project = $state.project
         engineVersion = $Engine.Version; systemCommit = Get-SystemCommit
         finishedAt = (Get-Date).ToString('o'); stations = $Stations; final = $Final
     })
 }
 
 function Invoke-Verify {
-    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-assay.bat attach first.' }
+    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-lens.bat attach first.' }
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     $cfg = Get-Config
@@ -503,7 +503,7 @@ function Invoke-Verify {
         $stations.Add([ordered]@{ id = 'V3'; name = 'automation'; filter = $filterText; exitCode = $code; ms = $sw.ElapsedMilliseconds; verdict = $null })
     }
 
-    & python (Join-Path $SystemDir 'tools\assay_verify.py') verify --run $run.Dir
+    & python (Join-Path $SystemDir 'tools\lens_verify.py') verify --run $run.Dir
     $result = Get-Content -Raw -Encoding UTF8 (Join-Path $run.Dir 'out\verify.json') | ConvertFrom-Json
     foreach ($s in $stations) {
         $step = $result.steps | Where-Object { $_.id -eq $s.id } | Select-Object -First 1
@@ -516,7 +516,7 @@ function Invoke-Verify {
 }
 
 function Invoke-Logs {
-    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-assay.bat attach first.' }
+    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-lens.bat attach first.' }
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     $cfg = Get-Config
@@ -528,7 +528,7 @@ function Invoke-Logs {
                    Select-Object -First $cfg.logs.maxFiles | ForEach-Object { $_.FullName })
     }
     Say "[$($run.Id)] ST-4 logs: $($files.Count) log files"
-    $pyArgs = @((Join-Path $SystemDir 'tools\assay_verify.py'), 'logs', '--run', $run.Dir, '--crashes', (Join-Path $Project 'Saved\Crashes'))
+    $pyArgs = @((Join-Path $SystemDir 'tools\lens_verify.py'), 'logs', '--run', $run.Dir, '--crashes', (Join-Path $Project 'Saved\Crashes'))
     if ($files.Count -gt 0) { $pyArgs += '--files'; $pyArgs += $files }
     $baseline = Get-PreviousOutput 'logs' 'logs.json' $run.Id
     if ($baseline) { $pyArgs += @('--baseline', $baseline) }
@@ -550,7 +550,7 @@ function Invoke-Tools {
 
 function Invoke-Analyze {
     $state = Read-State
-    if (-not $state) { Fail 'Not attached. Run __dwo-assay.bat attach first.' }
+    if (-not $state) { Fail 'Not attached. Run __dwo-lens.bat attach first.' }
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     $runId = 'run-' + (Get-Date).ToString('yyyyMMdd-HHmmss')
@@ -560,10 +560,10 @@ function Invoke-Analyze {
     New-Item -ItemType Directory -Force $rawDir, $outDir | Out-Null
     $stations = New-Object System.Collections.Generic.List[object]
 
-    Say "[$runId] ST-1 collect: running DwoAssayInspector commandlet"
+    Say "[$runId] ST-1 collect: running DwoLensInspector commandlet"
     $log = Join-Path $runDir 'commandlet.log'
     $sw = [Diagnostics.Stopwatch]::StartNew()
-    & cmd /c "`"$($engine.Cmd)`" `"$($uproject.Path)`" -run=DwoAssayInspector -EnablePlugins=DwoAssayInspector -AssayOut=`"$rawDir`" -ABSLOG=`"$(Join-Path $runDir 'editor.log')`" -unattended -nullrhi -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput > `"$log`" 2>&1"
+    & cmd /c "`"$($engine.Cmd)`" `"$($uproject.Path)`" -run=DwoLensInspector -EnablePlugins=DwoLensInspector -LensOut=`"$rawDir`" -ABSLOG=`"$(Join-Path $runDir 'editor.log')`" -unattended -nullrhi -nosplash -nopause -NoSound -stdout -FullStdOutLogOutput > `"$log`" 2>&1"
     $code = $LASTEXITCODE
     $sw.Stop()
     $collected = Test-Path (Join-Path $rawDir 'meta.json')
@@ -572,7 +572,7 @@ function Invoke-Analyze {
 
     Say "[$runId] ST-2/3 analyze and gate"
     $sw = [Diagnostics.Stopwatch]::StartNew()
-    & python (Join-Path $SystemDir 'tools\assay_analyze.py') --raw $rawDir --project $uproject.Path --out $outDir --run-id $runId --config @(Get-ConfigFiles)
+    & python (Join-Path $SystemDir 'tools\lens_analyze.py') --raw $rawDir --project $uproject.Path --out $outDir --run-id $runId --config @(Get-ConfigFiles)
     $pyCode = $LASTEXITCODE
     $sw.Stop()
     $findingsPath = Join-Path $outDir 'findings.json'
@@ -581,7 +581,7 @@ function Invoke-Analyze {
     $stations.Add([ordered]@{ id = 'ST-2'; name = 'analyze+gate'; verdict = $verdict; exitCode = $pyCode; ms = $sw.ElapsedMilliseconds })
 
     $run = [ordered]@{
-        schema = 'assay.run/0.1'; runId = $runId; line = 'architecture-report'
+        schema = 'lens.run/0.1'; runId = $runId; line = 'architecture-report'
         project = $state.project; engineVersion = $engine.Version; systemCommit = Get-SystemCommit
         startedAt = (Get-Date).ToString('o'); stations = $stations; final = $verdict
     }
@@ -598,16 +598,16 @@ function Invoke-Detach {
     Remove-Plugin
     Clear-ExcludeBlock
     if ($keepData -and (Test-Path $DataDir)) {
-        $dest = Join-Path $env:LOCALAPPDATA ("dwo-Assay\detached\" + (Split-Path -Leaf $Project) + '-' + (Get-Date).ToString('yyyyMMdd-HHmmss'))
+        $dest = Join-Path $env:LOCALAPPDATA ("dwo-Lens\detached\" + (Split-Path -Leaf $Project) + '-' + (Get-Date).ToString('yyyyMMdd-HHmmss'))
         New-Item -ItemType Directory -Force (Split-Path -Parent $dest) | Out-Null
         Move-Item $DataDir $dest
         Say "Analysis data kept at $dest"
     }
     Set-Location $Project
-    if (Test-Path $AssayDir) { Remove-Item -Recurse -Force $AssayDir }
+    if (Test-Path $LensDir) { Remove-Item -Recurse -Force $LensDir }
 
-    # __dwo-assay.bat deletes itself after this script returns; exclude it from the comparison.
-    $after = (@((Get-ProjectStatus) -split "`n") | Where-Object { $_ -and $_ -notmatch '__dwo-assay\.bat$' }) -join "`n"
+    # __dwo-lens.bat deletes itself after this script returns; exclude it from the comparison.
+    $after = (@((Get-ProjectStatus) -split "`n") | Where-Object { $_ -and $_ -notmatch '__dwo-lens\.bat$' }) -join "`n"
     if ($state -and $state.gitStatusBeforeAttach -ne $null) {
         if ($after -eq $state.gitStatusBeforeAttach) { Say 'Detached. git status matches the state before attach.' }
         else { Say 'Detached, but git status differs from before attach. Review: git status'; exit 3 }
@@ -627,6 +627,6 @@ switch ($Command) {
     'tools'   { Invoke-Tools }
     'sm-install' { Invoke-SmInstall }
     'sm-remove'  { Invoke-SmRemove }
-    'gui'     { & (Join-Path $SystemDir 'tools\gui.ps1') -SystemDir $SystemDir -Project $Project -AssayHome $env:DWO_ASSAY_HOME }
+    'gui'     { & (Join-Path $SystemDir 'tools\gui.ps1') -SystemDir $SystemDir -Project $Project -LensHome $env:DWO_LENS_HOME }
     'detach'  { Invoke-Detach }
 }

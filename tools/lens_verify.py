@@ -1,7 +1,7 @@
-"""dwo-Assay verify (ST-3) and logs (ST-4) lines: turn wrapped tool outputs into one verdict and report.
+"""dwo-Lens verify (ST-3) and logs (ST-4) lines: turn wrapped tool outputs into one verdict and report.
 
-    python assay_verify.py verify --run <run dir> [--baseline <previous logs.json>]
-    python assay_verify.py logs   --run <run dir> --files <log files...> [--crashes <dir>] [--baseline <json>]
+    python lens_verify.py verify --run <run dir> [--baseline <previous logs.json>]
+    python lens_verify.py logs   --run <run dir> --files <log files...> [--crashes <dir>] [--baseline <json>]
 
 verify expects in <run dir>: compile.log, datavalidation.log, automation.log, automation/index.json (any may be missing).
 """
@@ -14,8 +14,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import assay_logs  # noqa: E402
-from assay_analyze import REPORT_CSS  # noqa: E402
+import lens_logs  # noqa: E402
+from lens_analyze import REPORT_CSS  # noqa: E402
 
 ORDER = {"fail": 0, "warn": 1, "info": 2, "pass": 3}
 
@@ -48,8 +48,8 @@ def verify(run: Path, baseline: dict | None) -> dict:
         if not log.exists():
             steps.append({"id": step_id, "name": name, "verdict": "skip", "summary": None})
             continue
-        s = assay_logs.run([log], None, set(), baseline)
-        steps.append({"id": step_id, "name": name, "verdict": assay_logs.verdict_of(s, warn_on_new=False), "summary": s})
+        s = lens_logs.run([log], None, set(), baseline)
+        steps.append({"id": step_id, "name": name, "verdict": lens_logs.verdict_of(s, warn_on_new=False), "summary": s})
 
     automation = parse_automation(run / "automation")
     if automation is None:
@@ -63,7 +63,7 @@ def verify(run: Path, baseline: dict | None) -> dict:
         steps.append({"id": "V3", "name": "자동화 테스트", "verdict": verdict, "automation": automation,
                       "note": "필터와 일치하는 테스트 없음" if total == 0 else ""})
     final = worst([s["verdict"] for s in steps if s["verdict"] != "skip"])
-    return {"schema": "assay.verify/0.1", "verdict": final, "steps": steps}
+    return {"schema": "lens.verify/0.1", "verdict": final, "steps": steps}
 
 
 # --------------------------------------------------------------------------- html
@@ -143,10 +143,10 @@ def main() -> int:
         result = verify(args.run, baseline)
         (out / "verify.json").write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
         (out / "report.html").write_text(render_verify(result, run_id), encoding="utf-8")
-        print(f"[dwo-assay] verify: " + ", ".join(f"{s['id']}={s['verdict']}" for s in result["steps"]) + f" -> {result['verdict']}")
+        print(f"[dwo-lens] verify: " + ", ".join(f"{s['id']}={s['verdict']}" for s in result["steps"]) + f" -> {result['verdict']}")
     else:
-        summary = assay_logs.run(args.files, args.crashes, set(args.ignore), baseline)
-        summary["verdict"] = assay_logs.verdict_of(summary)
+        summary = lens_logs.run(args.files, args.crashes, set(args.ignore), baseline)
+        summary["verdict"] = lens_logs.verdict_of(summary)
         (out / "logs.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1), encoding="utf-8")
         c = summary["counts"]
         body = (f"<section><h2>요약</h2><p class='meta'>파일 {len(summary['files'])}개 · Fatal {c['Fatal']} · Error {c['Error']} · "
@@ -154,7 +154,7 @@ def main() -> int:
                 f"<code>{'<br>'.join(html.escape(f) for f in summary['files'])}</code></section>"
                 f"<section><h2>오류 · 경고 그룹</h2>{log_groups_html(summary, 80)}</section>")
         (out / "report.html").write_text(page("로그 라인", summary["verdict"], run_id, body), encoding="utf-8")
-        print(f"[dwo-assay] logs: {c} groups={len(summary['groups'])} new={summary['newGroups']} "
+        print(f"[dwo-lens] logs: {c} groups={len(summary['groups'])} new={summary['newGroups']} "
               f"crashes={len(summary['crashes'])} verdict={summary['verdict']}")
     return 0
 

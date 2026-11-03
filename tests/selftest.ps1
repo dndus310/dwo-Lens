@@ -1,4 +1,4 @@
-# dwo-Assay self verification. Runs everything a release must pass and writes .qa\selftest\selftest-result.json.
+# dwo-Lens self verification. Runs everything a release must pass and writes .qa\selftest\selftest-result.json.
 #
 #   powershell -File tests\selftest.ps1 -Project <a UE project folder to copy for the integration cycle>
 #
@@ -48,7 +48,7 @@ foreach ($json in @('config\default.json', 'tools\catalog.json')) {
 # ---------------------------------------------------------------- 3. GUI build
 $sw.Restart()
 & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repo 'tools\gui.ps1') -SystemDir $repo -BuildOnly | Out-Null
-$guiExe = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'dwo-Assay\gui-cache') -Recurse -Filter dwo-assay-gui.exe -ErrorAction SilentlyContinue |
+$guiExe = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'dwo-Lens\gui-cache') -Recurse -Filter dwo-lens-gui.exe -ErrorAction SilentlyContinue |
           Sort-Object LastWriteTime -Descending | Select-Object -First 1
 Check 'gui' 'build' ($LASTEXITCODE -eq 0 -and $guiExe -ne $null) "$($guiExe.FullName)" $sw.Elapsed.TotalSeconds
 
@@ -56,7 +56,7 @@ Check 'gui' 'build' ($LASTEXITCODE -eq 0 -and $guiExe -ne $null) "$($guiExe.Full
 if (-not $SkipIntegration -and $Project) {
     $copy = Join-Path $qa 'project'
     New-Item -ItemType Directory -Force $copy | Out-Null
-    Get-ChildItem $Project | Where-Object { $_.Name -notin @('Intermediate', 'Saved', 'DerivedDataCache', '.git', '.vs', '__dwo-assay', '__dwo-assay.bat') -and $_.Name -notlike '*.html' -and $_.Extension -ne '.sln' } |
+    Get-ChildItem $Project | Where-Object { $_.Name -notin @('Intermediate', 'Saved', 'DerivedDataCache', '.git', '.vs', '__dwo-lens', '__dwo-lens.bat') -and $_.Name -notlike '*.html' -and $_.Extension -ne '.sln' } |
         ForEach-Object { Copy-Item -Recurse $_.FullName $copy }
     Get-ChildItem -Recurse -Directory -Path (Join-Path $copy 'Plugins') -Filter '__*' -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
     & git -C $copy init -q
@@ -65,9 +65,9 @@ if (-not $SkipIntegration -and $Project) {
     & git -C $copy add -A
     & git -C $copy -c user.name=selftest -c user.email=selftest@local commit -q -m baseline
     $before = (& git -C $copy status --porcelain) -join "`n"
-    $env:DWO_ASSAY_HOME = $repo
-    Copy-Item (Join-Path $repo '__dwo-assay.bat') $copy
-    $bat = Join-Path $copy '__dwo-assay.bat'
+    $env:DWO_LENS_HOME = $repo
+    Copy-Item (Join-Path $repo '__dwo-lens.bat') $copy
+    $bat = Join-Path $copy '__dwo-lens.bat'
     function Run([string]$Cmd) {
         $sw.Restart()
         $out = & cmd /c "`"$bat`" $Cmd" 2>&1 | Out-String
@@ -76,7 +76,7 @@ if (-not $SkipIntegration -and $Project) {
         return [pscustomobject]@{ Code = $code; Out = $out; Seconds = $sw.Elapsed.TotalSeconds }
     }
     function Latest([string]$Prefix) {
-        Get-ChildItem (Join-Path $copy '__dwo-assay\data\runs') -Directory -Filter "$Prefix-*" | Sort-Object Name -Descending | Select-Object -First 1
+        Get-ChildItem (Join-Path $copy '__dwo-lens\data\runs') -Directory -Filter "$Prefix-*" | Sort-Object Name -Descending | Select-Object -First 1
     }
 
     $r = Run 'attach'
@@ -122,21 +122,21 @@ if (-not $SkipIntegration -and $Project) {
     $r = Run 'sm-remove'
     Check 'safety' 'sm-remove refuses while referenced' ($r.Code -ne 0 -and (Test-Path "$copy\Plugins\__StateMonitor")) ''
     $r = Run 'detach'
-    Check 'safety' 'detach refuses while referenced' ($r.Code -ne 0 -and (Test-Path "$copy\__dwo-assay")) ''
+    Check 'safety' 'detach refuses while referenced' ($r.Code -ne 0 -and (Test-Path "$copy\__dwo-lens")) ''
     Remove-Item -Recurse -Force (Join-Path $copy 'Source\Probe')
     if (-not (Get-ChildItem (Join-Path $copy 'Source') -ErrorAction SilentlyContinue)) { Remove-Item -Force (Join-Path $copy 'Source') -ErrorAction SilentlyContinue }
     $r = Run 'sm-remove'
     Check 'cycle' 'sm-remove' ($r.Code -eq 0 -and -not (Test-Path "$copy\Plugins\__StateMonitor")) '' $r.Seconds
 
     $r = Run 'update'
-    $dirty = (& git -C (Join-Path $copy '__dwo-assay\system') status --porcelain) -join ' '
+    $dirty = (& git -C (Join-Path $copy '__dwo-lens\system') status --porcelain) -join ' '
     Check 'cycle' 'update keeps clone clean' ($r.Code -eq 0 -and -not $dirty) "$dirty" $r.Seconds
 
     $r = Run 'detach'
     $leftovers = @(Get-ChildItem -Force $copy | Where-Object { $_.Name -like '__*' }) + @(Get-ChildItem -Force (Join-Path $copy 'Plugins') -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '__*' })
     $after = (& git -C $copy status --porcelain) -join "`n"
     $exclude = Get-Content -Raw (Join-Path $copy '.git\info\exclude')
-    Check 'cycle' 'detach leaves no trace' ($r.Code -eq 0 -and $leftovers.Count -eq 0 -and $after -eq $before -and $exclude -notmatch 'dwo-assay managed') "leftovers $($leftovers.Count)" $r.Seconds
+    Check 'cycle' 'detach leaves no trace' ($r.Code -eq 0 -and $leftovers.Count -eq 0 -and $after -eq $before -and $exclude -notmatch 'dwo-lens managed') "leftovers $($leftovers.Count)" $r.Seconds
 }
 
 $failed = @($checks | Where-Object { -not $_.ok })

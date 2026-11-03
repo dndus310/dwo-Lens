@@ -1,0 +1,19 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1.0",
+	"FriendlyName": "dwo-Lens Inspector",
+	"Description": "Read-only reflection and Blueprint graph extractor for the dwo-Lens analysis factory. Never referenced by project code.",
+	"Category": "dwo-Lens",
+	"CreatedBy": "dwo-Lens",
+	"CanContainContent": false,
+	"EnabledByDefault": true,
+	"IsBetaVersion": true,
+	"Modules": [
+		{
+			"Name": "DwoLensInspector",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	]
+}

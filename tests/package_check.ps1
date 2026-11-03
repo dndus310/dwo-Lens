@@ -1,4 +1,4 @@
-# Packaging check: copies a UE project into an isolated QA folder, attaches dwo-Assay (optionally installs
+# Packaging check: copies a UE project into an isolated QA folder, attaches dwo-Lens (optionally installs
 # StateMonitor), packages it with BuildCookRun, smoke-runs the packaged game, and verifies that nothing from
 # the editor-only inspector reaches the package. Writes <QaRoot>\<Name>\package-result.json.
 #
@@ -28,7 +28,7 @@ function Save { Write-Output ($result | ConvertTo-Json -Depth 6) | Set-Content -
 # ---- isolated copy
 if (Test-Path $work) { Remove-Item -Recurse -Force $work }
 New-Item -ItemType Directory -Force $project | Out-Null
-Get-ChildItem $Source | Where-Object { $_.Name -notin @('Intermediate', 'Saved', 'DerivedDataCache', '.git', '.vs', '__dwo-assay', '__dwo-assay.bat') -and $_.Extension -ne '.sln' -and $_.Name -notlike '*.html' } |
+Get-ChildItem $Source | Where-Object { $_.Name -notin @('Intermediate', 'Saved', 'DerivedDataCache', '.git', '.vs', '__dwo-lens', '__dwo-lens.bat') -and $_.Extension -ne '.sln' -and $_.Name -notlike '*.html' } |
     ForEach-Object { Copy-Item -Recurse $_.FullName $project }
 Get-ChildItem -Recurse -Directory -Path (Join-Path $project 'Plugins') -Filter '__*' -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
 & git -C $project init -q
@@ -36,19 +36,19 @@ $uproject = (Get-ChildItem $project -Filter *.uproject | Select-Object -First 1)
 Step 'copy' $true "isolated copy at $project"
 
 # ---- attach (+ StateMonitor)
-$env:DWO_ASSAY_HOME = $repo
-Copy-Item (Join-Path $repo '__dwo-assay.bat') $project
+$env:DWO_LENS_HOME = $repo
+Copy-Item (Join-Path $repo '__dwo-lens.bat') $project
 $sw = [Diagnostics.Stopwatch]::StartNew()
-& cmd /c "`"$project\__dwo-assay.bat`" attach" | Out-Null
-Step 'attach' ($LASTEXITCODE -eq 0 -and (Test-Path "$project\Plugins\__DwoAssayInspector")) 'dwo-Assay attached' $sw.Elapsed.TotalSeconds
+& cmd /c "`"$project\__dwo-lens.bat`" attach" | Out-Null
+Step 'attach' ($LASTEXITCODE -eq 0 -and (Test-Path "$project\Plugins\__DwoLensInspector")) 'dwo-Lens attached' $sw.Elapsed.TotalSeconds
 if ($InstallStateMonitor) {
     $sw.Restart()
-    & cmd /c "`"$project\__dwo-assay.bat`" sm-install" | Out-Null
+    & cmd /c "`"$project\__dwo-lens.bat`" sm-install" | Out-Null
     Step 'sm-install' ($LASTEXITCODE -eq 0 -and (Test-Path "$project\Plugins\__StateMonitor")) 'StateMonitor installed' $sw.Elapsed.TotalSeconds
 }
 
 # ---- package
-$engineRoot = (Get-Content -Raw "$project\__dwo-assay\state.json" | ConvertFrom-Json).engineRoot
+$engineRoot = (Get-Content -Raw "$project\__dwo-lens\state.json" | ConvertFrom-Json).engineRoot
 $uat = Join-Path $engineRoot 'Engine\Build\BatchFiles\RunUAT.bat'
 $log = Join-Path $work "buildcookrun-$Config.log"
 $sw.Restart()
@@ -63,22 +63,22 @@ if (-not $exe) { Save; exit 1 }
 
 # ---- inspect package: the editor-only inspector must not be in the package
 $pkgFiles = Get-ChildItem -Recurse -File $archive
-$inspectorFiles = @($pkgFiles | Where-Object { $_.FullName -match 'DwoAssay' })
-Step 'no-inspector-files' ($inspectorFiles.Count -eq 0) "files named DwoAssay in package: $($inspectorFiles.Count)"
+$inspectorFiles = @($pkgFiles | Where-Object { $_.FullName -match 'DwoLens' })
+Step 'no-inspector-files' ($inspectorFiles.Count -eq 0) "files named DwoLens in package: $($inspectorFiles.Count)"
 $binaryHits = 0
 foreach ($f in ($pkgFiles | Where-Object { $_.Extension -in @('.exe', '.dll') })) {
-    if ([IO.File]::ReadAllText($f.FullName, [Text.Encoding]::ASCII).Contains('DwoAssayInspector')) { $binaryHits++ }
+    if ([IO.File]::ReadAllText($f.FullName, [Text.Encoding]::ASCII).Contains('DwoLensInspector')) { $binaryHits++ }
 }
-Step 'no-inspector-symbols' ($binaryHits -eq 0) "binaries containing 'DwoAssayInspector': $binaryHits"
+Step 'no-inspector-symbols' ($binaryHits -eq 0) "binaries containing 'DwoLensInspector': $binaryHits"
 $unrealPak = Join-Path $engineRoot 'Engine\Binaries\Win64\UnrealPak.exe'
 $paks = @($pkgFiles | Where-Object { $_.Extension -eq '.pak' })
 $pakHits = 0; $smInPak = 0
 foreach ($pak in $paks) {
     $listing = & $unrealPak $pak.FullName -List 2>$null
-    $pakHits += @($listing | Select-String -SimpleMatch 'DwoAssay').Count
+    $pakHits += @($listing | Select-String -SimpleMatch 'DwoLens').Count
     $smInPak += @($listing | Select-String -SimpleMatch 'StateMonitor').Count
 }
-Step 'no-inspector-in-pak' ($pakHits -eq 0) "pak entries mentioning DwoAssay: $pakHits (paks: $($paks.Count))"
+Step 'no-inspector-in-pak' ($pakHits -eq 0) "pak entries mentioning DwoLens: $pakHits (paks: $($paks.Count))"
 $smBinary = 0
 foreach ($f in ($pkgFiles | Where-Object { $_.Extension -in @('.exe', '.dll') })) {
     if ([IO.File]::ReadAllText($f.FullName, [Text.Encoding]::ASCII).Contains('StateMonitorSubsystem')) { $smBinary++ }
@@ -98,9 +98,9 @@ $crashDirs = @(Get-ChildItem -Recurse -Directory -Path $archive -Filter 'Crashes
 Step 'smoke-run' ($alive -and $crashDirs.Count -eq 0) "ran $SmokeSeconds s: alive=$alive exit=$exitCode crash folders=$($crashDirs.Count)" $sw.Elapsed.TotalSeconds
 
 # ---- detach leaves the copy clean
-& cmd /c "`"$project\__dwo-assay.bat`" detach --force" | Out-Null
+& cmd /c "`"$project\__dwo-lens.bat`" detach --force" | Out-Null
 $left = @(Get-ChildItem -Force $project | Where-Object { $_.Name -like '__*' }) + @(Get-ChildItem -Force (Join-Path $project 'Plugins') -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '__*' })
-Step 'detach' ($left.Count -eq 0) "leftover dwo-Assay items after detach: $($left.Count)"
+Step 'detach' ($left.Count -eq 0) "leftover dwo-Lens items after detach: $($left.Count)"
 
 $result.ok = -not ($result.steps | Where-Object { -not $_.ok })
 Save

@@ -1,4 +1,4 @@
-#include "DwoAssayInspectorCommandlet.h"
+#include "DwoLensInspectorCommandlet.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetRegistry/IAssetRegistry.h"
@@ -26,11 +26,11 @@
 #include "Serialization/JsonWriter.h"
 #include "UObject/UObjectIterator.h"
 
-DEFINE_LOG_CATEGORY_STATIC(LogDwoAssay, Log, All);
+DEFINE_LOG_CATEGORY_STATIC(LogDwoLens, Log, All);
 
-namespace DwoAssayInspector
+namespace DwoLensInspector
 {
-	static const TCHAR* SchemaVersion = TEXT("assay.raw/0.1");
+	static const TCHAR* SchemaVersion = TEXT("lens.raw/0.1");
 
 	using FJsonRef = TSharedRef<FJsonObject>;
 	using FJsonValues = TArray<TSharedPtr<FJsonValue>>;
@@ -74,7 +74,7 @@ namespace DwoAssayInspector
 		}
 		for (const TSharedRef<IPlugin>& Plugin : IPluginManager::Get().GetEnabledPlugins())
 		{
-			if (Plugin->GetLoadedFrom() != EPluginLoadedFrom::Project || Plugin->GetName() == TEXT("DwoAssayInspector"))
+			if (Plugin->GetLoadedFrom() != EPluginLoadedFrom::Project || Plugin->GetName() == TEXT("DwoLensInspector"))
 			{
 				continue;
 			}
@@ -431,7 +431,7 @@ namespace DwoAssayInspector
 	}
 }
 
-UDwoAssayInspectorCommandlet::UDwoAssayInspectorCommandlet()
+UDwoLensInspectorCommandlet::UDwoLensInspectorCommandlet()
 {
 	IsClient = false;
 	IsServer = false;
@@ -440,14 +440,14 @@ UDwoAssayInspectorCommandlet::UDwoAssayInspectorCommandlet()
 	ShowErrorCount = true;
 }
 
-int32 UDwoAssayInspectorCommandlet::Main(const FString& Params)
+int32 UDwoLensInspectorCommandlet::Main(const FString& Params)
 {
-	using namespace DwoAssayInspector;
+	using namespace DwoLensInspector;
 
 	FString OutDir;
-	if (!FParse::Value(*Params, TEXT("AssayOut="), OutDir) || OutDir.IsEmpty())
+	if (!FParse::Value(*Params, TEXT("LensOut="), OutDir) || OutDir.IsEmpty())
 	{
-		UE_LOG(LogDwoAssay, Error, TEXT("Missing -AssayOut=<dir>"));
+		UE_LOG(LogDwoLens, Error, TEXT("Missing -LensOut=<dir>"));
 		return 1;
 	}
 	OutDir = FPaths::ConvertRelativePathToFull(OutDir);
@@ -456,7 +456,7 @@ int32 UDwoAssayInspectorCommandlet::Main(const FString& Params)
 	TArray<FString> ContentRoots = { TEXT("/Game") };
 	const TSet<FString> ProjectModules = CollectProjectModules(ContentRoots);
 	FString RootsOverride;
-	if (FParse::Value(*Params, TEXT("AssayContentRoots="), RootsOverride))
+	if (FParse::Value(*Params, TEXT("LensContentRoots="), RootsOverride))
 	{
 		ContentRoots.Reset();
 		RootsOverride.ParseIntoArray(ContentRoots, TEXT(","), true);
@@ -516,7 +516,7 @@ int32 UDwoAssayInspectorCommandlet::Main(const FString& Params)
 		const UBlueprint* Blueprint = Cast<UBlueprint>(Asset.GetAsset());
 		if (!Blueprint)
 		{
-			UE_LOG(LogDwoAssay, Warning, TEXT("Could not load Blueprint %s"), *Asset.GetObjectPathString());
+			UE_LOG(LogDwoLens, Warning, TEXT("Could not load Blueprint %s"), *Asset.GetObjectPathString());
 			++Failed;
 			continue;
 		}
@@ -563,7 +563,7 @@ int32 UDwoAssayInspectorCommandlet::Main(const FString& Params)
 		WriteJson(OutDir / TEXT("blueprints.json"), BlueprintRoot) &&
 		WriteJson(OutDir / TEXT("assets.json"), AssetRoot);
 
-	UE_LOG(LogDwoAssay, Display, TEXT("dwo-Assay: %d native classes, %d blueprints, %d assets -> %s"),
+	UE_LOG(LogDwoLens, Display, TEXT("dwo-Lens: %d native classes, %d blueprints, %d assets -> %s"),
 		NativeClasses.Num(), Blueprints.Num(), Assets.Num(), *OutDir);
 
 	return bWritten ? 0 : 1;

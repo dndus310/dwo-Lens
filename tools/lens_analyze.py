@@ -1,8 +1,8 @@
-"""dwo-Assay analyzer: raw extractor JSON -> unified graph, SQLite index, diagrams, gate findings, HTML report.
+"""dwo-Lens analyzer: raw extractor JSON -> unified graph, SQLite index, diagrams, gate findings, HTML report.
 
 Standard library only. Deterministic: the same raw input always produces the same output.
 
-    python assay_analyze.py --raw <raw dir> --project <x.uproject> --out <out dir> [--run-id <id>]
+    python lens_analyze.py --raw <raw dir> --project <x.uproject> --out <out dir> [--run-id <id>]
 """
 from __future__ import annotations
 
@@ -16,10 +16,10 @@ from collections import defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import assay_quality  # noqa: E402
+import lens_quality  # noqa: E402
 
-SCHEMA = "assay.graph/0.1"
-EXTRACTOR_VERSION = "assay-analyze/0.1"
+SCHEMA = "lens.graph/0.1"
+EXTRACTOR_VERSION = "lens-analyze/0.1"
 MAX_DIAGRAM_NODES = 120
 MAX_FLOW_NODES = 60
 MAX_REPORT_FLOWS = 60
@@ -190,8 +190,8 @@ def scan_modules(project_file: Path, g: Graph) -> dict[str, set[str]]:
     plugins_dir = root / "Plugins"
     plugin_files = []
     if plugins_dir.exists():
-        plugin_files = [p for p in plugins_dir.rglob("*.uplugin") if "__DwoAssayInspector" not in p.parts]
-        build_files += [p for p in plugins_dir.rglob("*.Build.cs") if "__DwoAssayInspector" not in p.parts]
+        plugin_files = [p for p in plugins_dir.rglob("*.uplugin") if "__DwoLensInspector" not in p.parts]
+        build_files += [p for p in plugins_dir.rglob("*.Build.cs") if "__DwoLensInspector" not in p.parts]
 
     for plugin in plugin_files:
         desc = load_json(plugin)
@@ -639,7 +639,7 @@ def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, dia
                        f"<td>{esc(short_name(bp['parent']))}</td><td>{len(bp['graphs'])}</td><td>{esc(targets)}</td></tr>")
 
     doc = f"""<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>dwo-Assay 리포트 · {esc(Path(meta['project']).stem)}</title><style>{REPORT_CSS}</style></head><body><main>
+<title>dwo-Lens 리포트 · {esc(Path(meta['project']).stem)}</title><style>{REPORT_CSS}</style></head><body><main>
 <section><div class="meta">{esc(run_id)} · UE {esc(meta['engineVersion'].split('-')[0])} · {esc(meta['extractedAtUtc'])}</div>
 <h1>{esc(Path(meta['project']).stem)} 아키텍처 리포트 <span class="badge {result['verdict']}">{result['verdict']}</span></h1>
 <div class="kpis">
@@ -682,8 +682,8 @@ def main() -> int:
 
     g, ctx = build(args.raw, args.project)
     result = run_checks(g, ctx)
-    cfg = assay_quality.load_config(args.config or [Path(__file__).resolve().parent.parent / "config" / "default.json"])
-    quality_findings, quality = assay_quality.run(ctx, cfg)
+    cfg = lens_quality.load_config(args.config or [Path(__file__).resolve().parent.parent / "config" / "default.json"])
+    quality_findings, quality = lens_quality.run(ctx, cfg)
     result["findings"] += quality_findings
     result["verdict"] = verdict_of(result["findings"])
     (args.out / "quality.json").write_text(json.dumps(quality, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -714,9 +714,9 @@ def main() -> int:
     if diagrams["assets"]:
         (args.out / "assets.mmd").write_text(diagrams["assets"], encoding="utf-8")
     write_sqlite(g, args.out / "index.db", ctx["meta"])
-    render_report(args.out, args.run_id, g, ctx, result, diagrams, assay_quality.render_html(quality))
+    render_report(args.out, args.run_id, g, ctx, result, diagrams, lens_quality.render_html(quality))
 
-    print(f"[dwo-assay] symbols={len(g.symbols)} relations={len(g.relations)} verdict={result['verdict']} "
+    print(f"[dwo-lens] symbols={len(g.symbols)} relations={len(g.relations)} verdict={result['verdict']} "
           f"findings={len(result['findings'])}")
     return 0
 

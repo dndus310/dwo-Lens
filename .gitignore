@@ -1,8 +1,8 @@
 # Local plugin builds and logs
 .build/
 .build-log.txt
-plugin/DwoAssayInspector/Binaries/
-plugin/DwoAssayInspector/Intermediate/
+plugin/DwoLensInspector/Binaries/
+plugin/DwoLensInspector/Intermediate/
 __pycache__/
 *.pyc
 # QA scratch (package checks, stress data)

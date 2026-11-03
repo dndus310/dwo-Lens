@@ -1,9 +1,9 @@
-"""dwo-Assay structured log parser (ST-4).
+"""dwo-Lens structured log parser (ST-4).
 
 Turns Unreal log files and crash folders into grouped, fingerprinted events so every wrapped tool
 (commandlets, automation, editor sessions) reports in one shape. Standard library only.
 
-    python assay_logs.py --files a.log b.log --out logs.json [--crashes <Saved/Crashes>] [--baseline prev.json]
+    python lens_logs.py --files a.log b.log --out logs.json [--crashes <Saved/Crashes>] [--baseline prev.json]
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ import xml.etree.ElementTree as ET
 from collections import OrderedDict
 from pathlib import Path
 
-SCHEMA = "assay.logs/0.1"
+SCHEMA = "lens.logs/0.1"
 SEVERITIES = ("Fatal", "Error", "Warning")
 
 LINE_TS = re.compile(
@@ -148,7 +148,7 @@ def main() -> int:
     summary = run(args.files, args.crashes, set(args.ignore), baseline)
     summary["verdict"] = verdict_of(summary)
     args.out.write_text(json.dumps(summary, ensure_ascii=False, indent=1), encoding="utf-8")
-    print(f"[dwo-assay] logs: {summary['counts']} groups={len(summary['groups'])} new={summary['newGroups']} "
+    print(f"[dwo-lens] logs: {summary['counts']} groups={len(summary['groups'])} new={summary['newGroups']} "
           f"crashes={len(summary['crashes'])} verdict={summary['verdict']}")
     return 0
 

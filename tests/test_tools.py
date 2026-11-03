@@ -1,4 +1,4 @@
-"""Unit tests for the dwo-Assay Python tools. Standard library only.
+"""Unit tests for the dwo-Lens Python tools. Standard library only.
 
     python -m unittest discover -s tests -v
 """
@@ -18,10 +18,10 @@ TOOLS = ROOT / "tools"
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "raw_temp_proj"
 sys.path.insert(0, str(TOOLS))
 
-import assay_analyze as analyze  # noqa: E402
-import assay_logs as logs  # noqa: E402
-import assay_quality as quality  # noqa: E402
-import assay_verify as verify  # noqa: E402
+import lens_analyze as analyze  # noqa: E402
+import lens_logs as logs  # noqa: E402
+import lens_quality as quality  # noqa: E402
+import lens_verify as verify  # noqa: E402
 
 
 def write(path: Path, text: str) -> Path:
@@ -32,7 +32,7 @@ def write(path: Path, text: str) -> Path:
 
 class TempDir(unittest.TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="assay-test-"))
+        self.tmp = Path(tempfile.mkdtemp(prefix="lens-test-"))
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
@@ -151,7 +151,7 @@ class AnalyzerFixtureTests(TempDir):
     """Runs the full analyzer on real data extracted from a Blueprint-only project."""
 
     def run_cli(self, out: Path) -> Path:
-        cmd = [sys.executable, str(TOOLS / "assay_analyze.py"), "--raw", str(FIXTURE),
+        cmd = [sys.executable, str(TOOLS / "lens_analyze.py"), "--raw", str(FIXTURE),
                "--project", str(FIXTURE / "temp_proj.uproject"), "--out", str(out), "--run-id", "test"]
         subprocess.run(cmd, check=True, capture_output=True)
         return out
@@ -277,7 +277,7 @@ class QualityTests(TempDir):
     def test_state_monitor_detection(self):
         write(self.tmp / "P.uproject", json.dumps({"Plugins": [{"Name": "StateMonitor", "Enabled": True}]}))
         write(self.tmp / "Plugins/StateMonitor/StateMonitor.uplugin", "{}")
-        write(self.tmp / "Plugins/__DwoAssayInspector/StateMonitor.uplugin", "{}")  # never counted
+        write(self.tmp / "Plugins/__DwoLensInspector/StateMonitor.uplugin", "{}")  # never counted
         write(self.tmp / "Source/Game/Hud.cpp",
               '#include "StateMonitorSubsystem.h"\n'
               'void F(UObject* W) {\n'

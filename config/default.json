@@ -1,6 +1,6 @@
 {
-  "schema": "assay.config/0.1",
-  "_comment": "Defaults. A project can override any key with __dwo-assay/config.json (same shape, merged key by key).",
+  "schema": "lens.config/0.1",
+  "_comment": "Defaults. A project can override any key with __dwo-lens/config.json (same shape, merged key by key).",
 
   "naming": {
     "_comment": "Asset class name -> allowed prefixes (UE5 style guide, allar/ue5-style-guide). Classes not listed are not checked.",

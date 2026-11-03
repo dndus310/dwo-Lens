@@ -1,4 +1,4 @@
-# dwo-Assay
+# dwo-Lens
 
 언리얼 프로젝트에 흔적 없이 부착되는 분석·로그·검증 팩토리입니다. 대상 프로젝트를 읽기만 하며, 언제 떼어 내도 프로젝트는 그대로 동작합니다.
 
@@ -10,33 +10,33 @@
 setup.bat
 ```
 
-`DWO_ASSAY_HOME` 환경 변수를 이 저장소로 등록합니다. 실행 후 새 터미널을 여세요.
+`DWO_LENS_HOME` 환경 변수를 이 저장소로 등록합니다. 실행 후 새 터미널을 여세요.
 
 ## 프로젝트에 부착
 
-1. `__dwo-assay.bat`을 대상 프로젝트 루트(`.uproject`가 있는 폴더)에 복사합니다.
+1. `__dwo-lens.bat`을 대상 프로젝트 루트(`.uproject`가 있는 폴더)에 복사합니다.
 2. 실행합니다.
 
 ```bat
-__dwo-assay.bat attach     :: 부착 (엔진 버전별 첫 회만 플러그인 빌드로 몇 분 걸림)
-__dwo-assay.bat analyze    :: ST-1~2 아키텍처 리포트 + 품질 점검
-__dwo-assay.bat verify     :: ST-3 BP 전체 컴파일, 데이터 검증, 자동화 테스트
-__dwo-assay.bat logs       :: ST-4 Saved/Logs, Saved/Crashes 분석 (이전 실행 대비 새 오류)
-__dwo-assay.bat tools      :: 도구 카탈로그 (ready / planned)
-__dwo-assay.bat gui        :: 제어판 창 열기
-__dwo-assay.bat sm-install :: StateMonitor 설치 (아래 '제공 도구')
-__dwo-assay.bat status     :: 부착 버전·엔진 확인
-__dwo-assay.bat doctor     :: 환경 점검
-__dwo-assay.bat update     :: 시스템 최신화
-__dwo-assay.bat detach     :: 제거 (--keep-data 로 분석 데이터 보존)
+__dwo-lens.bat attach     :: 부착 (엔진 버전별 첫 회만 플러그인 빌드로 몇 분 걸림)
+__dwo-lens.bat analyze    :: ST-1~2 아키텍처 리포트 + 품질 점검
+__dwo-lens.bat verify     :: ST-3 BP 전체 컴파일, 데이터 검증, 자동화 테스트
+__dwo-lens.bat logs       :: ST-4 Saved/Logs, Saved/Crashes 분석 (이전 실행 대비 새 오류)
+__dwo-lens.bat tools      :: 도구 카탈로그 (ready / planned)
+__dwo-lens.bat gui        :: 제어판 창 열기
+__dwo-lens.bat sm-install :: StateMonitor 설치 (아래 '제공 도구')
+__dwo-lens.bat status     :: 부착 버전·엔진 확인
+__dwo-lens.bat doctor     :: 환경 점검
+__dwo-lens.bat update     :: 시스템 최신화
+__dwo-lens.bat detach     :: 제거 (--keep-data 로 분석 데이터 보존)
 ```
 
 ## 제어판 (GUI)
 
 명령어 대신 창에서 쓰려면 둘 중 하나를 실행합니다.
 
-- dwo-Assay 폴더의 **`gui.bat`을 더블클릭** → 창이 열리면 `찾아보기...`로 프로젝트 폴더 선택. 부착되지 않은 프로젝트는 `부착` 버튼으로 부착합니다.
-- 부착된 프로젝트에서 `__dwo-assay.bat gui`
+- dwo-Lens 폴더의 **`gui.bat`을 더블클릭** → 창이 열리면 `찾아보기...`로 프로젝트 폴더 선택. 부착되지 않은 프로젝트는 `부착` 버튼으로 부착합니다.
+- 부착된 프로젝트에서 `__dwo-lens.bat gui`
 
 | 영역 | 내용 |
 |---|---|
@@ -51,18 +51,18 @@ __dwo-assay.bat detach     :: 제거 (--keep-data 로 분석 데이터 보존)
 |---|---|
 | 결과 탭 `HTML 저장...` | 선택한 실행의 `report.html`을 원하는 위치에 저장 |
 | 결과·이력 탭 `종합 리포트 저장...` | 최신 분석·검증·로그 리포트를 표지와 함께 HTML 파일 하나로 저장 (미완료 실행은 제외) |
-| `dwo-assay-gui.exe --project <폴더> --export-report <파일.html>` | 창 없이 종합 리포트 생성 (자동화·CI용) |
+| `dwo-lens-gui.exe --project <폴더> --export-report <파일.html>` | 창 없이 종합 리포트 생성 (자동화·CI용) |
 
-처음 실행할 때 Visual Studio C++ 도구로 한 번 빌드합니다(약 1분, `%LOCALAPPDATA%\dwo-Assay\gui-cache`). GUI는 `__dwo-assay.bat`을 그대로 실행하고 같은 결과 파일을 읽으므로 명령줄과 결과가 같습니다.
+처음 실행할 때 Visual Studio C++ 도구로 한 번 빌드합니다(약 1분, `%LOCALAPPDATA%\dwo-Lens\gui-cache`). GUI는 `__dwo-lens.bat`을 그대로 실행하고 같은 결과 파일을 읽으므로 명령줄과 결과가 같습니다.
 
 ## 제공 도구: StateMonitor
 
 USTRUCT 상태 스냅샷·변경 이력 뷰어(런타임 플러그인)를 프로젝트에 설치해 줍니다. 설치하면 `analyze`가 제출 지점을 찾고 `verify`가 StateMonitor 테스트를 함께 실행합니다.
 
 ```bat
-__dwo-assay.bat sm-install            :: 에디터·PIE 전용 (기본). 패키지 빌드에 영향 없음
-__dwo-assay.bat sm-install --runtime  :: 패키지 게임에도 포함. .uproject(BP 전용) 또는 Build.cs(C++) 등록 필요
-__dwo-assay.bat sm-remove             :: 제거. 프로젝트 코드가 참조 중이면 거부 (--force로 강제)
+__dwo-lens.bat sm-install            :: 에디터·PIE 전용 (기본). 패키지 빌드에 영향 없음
+__dwo-lens.bat sm-install --runtime  :: 패키지 게임에도 포함. .uproject(BP 전용) 또는 Build.cs(C++) 등록 필요
+__dwo-lens.bat sm-remove             :: 제거. 프로젝트 코드가 참조 중이면 거부 (--force로 강제)
 ```
 
 GUI 왼쪽 "제공 도구"에서도 설치·제거할 수 있습니다. `.uproject`는 수정하지 않으며 `Plugins/__StateMonitor`는 git에서 숨겨집니다.
@@ -89,13 +89,13 @@ powershell -File tests\package_check.ps1 -Source <폴더> -Name pkg -Config Ship
 
 ```
 A/
-├─ __dwo-assay.bat
-├─ __dwo-assay/
+├─ __dwo-lens.bat
+├─ __dwo-lens/
 │  ├─ system/          # 이 저장소의 clone (버전 = 커밋)
 │  ├─ data/runs/<id>/  # 실행별 raw · out · run.json · 로그
 │  ├─ config.json      # (선택) 프로젝트별 규칙 덮어쓰기
 │  └─ state.json
-└─ Plugins/__DwoAssayInspector/   # 미리 빌드된 에디터 전용 플러그인 (Source 없음)
+└─ Plugins/__DwoLensInspector/   # 미리 빌드된 에디터 전용 플러그인 (Source 없음)
 ```
 
 모두 `.git/info/exclude`의 표식 블록으로 git에서 숨겨집니다. `.uproject`, `Build.cs`, 기존 파일은 건드리지 않습니다. 제거 시 엔진 작업 폴더(`Saved/`, `Intermediate/`, `DerivedDataCache/`)를 뺀 git 상태가 부착 전과 같은지 검사합니다.
@@ -104,18 +104,18 @@ A/
 
 | 라인 | 공정 | 도구 |
 |---|---|---|
-| `analyze` | ST-1 수집 | `-run=DwoAssayInspector` (리플렉션, BP 그래프, 에셋 참조), 모듈·플러그인 스캔 |
+| `analyze` | ST-1 수집 | `-run=DwoLensInspector` (리플렉션, BP 그래프, 에셋 참조), 모듈·플러그인 스캔 |
 | | ST-2 분석 | 통합 그래프, 순환 검사, 하드 참조 체인, 미사용 에셋·리다이렉터, BP 복잡도 |
 | | ST-3 규칙 | 이름·폴더 규칙 (UE5 스타일 가이드 기본값) |
 | | ST-4 연계 | StateMonitor 어댑터: 프로젝트에 있으면 제출 지점·Source ID 수집 |
 | `verify` | ST-3 검증 | `CompileAllBlueprints`, `DataValidation`, `Automation RunTests` (StateMonitor가 있으면 `StateMonitor.*` 추가) |
 | `logs` | ST-4 로그 | 구조화 로그 파서 (심각도·카테고리·지문 그룹, 이전 실행 대비 새 오류), 크래시 수집 |
 
-전체 목록과 계획 중인 도구(Insights 내보내기, CSV 성능 리포트, 정적 분석 등)는 `tools/catalog.json` 또는 `__dwo-assay.bat tools`로 확인합니다.
+전체 목록과 계획 중인 도구(Insights 내보내기, CSV 성능 리포트, 정적 분석 등)는 `tools/catalog.json` 또는 `__dwo-lens.bat tools`로 확인합니다.
 
 ## 설정
 
-`config/default.json`이 기본값입니다. 프로젝트별로 바꾸려면 `__dwo-assay/config.json`에 같은 구조로 필요한 키만 적습니다.
+`config/default.json`이 기본값입니다. 프로젝트별로 바꾸려면 `__dwo-lens/config.json`에 같은 구조로 필요한 키만 적습니다.
 
 ```json
 {
@@ -128,20 +128,20 @@ A/
 
 | 경로 | 역할 |
 |---|---|
-| `__dwo-assay.bat` | 부트스트랩: 사전 확인 → exclude → clone/pull → `assay.ps1` 호출 |
-| `tools/assay.ps1` | 명령 실행, 엔진 호출, 실행 기록 (`run.json`) |
-| `tools/assay_analyze.py` | raw JSON → 통합 그래프, SQLite, 다이어그램, 게이트, HTML 리포트 |
-| `tools/assay_quality.py` | 이름 규칙, 미사용 에셋, BP 복잡도, StateMonitor 감지 |
-| `tools/assay_logs.py` | UE 로그·크래시 파서 |
-| `tools/assay_verify.py` | 검증·로그 라인 판정과 리포트 |
+| `__dwo-lens.bat` | 부트스트랩: 사전 확인 → exclude → clone/pull → `lens.ps1` 호출 |
+| `tools/lens.ps1` | 명령 실행, 엔진 호출, 실행 기록 (`run.json`) |
+| `tools/lens_analyze.py` | raw JSON → 통합 그래프, SQLite, 다이어그램, 게이트, HTML 리포트 |
+| `tools/lens_quality.py` | 이름 규칙, 미사용 에셋, BP 복잡도, StateMonitor 감지 |
+| `tools/lens_logs.py` | UE 로그·크래시 파서 |
+| `tools/lens_verify.py` | 검증·로그 라인 판정과 리포트 |
 | `tools/catalog.json` | 도구 레지스트리 |
 | `gui/`, `gui.bat`, `tools/gui.ps1` | ImGui 제어판 (Dear ImGui 1.91.9b, nlohmann/json 3.11.3, MIT) |
 | `config/default.json` | 규칙과 기준값 |
-| `plugin/DwoAssayInspector` | 추출 Commandlet (읽기 전용, 패키지를 저장하지 않음) |
+| `plugin/DwoLensInspector` | 추출 Commandlet (읽기 전용, 패키지를 저장하지 않음) |
 
-플러그인은 엔진 버전과 소스 해시별로 `%LOCALAPPDATA%\dwo-Assay\plugin-cache`에 한 번만 빌드되고 여러 프로젝트가 재사용합니다.
+플러그인은 엔진 버전과 소스 해시별로 `%LOCALAPPDATA%\dwo-Lens\plugin-cache`에 한 번만 빌드되고 여러 프로젝트가 재사용합니다.
 
-## 산출물 (`__dwo-assay/data/runs/<id>/`)
+## 산출물 (`__dwo-lens/data/runs/<id>/`)
 
 | 파일 | 내용 |
 |---|---|

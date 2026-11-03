@@ -1,11 +1,11 @@
-// dwo-Assay control panel: Dear ImGui + Win32 + DirectX 11.
+// dwo-Lens control panel: Dear ImGui + Win32 + DirectX 11.
 //
-// Runs the same commands as __dwo-assay.bat and reads the same run.json / out/*.json files,
+// Runs the same commands as __dwo-lens.bat and reads the same run.json / out/*.json files,
 // so the GUI and the command line always show identical results.
 //
-//   dwo-assay-gui.exe [--project <folder with .uproject>] [--home <dwo-Assay repository>]
+//   dwo-lens-gui.exe [--project <folder with .uproject>] [--home <dwo-Lens repository>]
 //                     [--tab log|history|result] [--select <run id>] [--run <command>]   (--run starts a command on launch)
-//   dwo-assay-gui.exe --project <folder> --export-report <file.html>   (no window: latest analyze+verify+logs in one HTML)
+//   dwo-lens-gui.exe --project <folder> --export-report <file.html>   (no window: latest analyze+verify+logs in one HTML)
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
@@ -433,13 +433,13 @@ struct RunInfo
 struct App
 {
 	fs::path settingsDir;
-	fs::path home;               // dwo-Assay repository (DWO_ASSAY_HOME), used to attach new projects
+	fs::path home;               // dwo-Lens repository (DWO_LENS_HOME), used to attach new projects
 	fs::path project;
 	std::string projectName;
 	bool hasUProject = false;
 	bool attached = false;
 	bool isCodeProject = false;
-	int stateMonitor = 0;        // 0 none, 1 installed by dwo-Assay, 2 part of the project
+	int stateMonitor = 0;        // 0 none, 1 installed by dwo-Lens, 2 part of the project
 	json state;
 	std::vector<RunInfo> runs;
 	int selectedRun = -1;
@@ -508,7 +508,7 @@ struct App
 				if (ec || it.depth() > 3) { if (it.depth() > 3) it.disable_recursion_pending(); continue; }
 				if (it->path().filename() == "StateMonitor.uplugin" && PathUtf8(it->path()).find("__") == std::string::npos) { stateMonitor = 2; break; }
 			}
-		auto st = ReadJson(project / "__dwo-assay" / "state.json");
+		auto st = ReadJson(project / "__dwo-lens" / "state.json");
 		attached = st.has_value();
 		state = st ? *st : json::object();
 		LoadRuns();
@@ -520,7 +520,7 @@ struct App
 		runs.clear();
 		selectedRun = -1;
 		std::error_code ec;
-		fs::path root = project / "__dwo-assay" / "data" / "runs";
+		fs::path root = project / "__dwo-lens" / "data" / "runs";
 		if (fs::is_directory(root, ec))
 			for (auto& e : fs::directory_iterator(root, ec))
 			{
@@ -554,7 +554,7 @@ struct App
 		detailFor.clear();
 	}
 
-	fs::path Bat() const { return project / "__dwo-assay.bat"; }
+	fs::path Bat() const { return project / "__dwo-lens.bat"; }
 
 	void Run(const char* command)
 	{
@@ -562,21 +562,21 @@ struct App
 		std::error_code ec;
 		if (!fs::exists(Bat(), ec))
 		{
-			if (home.empty() || !fs::exists(home / "__dwo-assay.bat", ec))
+			if (home.empty() || !fs::exists(home / "__dwo-lens.bat", ec))
 			{
-				message = "DWO_ASSAY_HOME이 설정되지 않았습니다. dwo-Assay 폴더의 setup.bat을 먼저 실행하세요.";
+				message = "DWO_LENS_HOME이 설정되지 않았습니다. dwo-Lens 폴더의 setup.bat을 먼저 실행하세요.";
 				return;
 			}
-			fs::copy_file(home / "__dwo-assay.bat", Bat(), fs::copy_options::overwrite_existing, ec);
+			fs::copy_file(home / "__dwo-lens.bat", Bat(), fs::copy_options::overwrite_existing, ec);
 			if (ec)
 			{
-				message = "__dwo-assay.bat 복사 실패: " + ec.message();
+				message = "__dwo-lens.bat 복사 실패: " + ec.message();
 				return;
 			}
 		}
-		if (!home.empty()) SetEnvironmentVariableW(L"DWO_ASSAY_HOME", home.wstring().c_str());
+		if (!home.empty()) SetEnvironmentVariableW(L"DWO_LENS_HOME", home.wstring().c_str());
 		std::wstring cmd = L"cmd.exe /d /s /c \"\"" + Bat().wstring() + L"\" " + ToWide(command) + L"\"";
-		if (runner.Start(cmd, project, std::string("__dwo-assay.bat ") + command))
+		if (runner.Start(cmd, project, std::string("__dwo-lens.bat ") + command))
 		{
 			message.clear();
 			lastCommand = command;
@@ -1290,7 +1290,7 @@ static std::string WriteBundleReport(App& app, const fs::path& dest)
 	if (!parts[0].run && !parts[1].run && !parts[2].run) return "묶을 실행 기록이 없습니다.";
 
 	std::string style, body, mermaid;
-	std::string cover = "<section><div class='meta'>dwo-Assay 종합 리포트</div><h1>" + HtmlEscape(app.projectName) +
+	std::string cover = "<section><div class='meta'>dwo-Lens 종합 리포트</div><h1>" + HtmlEscape(app.projectName) +
 	                    "</h1><div class='scroll'><table><thead><tr><th>라인</th><th>실행 ID</th><th>판정</th></tr></thead><tbody>";
 	for (auto& p : parts)
 	{
@@ -1314,7 +1314,7 @@ static std::string WriteBundleReport(App& app, const fs::path& dest)
 	}
 	cover += "</tbody></table></div></section>";
 	std::string page = "<!doctype html><html lang='ko'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
-	                   "<title>" + HtmlEscape(app.projectName) + " · dwo-Assay 종합 리포트</title><style>" + style +
+	                   "<title>" + HtmlEscape(app.projectName) + " · dwo-Lens 종합 리포트</title><style>" + style +
 	                   "</style></head><body><main>" + cover + body + "</main>" + mermaid + "</body></html>";
 	std::ofstream out(dest, std::ios::binary);
 	out << page;
@@ -1325,7 +1325,7 @@ static std::string WriteBundleReport(App& app, const fs::path& dest)
 static void SaveBundleReport(App& app)
 {
 	fs::path dest;
-	if (!PickSaveFile(g_hwnd, ToWide(app.projectName + "_dwo-assay_report.html"), dest)) return;
+	if (!PickSaveFile(g_hwnd, ToWide(app.projectName + "_dwo-lens_report.html"), dest)) return;
 	std::string err = WriteBundleReport(app, dest);
 	if (err.empty()) app.saved = dest;
 	else app.message = err;
@@ -1443,11 +1443,11 @@ static void DrawApp(App& app, HWND hwnd)
 	ImGuiViewport* vp = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(vp->WorkPos);
 	ImGui::SetNextWindowSize(vp->WorkSize);
-	ImGui::Begin("dwo-Assay", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
+	ImGui::Begin("dwo-Lens", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
 	                                   ImGuiWindowFlags_NoBringToFrontOnFocus);
 
 	// ---- project bar
-	ImGui::TextUnformatted("dwo-Assay");
+	ImGui::TextUnformatted("dwo-Lens");
 	ImGui::SameLine();
 	ImGui::TextDisabled("|");
 	ImGui::SameLine();
@@ -1501,8 +1501,8 @@ static void DrawApp(App& app, HWND hwnd)
 	if (app.confirmDetach) { ImGui::OpenPopup("detach?"); app.confirmDetach = false; }
 	if (ImGui::BeginPopupModal("detach?", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		ImGui::TextUnformatted("dwo-Assay를 이 프로젝트에서 제거합니다.");
-		ImGui::TextDisabled("플러그인, exclude 블록, __dwo-assay 폴더(분석 기록 포함)가 삭제됩니다.");
+		ImGui::TextUnformatted("dwo-Lens를 이 프로젝트에서 제거합니다.");
+		ImGui::TextDisabled("플러그인, exclude 블록, __dwo-lens 폴더(분석 기록 포함)가 삭제됩니다.");
 		static bool keep = true;
 		ImGui::Checkbox("분석 기록 보존 (--keep-data)", &keep);
 		if (ImGui::Button("제거", ImVec2(120, 0))) { app.Run(keep ? "detach --keep-data" : "detach"); ImGui::CloseCurrentPopup(); }
@@ -1633,7 +1633,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 	App app;
 	wchar_t local[MAX_PATH] = {};
 	GetEnvironmentVariableW(L"LOCALAPPDATA", local, MAX_PATH);
-	app.settingsDir = fs::path(local) / L"dwo-Assay";
+	app.settingsDir = fs::path(local) / L"dwo-Lens";
 	app.LoadSettings();
 
 	int argc = 0;
@@ -1648,7 +1648,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 	if (homeArg.empty())
 	{
 		wchar_t buf[MAX_PATH] = {};
-		if (GetEnvironmentVariableW(L"DWO_ASSAY_HOME", buf, MAX_PATH)) homeArg = buf;
+		if (GetEnvironmentVariableW(L"DWO_LENS_HOME", buf, MAX_PATH)) homeArg = buf;
 	}
 	app.home = homeArg;
 
@@ -1662,14 +1662,14 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 		return err.empty() ? 0 : 1;
 	}
 
-	WNDCLASSEXW wc{ sizeof(wc), CS_CLASSDC, WndProc, 0, 0, hInstance, nullptr, LoadCursor(nullptr, IDC_ARROW), nullptr, nullptr, L"DwoAssayGui", nullptr };
+	WNDCLASSEXW wc{ sizeof(wc), CS_CLASSDC, WndProc, 0, 0, hInstance, nullptr, LoadCursor(nullptr, IDC_ARROW), nullptr, nullptr, L"DwoLensGui", nullptr };
 	RegisterClassExW(&wc);
-	HWND hwnd = g_hwnd = CreateWindowW(wc.lpszClassName, L"dwo-Assay", WS_OVERLAPPEDWINDOW, 100, 80, 1360, 860, nullptr, nullptr, wc.hInstance, nullptr);
+	HWND hwnd = g_hwnd = CreateWindowW(wc.lpszClassName, L"dwo-Lens", WS_OVERLAPPEDWINDOW, 100, 80, 1360, 860, nullptr, nullptr, wc.hInstance, nullptr);
 	if (!CreateDeviceD3D(hwnd))
 	{
 		CleanupDeviceD3D();
 		UnregisterClassW(wc.lpszClassName, wc.hInstance);
-		MessageBoxW(nullptr, L"DirectX 11 장치를 만들 수 없습니다.", L"dwo-Assay", MB_ICONERROR);
+		MessageBoxW(nullptr, L"DirectX 11 장치를 만들 수 없습니다.", L"dwo-Lens", MB_ICONERROR);
 		return 1;
 	}
 	float scale = ImGui_ImplWin32_GetDpiScaleForHwnd(hwnd);

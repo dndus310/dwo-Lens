@@ -1,15 +1,15 @@
-# Builds (once per source version) and launches the dwo-Assay ImGui control panel.
+# Builds (once per source version) and launches the dwo-Lens ImGui control panel.
 # Windows PowerShell 5.1 compatible.
 param(
     [Parameter(Mandatory = $true)][string]$SystemDir,
     [string]$Project = '',
-    [string]$AssayHome = '',
+    [string]$LensHome = '',
     [switch]$BuildOnly
 )
 
 $ErrorActionPreference = 'Stop'
-function Say([string]$Message) { Write-Host "[dwo-assay] $Message" }
-function Fail([string]$Message) { Write-Host "[dwo-assay] ERROR: $Message" -ForegroundColor Red; exit 1 }
+function Say([string]$Message) { Write-Host "[dwo-lens] $Message" }
+function Fail([string]$Message) { Write-Host "[dwo-lens] ERROR: $Message" -ForegroundColor Red; exit 1 }
 
 $guiDir = Join-Path $SystemDir 'gui'
 
@@ -34,8 +34,8 @@ function Find-VcVars {
 }
 
 $hash = Get-SourceHash
-$cache = Join-Path $env:LOCALAPPDATA "dwo-Assay\gui-cache\$hash"
-$exe = Join-Path $cache 'dwo-assay-gui.exe'
+$cache = Join-Path $env:LOCALAPPDATA "dwo-Lens\gui-cache\$hash"
+$exe = Join-Path $cache 'dwo-lens-gui.exe'
 
 if (-not (Test-Path $exe)) {
     Say "Building the GUI (first time for this version, about a minute)..."
@@ -67,7 +67,7 @@ if ($BuildOnly) { exit 0 }
 
 $argList = @()
 if ($Project) { $argList += @('--project', "`"$Project`"") }
-if ($AssayHome) { $argList += @('--home', "`"$AssayHome`"") }
+if ($LensHome) { $argList += @('--home', "`"$LensHome`"") }
 if ($argList.Count -gt 0) { Start-Process -FilePath $exe -ArgumentList ($argList -join ' ') }
 else { Start-Process -FilePath $exe }
 Say 'GUI started.'

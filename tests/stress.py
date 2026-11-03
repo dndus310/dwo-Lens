@@ -1,4 +1,4 @@
-"""dwo-Assay stress tests: large synthetic inputs for the analyzer, log parser and quality checks.
+"""dwo-Lens stress tests: large synthetic inputs for the analyzer, log parser and quality checks.
 
     python tests/stress.py [--scale 1.0] [--out .qa/stress]
 
@@ -18,9 +18,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
-import assay_analyze as analyze  # noqa: E402
-import assay_logs as logs  # noqa: E402
-import assay_quality as quality  # noqa: E402
+import lens_analyze as analyze  # noqa: E402
+import lens_logs as logs  # noqa: E402
+import lens_quality as quality  # noqa: E402
 
 
 def measure(fn, *args):
@@ -87,7 +87,7 @@ def make_raw(root: Path, n_native: int, n_bp: int, n_assets: int, nodes_per_grap
     assets.append({"package": "/Game/Maps/Main", "asset": "/Game/Maps/Main.Main", "class": "/Script/Engine.World",
                    "hard": [f"/Game/BP/BP_{k}" for k in range(0, n_bp, 3)] + [f"/Game/Data/A_{n_bp}"], "soft": []})
 
-    meta = {"schema": "assay.raw/0.1", "engineVersion": "5.7.4-stress", "project": str(root / "Stress.uproject"),
+    meta = {"schema": "lens.raw/0.1", "engineVersion": "5.7.4-stress", "project": str(root / "Stress.uproject"),
             "extractedAtUtc": "2026-10-28T00:00:00Z", "projectModules": ["Stress"], "contentRoots": ["/Game"],
             "blueprintLoadFailures": 0}
     for name, doc in (("meta", meta), ("reflection", {"native": native, "blueprint": bp_classes}),
@@ -103,7 +103,7 @@ def analyzer_stress(work: Path, scale: float) -> dict:
 
     def run():
         out = work / "out"
-        sys.argv = ["assay_analyze.py", "--raw", str(raw), "--project", str(work / "project" / "Stress.uproject"),
+        sys.argv = ["lens_analyze.py", "--raw", str(raw), "--project", str(work / "project" / "Stress.uproject"),
                     "--out", str(out), "--run-id", "stress", "--config", str(ROOT / "config" / "default.json")]
         analyze.main()
         return json.loads((out / "findings.json").read_text(encoding="utf-8"))

@@ -1,4 +1,4 @@
-"""dwo-Assay quality checks on top of the extracted graph (ST-2).
+"""dwo-Lens quality checks on top of the extracted graph (ST-2).
 
 - naming:      asset prefix / folder rules (UE5 style guide defaults, overridable in config)
 - unused:      assets unreachable from maps and Config/*.ini, plus leftover redirectors

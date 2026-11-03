@@ -1,4 +1,4 @@
-# dwo-Assay QA 보고서
+# dwo-Lens QA 보고서
 
 - 일자: 2026-10-28
 - 엔진: UE 5.7.4 (Launcher)
@@ -12,7 +12,7 @@
 | 단위 테스트 | 28/28 통과 (Python 도구 4종, 실제 추출 데이터 픽스처 포함, 약 2초) |
 | 자체 검증 (selftest) | 26/26 통과 (정적 검사, GUI 빌드, 격리 복사본에서 전체 명령 왕복, 안전장치) |
 | 스트레스 | 3/3 통과 (대형 분석 14.8초, 로그 100만 줄 7.6초, 20만 노드 순환 1.5초) |
-| Shipping 패키징 | BP 전용 + StateMonitor, C++ + 자체 StateMonitor 모두 통과. 패키지에 dwo-Assay 흔적 0 |
+| Shipping 패키징 | BP 전용 + StateMonitor, C++ + 자체 StateMonitor 모두 통과. 패키지에 dwo-Lens 흔적 0 |
 | 발견·수정한 결함 | 9건 (아래 표) |
 
 ## 1. 단위 테스트 (`tests/test_tools.py`)
@@ -50,9 +50,9 @@
 
 ## 4. Shipping 패키징 (`tests/package_check.ps1`)
 
-각 시나리오는 격리 복사본에 dwo-Assay를 부착한 상태에서 `BuildCookRun -clientconfig=Shipping`으로 패키징하고, 패키지를 검사한 뒤 20초 실행(`-nullrhi`)하고, 마지막에 제거합니다.
+각 시나리오는 격리 복사본에 dwo-Lens를 부착한 상태에서 `BuildCookRun -clientconfig=Shipping`으로 패키징하고, 패키지를 검사한 뒤 20초 실행(`-nullrhi`)하고, 마지막에 제거합니다.
 
-| 시나리오 | 패키징 | 패키지 안 dwo-Assay | StateMonitor | 실행 20초 | 제거 후 흔적 |
+| 시나리오 | 패키징 | 패키지 안 dwo-Lens | StateMonitor | 실행 20초 | 제거 후 흔적 |
 |---|---|---|---|---|---|
 | A. BP 전용(temp_proj) + StateMonitor(기본: 에디터 전용) | 성공, 635MB | 파일 0 · 바이너리 문자열 0 · pak 항목 0 | 설명 파일만 포함, 모듈은 로드 안 됨 | 정상 | 0 |
 | A0. BP 전용, StateMonitor 없음 (기준) | 성공, 635MB | 0 · 0 · 0 | - | 정상 | 0 |
@@ -82,5 +82,5 @@ QA 스크립트 자체의 오류(엔진 바이너리를 직접 실행, PowerShel
 - Development 구성 패키징 (Shipping만 수행)
 - 패키지 실행은 `-nullrhi` 20초 생존 확인까지. 게임플레이·렌더링 검증은 하지 않음 (Shipping은 로그가 없음)
 - `sm-install --runtime` 후 `.uproject`·`Build.cs`에 등록한 상태의 패키징
-- C++ 프로젝트에 dwo-Assay가 StateMonitor를 설치했을 때의 에디터 C++ 빌드 (SMHost는 자체 StateMonitor가 있어 설치를 거부함)
+- C++ 프로젝트에 dwo-Lens가 StateMonitor를 설치했을 때의 에디터 C++ 빌드 (SMHost는 자체 StateMonitor가 있어 설치를 거부함)
 - 메모리 수치는 Python 할당만 추적한 값 (프로세스 전체 아님)

@@ -21,6 +21,7 @@ sys.path.insert(0, str(TOOLS))
 import lens_analyze as analyze  # noqa: E402
 import lens_logs as logs  # noqa: E402
 import lens_quality as quality  # noqa: E402
+import lens_runtime as runtime  # noqa: E402
 import lens_verify as verify  # noqa: E402
 
 
@@ -347,6 +348,129 @@ class VerifyTests(TempDir):
         self.assertEqual({s["id"]: s["verdict"] for s in result["steps"]}["V3"], "fail")
 
 
+# =============================================================================== runtime lines
+
+class PerfCsvTests(TempDir):
+    def csv(self, frames):
+        rows = ["EVENTS,FrameTime,GameThreadTime,RenderThreadTime,RHIThreadTime"]
+        rows += [f",{ft},{ft / 2},{ft / 3},1.0" for ft in frames]
+        rows += ["EVENTS,FrameTime,GameThreadTime,RenderThreadTime,RHIThreadTime",
+                 "[HasHeaderRowAtEnd],1,[platform],Windows,[config],Development"]
+        return write(self.tmp / "p.csv", "\n".join(rows) + "\n")
+
+    def test_reads_rows_until_trailing_header_and_metadata(self):
+        cols = runtime.read_profile_csv(self.csv([10, 20, 30]))
+        self.assertEqual(cols["FrameTime"], [10.0, 20.0, 30.0])
+        self.assertEqual(cols["RHIThreadTime"], [1.0, 1.0, 1.0])
+        self.assertNotIn("EVENTS", cols)  # text-only column dropped
+
+    def test_stats_percentiles_and_hitches(self):
+        frames = [10.0] * 90 + [20.0] * 8 + [150.0, 200.0]
+        cfg = {"perf": {"warmupFrames": 0, "budgetMs": 33.3, "hitchMs": 100}}
+        r = runtime.perf(self.csv(frames), "/Game/M", cfg)
+        ft = r["stats"]["FrameTime"]
+        self.assertEqual((ft["p50"], ft["p95"], ft["p99"], ft["max"]), (10.0, 20.0, 150.0, 200.0))
+        self.assertAlmostEqual(ft["avg"], 14.1, places=2)
+        self.assertEqual([h["frame"] for h in r["hitches"]], [98, 99])
+        self.assertEqual(r["verdict"], "warn")  # p95 within budget, hitches present
+        self.assertEqual(r["frames"], 100)
+        self.assertIn("GameThreadTime", r["stats"])
+
+    def test_warmup_is_excluded_and_p95_over_budget_fails(self):
+        r = runtime.perf(self.csv([500, 500] + [40] * 20), "/Game/M", {"perf": {"warmupFrames": 2, "hitchMs": 100}})
+        self.assertEqual(r["frames"], 20)
+        self.assertEqual(r["hitches"], [])
+        self.assertEqual(r["verdict"], "fail")
+
+    def test_missing_csv_fails(self):
+        self.assertEqual(runtime.perf(None, "/Game/M", {})["verdict"], "fail")
+
+    def test_downsample_keeps_peaks(self):
+        values = [1.0] * 1200
+        values[777] = 99.0
+        out = runtime.downsample(values, 600)
+        self.assertEqual(len(out), 600)
+        self.assertIn(99.0, out)
+
+
+class SizesTests(TempDir):
+    def test_closure_weights_follow_hard_refs_and_cycles(self):
+        graph = {"/Game/A": {"/Game/B"}, "/Game/B": {"/Game/C"}, "/Game/C": {"/Game/B"}, "/Game/D": set()}
+        sizes = {"/Game/A": 1, "/Game/B": 10, "/Game/C": 100, "/Game/D": 1000}
+        w = runtime.closure_weights(graph, sizes)
+        self.assertEqual(w["/Game/A"], (111, 2))
+        self.assertEqual(w["/Game/B"], (110, 1))  # B and C load each other
+        self.assertEqual(w["/Game/D"], (1000, 0))
+
+    def test_scan_folds_external_actors_and_ranks(self):
+        c = self.tmp / "proj/Content"
+        for rel, n in (("Maps/L_Main.umap", 100), ("__ExternalActors__/Maps/L_Main/0/AB/X1.uasset", 50),
+                       ("Props/SM_Rock.uasset", 30), ("Props/SM_Rock.ubulk", 300), ("Props/T_Rock.uasset", 20),
+                       ("readme.txt", 999)):
+            (c / rel).parent.mkdir(parents=True, exist_ok=True)
+            (c / rel).write_bytes(b"x" * n)
+        graph = {"relations": [
+            {"source": "asset:/Game/Maps/L_Main", "target": "asset:/Game/Props/SM_Rock", "type": "AssetHardRef"},
+            {"source": "asset:/Game/Props/SM_Rock", "target": "asset:/Game/Props/T_Rock", "type": "AssetHardRef"},
+            {"source": "asset:/Game/Props/T_Rock", "target": "asset:/Game/Maps/L_Main", "type": "AssetSoftRef"}]}
+        r = runtime.sizes(self.tmp / "proj", {"sizes": {"warnAssetMB": 200 / 1048576}}, graph)
+        self.assertEqual(r["totalBytes"], 500)
+        self.assertEqual(r["assetCount"], 3)
+        self.assertEqual(r["largest"][0], {"asset": "/Game/Props/SM_Rock", "bytes": 330})
+        self.assertEqual(r["largest"][1], {"asset": "/Game/Maps/L_Main", "bytes": 150})
+        self.assertEqual(r["heaviestClosures"][0], {"asset": "/Game/Maps/L_Main", "closureBytes": 500, "closureCount": 2})
+        self.assertEqual({t["ext"] for t in r["byType"]}, {".umap", ".uasset", ".ubulk"})
+        self.assertEqual(r["verdict"], "warn")
+        self.assertEqual({o["asset"] for o in r["overLimit"]}, {"/Game/Props/SM_Rock"})
+        self.assertEqual({f["folder"] for f in r["byFolder"]}, {"/Game/Maps", "/Game/Props"})
+
+    def test_list_maps_skips_excluded_and_external(self):
+        c = self.tmp / "proj/Content"
+        for rel in ("Maps/A.umap", "Developers/me/Test.umap", "__ExternalActors__/Maps/A/0/X.umap", "B.umap"):
+            write(c / rel, "")
+        maps = runtime.list_maps(self.tmp / "proj", {"smoke": {"exclude": ["/Game/Developers/*"], "maxMaps": 20}})
+        self.assertEqual(maps, ["/Game/B", "/Game/Maps/A"])
+        self.assertEqual(runtime.list_maps(self.tmp / "proj", {"smoke": {"maxMaps": 1}}), ["/Game/B"])
+
+
+class SmokeTests(TempDir):
+    def run_smoke(self, log_text, **entry):
+        log = write(self.tmp / "run/raw/smoke-1.log", log_text)
+        e = {"map": "/Game/M", "log": str(log), "exitCode": None, "killed": True, "seconds": 15, **entry}
+        write(self.tmp / "run/raw/smoke-runs.json", json.dumps(e))  # a single map arrives as an object
+        return runtime.smoke(self.tmp / "run", self.tmp / "proj", {"smoke": {"maxErrors": 0, "maxWarnings": 1}})
+
+    def test_clean_boot_passes(self):
+        r = self.run_smoke("[2026.10.27-16.40.57:829][  0]LogInit: Display: ok\n")
+        self.assertEqual((r["verdict"], r["maps"][0]["verdict"]), ("pass", "pass"))
+        self.assertIsNone(r["maps"][0]["exitCode"])
+
+    def test_ensure_fails(self):
+        r = self.run_smoke("[2026.10.27-16.40.58:001][  1]LogOutputDevice: Warning: Ensure condition failed: x [File:a.cpp]\n")
+        self.assertEqual(r["maps"][0]["ensures"], 1)
+        self.assertEqual(r["verdict"], "fail")
+
+    def test_errors_over_threshold_fail_and_warnings_warn(self):
+        self.assertEqual(self.run_smoke("LogTemp: Error: boom\n")["verdict"], "fail")
+        r = self.run_smoke("LogTemp: Warning: a\nLogTemp: Warning: b\n")
+        self.assertEqual(r["verdict"], "warn")
+        self.assertEqual(r["maps"][0]["warnings"], 2)
+
+    def test_crash_exit_and_fatal(self):
+        self.assertEqual(self.run_smoke("", exitCode=3, killed=False)["verdict"], "fail")
+        r = self.run_smoke("[2026.10.27-16.40.58:001][  1]LogWindows: Error: === Critical error: ===\n")
+        self.assertTrue(r["maps"][0]["fatal"])
+        self.assertEqual(r["verdict"], "fail")
+
+    def test_verdict_rules(self):
+        base = {"errors": 0, "warnings": 0, "ensures": 0, "fatal": False, "killed": True, "exitCode": None}
+        self.assertEqual(runtime.smoke_verdict(base, 0, 10)[0], "pass")
+        self.assertEqual(runtime.smoke_verdict({**base, "errors": 2}, 5, 10)[0], "warn")
+        self.assertEqual(runtime.smoke_verdict({**base, "errors": 6}, 5, 10)[0], "fail")
+        self.assertEqual(runtime.smoke_verdict({**base, "killed": False, "exitCode": 0}, 0, 10)[0], "warn")
+        self.assertEqual(runtime.smoke_verdict({**base, "logFound": False}, 0, 10)[0], "fail")
+
+
 class CatalogAndConfigTests(unittest.TestCase):
     def test_catalog_is_consistent(self):
         catalog = json.loads((TOOLS / "catalog.json").read_text(encoding="utf-8"))
@@ -359,7 +483,7 @@ class CatalogAndConfigTests(unittest.TestCase):
 
     def test_default_config_is_valid_json_with_all_sections(self):
         cfg = json.loads((ROOT / "config" / "default.json").read_text(encoding="utf-8"))
-        for section in ("naming", "complexity", "unused", "verify", "logs", "stateMonitor"):
+        for section in ("naming", "complexity", "unused", "verify", "logs", "smoke", "perf", "sizes", "trace", "stateMonitor"):
             self.assertIn(section, cfg)
 
 

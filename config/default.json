@@ -67,6 +67,42 @@
     "warnOnNewErrors": true
   },
 
+  "smoke": {
+    "_comment": "Map boot smoke test. maps empty = every .umap under Content minus exclude (globs on /Game paths), capped by maxMaps. fail: Fatal, crash, ensure, abnormal exit or errors > maxErrors. warn: any error, warnings > maxWarnings, or the game quit on its own before 'seconds'.",
+    "maps": [],
+    "exclude": ["/Game/Developers/*"],
+    "maxMaps": 20,
+    "seconds": 15,
+    "maxErrors": 0,
+    "maxWarnings": 200
+  },
+
+  "perf": {
+    "_comment": "CSV profiler capture. map empty = command argument or GameDefaultMap. warmupFrames are captured but excluded from stats. fail: FrameTime p95 > budgetMs. warn: p99 > budgetMs or any frame > hitchMs.",
+    "map": "",
+    "frames": 600,
+    "warmupFrames": 60,
+    "budgetMs": 33.3,
+    "hitchMs": 100,
+    "nullrhi": false,
+    "resX": 960,
+    "resY": 540,
+    "timeoutSeconds": 600
+  },
+
+  "sizes": {
+    "_comment": "Content size scan. warn when one asset (with its .uexp/.ubulk and World Partition external actors) exceeds warnAssetMB.",
+    "warnAssetMB": 100,
+    "top": 50
+  },
+
+  "trace": {
+    "_comment": "Unreal Insights capture. map: command argument, then perf.map, then GameDefaultMap.",
+    "seconds": 20,
+    "channels": "default,counters,loadtime,task",
+    "nullrhi": false
+  },
+
   "stateMonitor": {
     "_comment": "Optional adapter. Active only when the project itself contains the StateMonitor plugin.",
     "pluginName": "StateMonitor",

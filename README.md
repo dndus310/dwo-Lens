@@ -2,7 +2,7 @@
 
 언리얼 프로젝트에 흔적 없이 부착되는 분석·로그·검증 팩토리입니다. 대상 프로젝트를 읽기만 하며, 언제 떼어 내도 프로젝트는 그대로 동작합니다.
 
-현재 가동 라인 (AI 미사용): **아키텍처 리포트(`analyze`)**, **검증(`verify`)**, **로그(`logs`)**
+현재 가동 라인 (AI 미사용): **아키텍처 리포트(`analyze`)**, **검증(`verify`)**, **로그(`logs`)**, **맵 부팅(`smoke`)**, **성능(`perf`)**, **용량(`sizes`)**, **트레이스(`trace`)**
 
 ## 설치 (PC당 1회)
 
@@ -22,6 +22,11 @@ __dwo-lens.bat attach     :: 부착 (엔진 버전별 첫 회만 플러그인 �
 __dwo-lens.bat analyze    :: ST-1~2 아키텍처 리포트 + 품질 점검
 __dwo-lens.bat verify     :: ST-3 BP 전체 컴파일, 데이터 검증, 자동화 테스트
 __dwo-lens.bat logs       :: ST-4 Saved/Logs, Saved/Crashes 분석 (이전 실행 대비 새 오류)
+__dwo-lens.bat smoke      :: 맵마다 -game -nullrhi로 띄워 Fatal·크래시·ensure·오류 검사
+__dwo-lens.bat perf [맵]  :: CSV 프로파일러로 N 프레임 캡처, 프레임 시간 p95·히치를 예산과 비교
+__dwo-lens.bat sizes      :: Content 용량 (에셋·폴더·형식), 하드 참조로 함께 로드되는 무게 (엔진 불필요)
+__dwo-lens.bat trace [맵] :: Unreal Insights 트레이스(.utrace) 기록
+__dwo-lens.bat play [맵]  :: 게임 창 실행 후 바로 반환 (pid 출력, 실행 기록 없음)
 __dwo-lens.bat tools      :: 도구 카탈로그 (ready / planned)
 __dwo-lens.bat gui        :: 제어판 창 열기
 __dwo-lens.bat sm-install :: StateMonitor 설치 (아래 '제공 도구')
@@ -110,8 +115,15 @@ A/
 | | ST-4 연계 | StateMonitor 어댑터: 프로젝트에 있으면 제출 지점·Source ID 수집 |
 | `verify` | ST-3 검증 | `CompileAllBlueprints`, `DataValidation`, `Automation RunTests` (StateMonitor가 있으면 `StateMonitor.*` 추가) |
 | `logs` | ST-4 로그 | 구조화 로그 파서 (심각도·카테고리·지문 그룹, 이전 실행 대비 새 오류), 크래시 수집 |
+| `smoke` | 맵 부팅 | `UnrealEditor-Cmd <맵> -game -nullrhi`를 `smoke.seconds`초 실행 후 종료, 로그 파서로 판정. fail: Fatal·크래시·ensure·비정상 종료·Error > `smoke.maxErrors` |
+| `perf` | 성능 캡처 | `-ExecCmds="csvprofile frames=N"` + `-ExitAfterCsvProfiling` (CSV 프로파일러, `Saved/Profiling/CSV`), FrameTime·GameThread·RenderThread·RHIThread p50/p95/p99, 히치. fail: p95 > `perf.budgetMs` |
+| `sizes` | 용량 | `.uasset/.umap/.uexp/.ubulk` 합계, 최신 `analyze`의 `graph.json`으로 하드 참조 폐포 무게. warn: 에셋 > `sizes.warnAssetMB` |
+| `trace` | 트레이스 | `-trace=<trace.channels> -tracefile=<run>/out/trace.utrace`, `trace.seconds`초 후 창을 닫음. Unreal Insights로 열기 |
+| `play` | (실행 아님) | `UnrealEditor <맵> -game -windowed 1280x720` 분리 실행. GUI에서 StateMonitor 뷰어로 상태를 받을 게임을 띄울 때 사용 |
 
-전체 목록과 계획 중인 도구(Insights 내보내기, CSV 성능 리포트, 정적 분석 등)는 `tools/catalog.json` 또는 `__dwo-lens.bat tools`로 확인합니다.
+맵 인수를 생략하면 `perf.map`, 그다음 `Config/DefaultEngine.ini`의 `GameDefaultMap`을 씁니다. 판정이 fail이면 종료 코드 2입니다.
+
+전체 목록과 계획 중인 도구(Insights 내보내기, PerfReportTool 리포트, 정적 분석 등)는 `tools/catalog.json` 또는 `__dwo-lens.bat tools`로 확인합니다.
 
 ## 설정
 
@@ -120,7 +132,9 @@ A/
 ```json
 {
   "naming": { "forbidAssetsAtContentRoot": false },
-  "verify": { "automationFilters": ["Project.", "MyGame."] }
+  "verify": { "automationFilters": ["Project.", "MyGame."] },
+  "perf": { "map": "/Game/Maps/L_Main", "budgetMs": 16.6 },
+  "smoke": { "exclude": ["/Game/Developers/*", "/Game/Test/*"], "maxErrors": 3 }
 }
 ```
 
@@ -134,6 +148,7 @@ A/
 | `tools/lens_quality.py` | 이름 규칙, 미사용 에셋, BP 복잡도, StateMonitor 감지 |
 | `tools/lens_logs.py` | UE 로그·크래시 파서 |
 | `tools/lens_verify.py` | 검증·로그 라인 판정과 리포트 |
+| `tools/lens_runtime.py` | 맵 부팅·성능 CSV·용량·트레이스 라인 판정과 리포트 |
 | `tools/catalog.json` | 도구 레지스트리 |
 | `gui/`, `gui.bat`, `tools/gui.ps1` | ImGui 제어판 (Dear ImGui 1.91.9b, nlohmann/json 3.11.3, MIT) |
 | `config/default.json` | 규칙과 기준값 |
@@ -151,3 +166,4 @@ A/
 | `out/class_uml.puml` / `.mmd`, `out/flows/*.mmd` | 클래스 다이어그램, BP 실행 흐름 |
 | `out/findings.json`, `out/quality.json`, `out/statemonitor.json` | 분석 판정과 품질 점검 |
 | `out/verify.json`, `out/logs.json` | 검증·로그 라인 결과 |
+| `out/smoke.json`, `out/perf.json` (+`perf.csv`), `out/sizes.json`, `out/trace.json` (+`trace.utrace`) | 맵 부팅·성능·용량·트레이스 라인 결과 |

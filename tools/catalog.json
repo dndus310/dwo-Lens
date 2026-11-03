@@ -156,11 +156,66 @@
       "output": "logs.json"
     },
     {
+      "id": "map-boot-smoke",
+      "station": "ST-3",
+      "kind": "wrap",
+      "status": "ready",
+      "category": "runtime",
+      "command": "smoke",
+      "description": "Boots every map (or config smoke.maps) in -game -nullrhi for a fixed time and gates on fatal, crash, ensure and error counts.",
+      "invocation": "UnrealEditor-Cmd <uproject> <map> -game -nullrhi -nosound -unattended -log -ABSLOG=<file>, stopped after smoke.seconds; logs parsed by lens_logs",
+      "output": "smoke.json"
+    },
+    {
+      "id": "csv-perf-capture",
+      "station": "ST-4",
+      "kind": "wrap",
+      "status": "ready",
+      "category": "performance",
+      "command": "perf [map]",
+      "description": "Captures N frames with the CSV profiler on one map and reports FrameTime / thread time percentiles, hitches and a frame-time series against a budget.",
+      "invocation": "UnrealEditor <uproject> <map> -game -windowed -csvCompression=0 -ExitAfterCsvProfiling -ExecCmds=\"csvprofile startfile=<id>.csv,csvprofile exitoncompletion,csvprofile frames=N\"; Saved/Profiling/CSV parsed by lens_runtime.py",
+      "output": "perf.json, perf.csv"
+    },
+    {
+      "id": "content-sizes",
+      "station": "ST-2",
+      "kind": "build",
+      "status": "ready",
+      "category": "content",
+      "command": "sizes",
+      "description": "Content size by asset, folder and file type, plus hard-reference load weight per asset from the latest analyze graph. No engine needed.",
+      "invocation": "scans Content/*.uasset|umap|uexp|ubulk; closure over AssetHardRef edges in graph.json",
+      "output": "sizes.json"
+    },
+    {
+      "id": "insights-trace",
+      "station": "ST-4",
+      "kind": "wrap",
+      "status": "ready",
+      "category": "performance",
+      "command": "trace [map]",
+      "description": "Records an Unreal Insights trace of the running game for a fixed time.",
+      "invocation": "UnrealEditor <uproject> <map> -game -trace=<trace.channels> -tracefile=<run>/out/trace.utrace -statnamedevents, closed after trace.seconds",
+      "output": "trace.json, trace.utrace"
+    },
+    {
+      "id": "play-launcher",
+      "station": "OPS",
+      "kind": "wrap",
+      "status": "ready",
+      "category": "runtime",
+      "command": "play [map]",
+      "description": "Starts the game detached (windowed 1280x720) and prints its pid; used by the GUI to stream to the StateMonitor viewer.",
+      "invocation": "UnrealEditor <uproject> [map] -game -windowed -ResX=1280 -ResY=720 -log (Start-Process, returns immediately)",
+      "output": "pid"
+    },
+    {
       "id": "insights-export",
       "station": "ST-4",
       "kind": "wrap",
       "status": "planned",
-      "command": "perf",
+      "command": "trace",
       "invocation": "UnrealInsights -OpenTraceFile=<utrace> -unattended -autoquit -noui -ExecOnAnalysisCompleteCmd=\"TimingInsights.ExportTimerStatistics <csv>\"",
       "output": "timers.csv"
     },
@@ -169,7 +224,7 @@
       "station": "ST-4",
       "kind": "wrap",
       "status": "planned",
-      "command": "perf",
+      "command": "trace",
       "invocation": "UnrealEditor-Cmd -run=SummarizeTrace -inputfile=<utrace>",
       "output": "summary csv"
     },
@@ -179,7 +234,7 @@
       "kind": "wrap",
       "status": "planned",
       "command": "perf",
-      "invocation": "-csvCaptureFrames=N, then Engine/Binaries/DotNET/CsvTools/PerfreportTool -csvdir <dir> -o <out> -writeSummaryCsv",
+      "invocation": "Engine/Binaries/DotNET/CsvTools/PerfreportTool -csv <perf.csv> -o <out> (HTML report on top of the perf line)",
       "output": "perf report"
     },
     {

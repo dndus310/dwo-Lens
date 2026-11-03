@@ -1,7 +1,7 @@
 @echo off
 rem ============================================================================
 rem  dwo-Lens bootstrap. Copy this file to the root of an Unreal project and run:
-rem    __dwo-lens.bat [attach|update|status|analyze|doctor|detach] [--keep-data]
+rem    __dwo-lens.bat [attach|update|status|analyze|verify|logs|smoke|perf|sizes|trace|play|...] [map|--keep-data]
 rem  This file only bootstraps. Everything else lives in __dwo-lens\system (a git
 rem  clone of the dwo-Lens repository) so it always matches the installed version.
 rem ============================================================================
@@ -26,13 +26,18 @@ if /i "%CMD%"=="status" goto :handoff
 if /i "%CMD%"=="analyze" goto :handoff
 if /i "%CMD%"=="verify" goto :handoff
 if /i "%CMD%"=="logs" goto :handoff
+if /i "%CMD%"=="smoke" goto :handoff
+if /i "%CMD%"=="perf" goto :handoff
+if /i "%CMD%"=="sizes" goto :handoff
+if /i "%CMD%"=="trace" goto :handoff
+if /i "%CMD%"=="play" goto :handoff
 if /i "%CMD%"=="tools" goto :handoff
 if /i "%CMD%"=="gui" goto :handoff
 if /i "%CMD%"=="sm-install" goto :handoff
 if /i "%CMD%"=="sm-remove" goto :handoff
 if /i "%CMD%"=="doctor" goto :handoff
 if /i "%CMD%"=="detach" goto :handoff
-echo Usage: __dwo-lens.bat [attach^|update^|status^|analyze^|verify^|logs^|tools^|gui^|sm-install^|sm-remove^|doctor^|detach] [--keep-data^|--force^|--runtime]
+echo Usage: __dwo-lens.bat [attach^|update^|status^|analyze^|verify^|logs^|smoke^|perf^|sizes^|trace^|play^|tools^|gui^|sm-install^|sm-remove^|doctor^|detach] [map^|--keep-data^|--force^|--runtime]
 exit /b 1
 
 :fetch

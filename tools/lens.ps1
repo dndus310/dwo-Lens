@@ -2,7 +2,7 @@
 # Windows PowerShell 5.1 compatible. Never modifies tracked project files.
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('attach', 'update', 'status', 'analyze', 'verify', 'logs', 'tools', 'gui', 'sm-install', 'sm-remove', 'doctor', 'detach')]
+    [ValidateSet('attach', 'update', 'status', 'analyze', 'verify', 'logs', 'smoke', 'perf', 'sizes', 'trace', 'play', 'tools', 'gui', 'sm-install', 'sm-remove', 'doctor', 'detach')]
     [string]$Command,
     [Parameter(Mandatory = $true)]
     [string]$Project,
@@ -541,6 +541,223 @@ function Invoke-Logs {
     Say "Report: $(Join-Path $run.Dir 'out\report.html')"
 }
 
+# ---------------------------------------------------------------- runtime lines (smoke, perf, sizes, trace, play)
+function Get-EditorExe($Engine) { return (Join-Path $Engine.Root 'Engine\Binaries\Win64\UnrealEditor.exe') }
+
+function Get-MapArg([string]$Fallback) {
+    # First non-option argument after the command, e.g. __dwo-lens.bat perf /Game/Maps/L_Main
+    $m = @($Rest | Where-Object { $_ -and -not $_.StartsWith('--') }) | Select-Object -First 1
+    if ($m) { return $m }
+    if ($Fallback) { return $Fallback }
+    return (Get-DefaultMap)
+}
+
+function Get-DefaultMap {
+    # GameDefaultMap from Config\DefaultEngine.ini ("/Game/Maps/Main.Main" -> "/Game/Maps/Main").
+    $ini = Join-Path $Project 'Config\DefaultEngine.ini'
+    if (-not (Test-Path $ini)) { return '' }
+    foreach ($line in [IO.File]::ReadAllLines($ini)) {
+        if ($line -match '^\s*GameDefaultMap\s*=\s*(\S+)') { return ($Matches[1] -replace '\.[^/]*$', '') }
+    }
+    return ''
+}
+
+function Get-ConfigValue($Section, [string]$Key, $Default) {
+    if ($Section -and $Section.PSObject.Properties[$Key] -and $Section.$Key -ne $null -and "$($Section.$Key)" -ne '') { return $Section.$Key }
+    return $Default
+}
+
+function Invoke-Timed([string]$Exe, [string]$Arguments, [string]$RunDir, [string]$Name, [int]$Seconds, [switch]$Window) {
+    # Runs a game process for a fixed time, then stops it: window close first (windowed runs), then the whole
+    # process tree. ExitCode is $null when dwo-Lens stopped the process, the real code when it exited on its own.
+    $started = Get-Date
+    $sp = @{ FilePath = $Exe; ArgumentList = $Arguments; PassThru = $true }
+    if (-not $Window) {
+        $sp.NoNewWindow = $true
+        $sp.RedirectStandardOutput = Join-Path $RunDir "$Name.stdout.txt"
+        $sp.RedirectStandardError = Join-Path $RunDir "$Name.stderr.txt"
+    }
+    $p = Start-Process @sp
+    $null = $p.Handle
+    $killed = $false
+    if (-not $p.WaitForExit($Seconds * 1000)) {
+        $killed = $true
+        if ($Window) { try { [void]$p.CloseMainWindow() } catch { }; [void]$p.WaitForExit(15000) }
+        if (-not $p.HasExited) { & taskkill /PID $p.Id /T /F 2>$null | Out-Null; [void]$p.WaitForExit(15000) }
+    }
+    $ended = Get-Date
+    $code = $null
+    if (-not $killed) { $code = $p.ExitCode }
+    return [pscustomobject]@{
+        ExitCode = $code; Killed = $killed; Seconds = ($ended - $started).TotalSeconds
+        StartedAt = [DateTimeOffset]::new($started).ToUnixTimeSeconds(); EndedAt = [DateTimeOffset]::new($ended).ToUnixTimeSeconds()
+    }
+}
+
+function Read-LineResult([string]$Path) {
+    if (Test-Path $Path) { return (Get-Content -Raw -Encoding UTF8 $Path | ConvertFrom-Json) }
+    return [pscustomobject]@{ verdict = 'fail' }
+}
+
+function Complete-Line($Run, [string]$Line, $Stations, $Result, $Engine) {
+    Write-Run $Run $Line $Stations $Result.verdict $Engine
+    Say "[$($Run.Id)] verdict: $($Result.verdict)"
+    Say "Report: $(Join-Path $Run.Dir 'out\report.html')"
+    if ($Result.verdict -eq 'fail') { exit 2 }
+}
+
+function Invoke-Smoke {
+    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-lens.bat attach first.' }
+    $uproject = Get-UProject
+    $engine = Resolve-Engine $uproject.Json.EngineAssociation
+    $cfg = Get-Config
+    $seconds = [int](Get-ConfigValue $cfg.smoke 'seconds' 15)
+    $run = New-RunDir 'smoke'
+    $raw = Join-Path $run.Dir 'raw'
+    New-Item -ItemType Directory -Force $raw | Out-Null
+    $py = Join-Path $SystemDir 'tools\lens_runtime.py'
+    $mapsFile = Join-Path $raw 'maps.json'
+    & python $py maps --project $Project --out $mapsFile --config @(Get-ConfigFiles)
+    $maps = @()
+    if (Test-Path $mapsFile) { foreach ($m in (Get-Content -Raw -Encoding UTF8 $mapsFile | ConvertFrom-Json)) { $maps += [string]$m } }
+    Say "[$($run.Id)] smoke: $($maps.Count) maps, $seconds s each"
+
+    $entries = New-Object System.Collections.Generic.List[object]
+    $stations = New-Object System.Collections.Generic.List[object]
+    $i = 0
+    foreach ($m in $maps) {
+        $i++
+        $name = "smoke-$i"
+        $log = Join-Path $raw "$name.log"
+        Say "[$($run.Id)] SM-$i $m"
+        $r = Invoke-Timed $engine.Cmd "`"$($uproject.Path)`" `"$m`" -game -nullrhi -nosound -unattended -nosplash -nopause -log -ABSLOG=`"$log`"" $raw $name $seconds
+        $entries.Add([ordered]@{ map = $m; log = $log; exitCode = $r.ExitCode; killed = $r.Killed; seconds = [math]::Round($r.Seconds, 1)
+                                 startedAt = $r.StartedAt; endedAt = $r.EndedAt })
+        $stations.Add([ordered]@{ id = "SM-$i"; name = $m; exitCode = $r.ExitCode; ms = [int]($r.Seconds * 1000); verdict = $null; log = "raw\$name.log" })
+    }
+    $runsFile = Join-Path $raw 'smoke-runs.json'
+    if ($entries.Count -eq 0) { [IO.File]::WriteAllText($runsFile, '[]', $Utf8) }
+    else { [IO.File]::WriteAllText($runsFile, (ConvertTo-Json -InputObject $entries.ToArray() -Depth 5), $Utf8) }
+
+    & python $py smoke --run $run.Dir --project $Project --config @(Get-ConfigFiles)
+    $result = Read-LineResult (Join-Path $run.Dir 'out\smoke.json')
+    for ($k = 0; $k -lt $stations.Count; $k++) {
+        if ($result.maps -and $k -lt @($result.maps).Count) { $stations[$k].verdict = @($result.maps)[$k].verdict }
+    }
+    Complete-Line $run 'smoke' $stations $result $engine
+}
+
+function Invoke-Perf {
+    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-lens.bat attach first.' }
+    $uproject = Get-UProject
+    $engine = Resolve-Engine $uproject.Json.EngineAssociation
+    $cfg = Get-Config
+    $p = $cfg.perf
+    $map = Get-MapArg (Get-ConfigValue $p 'map' '')
+    $nullrhi = [bool](Get-ConfigValue $p 'nullrhi' $false)
+    $frames = [int](Get-ConfigValue $p 'frames' 600) + [int](Get-ConfigValue $p 'warmupFrames' 60)
+    $timeout = [int](Get-ConfigValue $p 'timeoutSeconds' 600)
+    $run = New-RunDir 'perf'
+    $raw = Join-Path $run.Dir 'raw'
+    $out = Join-Path $run.Dir 'out'
+    New-Item -ItemType Directory -Force $raw, $out | Out-Null
+    $stations = New-Object System.Collections.Generic.List[object]
+
+    # CSV profiler: the capture starts on the first frame after the map loaded (-ExecCmds run then) and the
+    # game exits by itself when the frame count is reached (csvprofile exitoncompletion / -ExitAfterCsvProfiling).
+    $csvName = "$($run.Id).csv"
+    $exec = "csvprofile startfile=$csvName,csvprofile exitoncompletion,csvprofile frames=$frames"
+    $log = Join-Path $raw 'perf.log'
+    $common = "`"$($uproject.Path)`" `"$map`" -game -nosound -unattended -nosplash -nopause -log -ABSLOG=`"$log`" -csvCompression=0 -ExitAfterCsvProfiling -ExecCmds=`"$exec`""
+    Say "[$($run.Id)] P1 capture $frames frames on $map ($(if ($nullrhi) { 'nullrhi' } else { 'rendered' }))"
+    if ($nullrhi) { $r = Invoke-Timed $engine.Cmd "$common -nullrhi" $raw 'perf' $timeout }
+    else {
+        $resX = [int](Get-ConfigValue $p 'resX' 960); $resY = [int](Get-ConfigValue $p 'resY' 540)
+        $r = Invoke-Timed (Get-EditorExe $engine) "$common -windowed -ResX=$resX -ResY=$resY" $raw 'perf' $timeout -Window
+    }
+    $csvDir = Join-Path $Project 'Saved\Profiling\CSV'
+    $csv = Join-Path $csvDir $csvName
+    if (-not (Test-Path $csv) -and (Test-Path $csvDir)) {
+        $since = [DateTimeOffset]::FromUnixTimeSeconds($r.StartedAt).LocalDateTime
+        $found = Get-ChildItem $csvDir -Filter *.csv -File | Where-Object { $_.LastWriteTime -ge $since } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if ($found) { $csv = $found.FullName }
+    }
+    $copied = Join-Path $out 'perf.csv'
+    if (Test-Path $csv) { Copy-Item $csv $copied -Force }
+    if ($r.Killed) { Say "P1 did not finish in $timeout s; stopped" }
+    $stations.Add([ordered]@{ id = 'P1'; name = 'csv-capture'; exitCode = $r.ExitCode; ms = [int]($r.Seconds * 1000)
+                              verdict = $(if (Test-Path $copied) { 'pass' } else { 'fail' }); log = 'raw\perf.log' })
+
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    $pyArgs = @((Join-Path $SystemDir 'tools\lens_runtime.py'), 'perf', '--run', $run.Dir, '--map', $map, '--config') + @(Get-ConfigFiles)
+    if (Test-Path $copied) { $pyArgs += @('--csv', $copied) }
+    if ($r.ExitCode -ne $null) { $pyArgs += @('--exit-code', "$($r.ExitCode)") }
+    & python @pyArgs
+    $result = Read-LineResult (Join-Path $out 'perf.json')
+    $stations.Add([ordered]@{ id = 'P2'; name = 'frame-stats'; ms = $sw.ElapsedMilliseconds; verdict = $result.verdict })
+    Complete-Line $run 'perf' $stations $result $engine
+}
+
+function Invoke-Sizes {
+    $state = Read-State
+    if (-not $state) { Fail 'Not attached. Run __dwo-lens.bat attach first.' }
+    $run = New-RunDir 'sizes'
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    $pyArgs = @((Join-Path $SystemDir 'tools\lens_runtime.py'), 'sizes', '--run', $run.Dir, '--project', $Project, '--config') + @(Get-ConfigFiles)
+    $graph = Get-PreviousOutput 'run' 'graph.json' ''
+    if ($graph) { $pyArgs += @('--graph', $graph) } else { Say 'No analyze run yet: hard-reference closure weights skipped (run __dwo-lens.bat analyze).' }
+    Say "[$($run.Id)] Z1 content sizes"
+    & python @pyArgs
+    $result = Read-LineResult (Join-Path $run.Dir 'out\sizes.json')
+    $stations = @([ordered]@{ id = 'Z1'; name = 'content-sizes'; ms = $sw.ElapsedMilliseconds; verdict = $result.verdict; graph = $graph })
+    # No engine run: the version recorded at attach is enough for run.json.
+    Complete-Line $run 'sizes' $stations $result ([pscustomobject]@{ Version = $state.engineVersion })
+}
+
+function Invoke-Trace {
+    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-lens.bat attach first.' }
+    $uproject = Get-UProject
+    $engine = Resolve-Engine $uproject.Json.EngineAssociation
+    $cfg = Get-Config
+    $t = $cfg.trace
+    $map = Get-MapArg (Get-ConfigValue $cfg.perf 'map' '')
+    $seconds = [int](Get-ConfigValue $t 'seconds' 20)
+    $channels = [string](Get-ConfigValue $t 'channels' 'default,counters,loadtime,task')
+    $nullrhi = [bool](Get-ConfigValue $t 'nullrhi' $false)
+    $run = New-RunDir 'trace'
+    $raw = Join-Path $run.Dir 'raw'
+    $out = Join-Path $run.Dir 'out'
+    New-Item -ItemType Directory -Force $raw, $out | Out-Null
+    $file = Join-Path $out 'trace.utrace'
+    $log = Join-Path $raw 'trace.log'
+    $common = "`"$($uproject.Path)`" `"$map`" -game -nosound -unattended -nosplash -nopause -log -ABSLOG=`"$log`" -trace=$channels -tracefile=`"$file`" -statnamedevents"
+    Say "[$($run.Id)] T1 trace $seconds s on $map (channels $channels)"
+    if ($nullrhi) { $r = Invoke-Timed $engine.Cmd "$common -nullrhi" $raw 'trace' $seconds }
+    else { $r = Invoke-Timed (Get-EditorExe $engine) "$common -windowed -ResX=960 -ResY=540" $raw 'trace' $seconds -Window }
+    $insights = Join-Path $engine.Root 'Engine\Binaries\Win64\UnrealInsights.exe'
+    $pyArgs = @((Join-Path $SystemDir 'tools\lens_runtime.py'), 'trace', '--run', $run.Dir, '--file', $file, '--seconds', "$([math]::Round($r.Seconds, 1))", '--config') + @(Get-ConfigFiles)
+    if (Test-Path $insights) { $pyArgs += @('--insights', $insights) }
+    if (-not $r.Killed) { $pyArgs += @('--exited', '--exit-code', "$($r.ExitCode)") }
+    & python @pyArgs
+    $result = Read-LineResult (Join-Path $out 'trace.json')
+    $stations = @([ordered]@{ id = 'T1'; name = 'insights-trace'; exitCode = $r.ExitCode; ms = [int]($r.Seconds * 1000); verdict = $result.verdict; channels = $channels })
+    Complete-Line $run 'trace' $stations $result $engine
+}
+
+function Invoke-Play {
+    # Not a run: starts the game detached (e.g. for the StateMonitor viewer) and returns immediately.
+    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-lens.bat attach first.' }
+    $uproject = Get-UProject
+    $engine = Resolve-Engine $uproject.Json.EngineAssociation
+    $map = @($Rest | Where-Object { $_ -and -not $_.StartsWith('--') }) | Select-Object -First 1
+    $arguments = "`"$($uproject.Path)`""
+    if ($map) { $arguments += " `"$map`"" }
+    $arguments += ' -game -windowed -ResX=1280 -ResY=720 -log'
+    $p = Start-Process -FilePath (Get-EditorExe $engine) -ArgumentList $arguments -PassThru
+    Say "play: started $(if ($map) { $map } else { 'default map' }) (pid $($p.Id))"
+    Write-Output "pid=$($p.Id)"
+}
+
 function Invoke-Tools {
     $catalog = Get-Content -Raw -Encoding UTF8 (Join-Path $SystemDir 'tools\catalog.json') | ConvertFrom-Json
     foreach ($t in $catalog.tools) {
@@ -624,6 +841,11 @@ switch ($Command) {
     'analyze' { Invoke-Analyze }
     'verify'  { Invoke-Verify }
     'logs'    { Invoke-Logs }
+    'smoke'   { Invoke-Smoke }
+    'perf'    { Invoke-Perf }
+    'sizes'   { Invoke-Sizes }
+    'trace'   { Invoke-Trace }
+    'play'    { Invoke-Play }
     'tools'   { Invoke-Tools }
     'sm-install' { Invoke-SmInstall }
     'sm-remove'  { Invoke-SmRemove }

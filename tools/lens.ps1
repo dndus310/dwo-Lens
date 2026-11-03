@@ -284,7 +284,8 @@ function Invoke-SmInstall {
         Say "StateMonitor installed for editor and PIE: Plugins\__StateMonitor (UE $($engine.Version), hidden from git)"
         Say 'Packaged builds are not affected. For packaged games use: __dwo-lens.bat sm-install --runtime'
     }
-    Say 'Blueprint: Submit State Snapshot / Show State Monitor nodes. C++: UStateMonitorSubsystem::Get(this)->Submit(TEXT("Id"), State).'
+    Say 'Live view: open dwo-Lens > State Monitor, then Play in the editor or run __dwo-lens.bat play. No project code needed.'
+    Say 'Optional: Blueprint Watch State Object / Submit State Snapshot. C++: UStateMonitorSubsystem::Get(this)->Submit(TEXT("Id"), State).'
 }
 
 function Remove-StateMonitor([bool]$Force) {

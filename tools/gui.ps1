@@ -53,7 +53,7 @@ if (-not (Test-Path $exe)) {
     $log = Join-Path $cache 'build.log'
     $cl = "cl /nologo /O2 /MT /EHsc /std:c++17 /utf-8 /W3 /DUNICODE /D_UNICODE /DNOMINMAX " +
           "/I`"$im`" /I`"$tp`" /Fo`"$obj\\`" /Fe`"$exe`" " + ($sources -join ' ') +
-          " /link /SUBSYSTEM:WINDOWS d3d11.lib d3dcompiler.lib dxgi.lib user32.lib gdi32.lib shell32.lib ole32.lib uuid.lib dwmapi.lib"
+          " /link /SUBSYSTEM:WINDOWS d3d11.lib d3dcompiler.lib dxgi.lib user32.lib gdi32.lib shell32.lib ole32.lib uuid.lib dwmapi.lib ws2_32.lib"
     & cmd /c "call `"$vcvars`" >nul && $cl > `"$log`" 2>&1"
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path $exe)) {
         Get-Content $log -Tail 30 | ForEach-Object { Write-Host $_ }

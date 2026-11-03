@@ -259,10 +259,12 @@
       "id": "state-monitor-history",
       "station": "ST-4",
       "kind": "build",
-      "status": "planned",
-      "command": "perf",
-      "invocation": "StateMonitor JSONL dump option + collector, joined to the run id with Insights and VisLog",
-      "output": "snapshots.jsonl"
+      "status": "ready",
+      "command": "gui (State Monitor)",
+      "invocation": "dwo-Lens GUI > State Monitor > 녹화 저장 / 녹화 열기 (or --open-recording <file.jsonl>)",
+      "output": "<name>_state.jsonl",
+      "category": "runtime",
+      "description": "Records every live snapshot the viewer receives and saves or reopens it as JSON Lines; the timeline replays it."
     },
     {
       "id": "ai-interpretation",
@@ -279,8 +281,52 @@
       "kind": "build",
       "status": "ready",
       "command": "gui",
-      "invocation": "gui.bat (repository) or __dwo-lens.bat gui; Dear ImGui + DirectX 11, built once with MSVC",
-      "output": "interactive runs, history, results"
+      "invocation": "gui.bat (repository) or __dwo-lens.bat gui; Dear ImGui docking + DirectX 11, built once with MSVC",
+      "output": "dashboard, problems, tests, logs, performance, State Monitor, history, tools"
+    },
+    {
+      "id": "state-monitor-live",
+      "station": "ST-4",
+      "kind": "build",
+      "status": "ready",
+      "category": "runtime",
+      "command": "gui (State Monitor), play",
+      "description": "Live viewer for running games: object graph with ownership and references, per-field state machines with transition counts, property inspector, scrubbable timeline and event list.",
+      "invocation": "StateMonitor plugin connects to 127.0.0.1:47731 (JSON Lines protocol v1); zero-code auto-observe of GameMode, GameState, players, pawns and components",
+      "output": "interactive"
+    },
+    {
+      "id": "run-compare",
+      "station": "OPS",
+      "kind": "build",
+      "status": "ready",
+      "category": "history",
+      "command": "gui (실행 기록)",
+      "description": "Compares two runs of the same line: metric deltas, new and resolved problems, tests whose result changed.",
+      "invocation": "GUI > 실행 기록, check two runs",
+      "output": "interactive"
+    },
+    {
+      "id": "test-trend",
+      "station": "ST-3",
+      "kind": "build",
+      "status": "ready",
+      "category": "verification",
+      "command": "gui (검증)",
+      "description": "Per-test result strip over the last 10 verify runs; flags new failures and flaky tests (both pass and fail recently).",
+      "invocation": "GUI > 검증",
+      "output": "interactive"
+    },
+    {
+      "id": "problems-baseline",
+      "station": "OPS",
+      "kind": "build",
+      "status": "ready",
+      "category": "history",
+      "command": "gui (문제)",
+      "description": "Merges findings, quality, test failures, log groups, smoke, perf and size issues from every line's latest run; marks NEW against the previous run and lets you mute items into a per-project baseline.",
+      "invocation": "GUI > 문제",
+      "output": "%LOCALAPPDATA%/dwo-Lens/projects/<hash>.json (mutes)"
     },
     {
       "id": "state-monitor-provided",

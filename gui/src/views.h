@@ -2137,7 +2137,7 @@ static void DrawToolsNav(App& app)
 {
 	SectionHeader("범주");
 	std::map<std::string, int> cats;
-	for (auto& t : Arr(app.catalog, "tools")) ++cats[Str(t, "category", "기타")];
+	for (auto& t : Arr(app.catalog, "tools")) ++cats[Str(t, "category", Str(t, "station", "기타"))];
 	if (ImGui::Selectable(Fmt("전체  (%d)", (int)Arr(app.catalog, "tools").size()).c_str(), ui.toolCategory.empty())) ui.toolCategory.clear();
 	for (auto& [c, n] : cats)
 		if (ImGui::Selectable(Fmt("%s  (%d)", c.c_str(), n).c_str(), ui.toolCategory == c)) ui.toolCategory = c;
@@ -2239,8 +2239,8 @@ static void DrawToolsMain(App& app)
 		for (auto& t : Arr(app.catalog, "tools"))
 		{
 			std::string id = Str(t, "id");
-			if (!ui.toolCategory.empty() && Str(t, "category", "기타") != ui.toolCategory) continue;
-			if (!ContainsNoCase(id + Str(t, "name") + Str(t, "description"), ui.filter)) continue;
+			if (!ui.toolCategory.empty() && Str(t, "category", Str(t, "station", "기타")) != ui.toolCategory) continue;
+			if (!ContainsNoCase(id + Str(t, "description") + Str(t, "invocation") + Str(t, "command"), ui.filter)) continue;
 			ImGui::PushID(id.c_str());
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
@@ -2248,8 +2248,8 @@ static void DrawToolsMain(App& app)
 			Pill(status == "ready" ? "사용 가능" : status == "planned" ? "계획" : status, status == "ready" ? col::Pass : col::Muted);
 			ImGui::TableNextColumn();
 			if (ImGui::Selectable(Str(t, "name", id).c_str(), ui.toolSel == id, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowOverlap)) ui.toolSel = id;
-			ImGui::TableNextColumn(); TextDim(Str(t, "category"));
-			ImGui::TableNextColumn(); ImGui::TextWrapped("%s", Str(t, "description", Str(t, "summary")).c_str());
+			ImGui::TableNextColumn(); TextDim(Str(t, "category", Str(t, "station")));
+			ImGui::TableNextColumn(); ImGui::TextWrapped("%s", Str(t, "description", Str(t, "invocation")).c_str());
 			ImGui::PopID();
 		}
 		ImGui::EndTable();

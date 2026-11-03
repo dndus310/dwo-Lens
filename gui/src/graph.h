@@ -149,7 +149,7 @@ public:
 		if (showMinimap && !nodes.empty())
 		{
 			mmB = origin + size - ImVec2(S(10), S(10));
-			mmA = mmB - ImVec2(S(190), S(120));
+			mmA = mmB - ImVec2(S(160), S(100));
 			overMinimap = hoveredCanvas && mouse.x >= mmA.x && mouse.y >= mmA.y && mouse.x <= mmB.x && mouse.y <= mmB.y;
 		}
 
@@ -266,8 +266,8 @@ private:
 		{
 			float maxW = 0, maxH = 0;
 			for (auto& node : nodes) { maxW = ImMax(maxW, node.size.x); maxH = ImMax(maxH, node.size.y); }
-			float rx = n <= 1 ? 0 : ImMax(maxW * 0.9f, n * (maxW + 60) / (2 * IM_PI));
-			float ry = n <= 1 ? 0 : ImMax(maxH * 1.2f, rx * 0.62f);
+			float rx = n <= 1 ? 0 : ImMax(maxW * 1.1f, n * (maxW + 140) / (2 * IM_PI));
+			float ry = n <= 1 ? 0 : ImMax(maxH * 1.6f, rx * 0.72f);
 			for (int i = 0; i < n; ++i)
 			{
 				GraphNode& node = nodes[i];
@@ -385,10 +385,12 @@ private:
 			hi = ImMax(hi, n.pos + n.size);
 		}
 		ImVec2 extent = (hi - lo) * g_scale;
-		float z = ImMin((size.x - S(80)) / ImMax(extent.x, 1.f), (size.y - S(80)) / ImMax(extent.y, 1.f));
+		// keep the bottom-right minimap clear of the content
+		ImVec2 area(size.x - (showMinimap ? S(170) : 0), size.y);
+		float z = ImMin((area.x - S(60)) / ImMax(extent.x, 1.f), (area.y - S(60)) / ImMax(extent.y, 1.f));
 		zoom = ImClamp(z, 0.2f, 1.2f);
 		ImVec2 center = (lo + hi) * 0.5f * zoom * g_scale;
-		pan = size * 0.5f - center;
+		pan = area * 0.5f - center;
 	}
 
 	static ImVec2 Bezier(ImVec2 a, ImVec2 b, ImVec2 c, ImVec2 d, float t)

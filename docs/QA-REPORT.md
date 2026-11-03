@@ -84,3 +84,28 @@ QA 스크립트 자체의 오류(엔진 바이너리를 직접 실행, PowerShel
 - `sm-install --runtime` 후 `.uproject`·`Build.cs`에 등록한 상태의 패키징
 - C++ 프로젝트에 dwo-Lens가 StateMonitor를 설치했을 때의 에디터 C++ 빌드 (SMHost는 자체 StateMonitor가 있어 설치를 거부함)
 - 메모리 수치는 Python 할당만 추적한 값 (프로세스 전체 아님)
+
+## 7. v1.6 확장 검증 (2026-11-04)
+
+이름을 dwo-Lens로 바꾸고, GUI를 작업 공간 형식으로 다시 만들고, StateMonitor 실시간 연결과 새 라인 5개를 넣은 뒤의 검증입니다.
+
+| 구분 | 결과 |
+|---|---|
+| 이름 변경 | 파일·식별자·스키마·환경 변수(`DWO_LENS_HOME`)·플러그인(`DwoLensInspector`) 일괄 변경. temp_proj를 이전 이름으로 제거하고 새 이름으로 다시 부착, 실행 기록 16개 이전 |
+| 단위 테스트 | 41/41 통과 (기존 28 + 새 라인 13) |
+| 자체 검증 (selftest) | 26/26 통과 (verify 안에서 StateMonitor 테스트 12개 실행, 0 실패) |
+| StateMonitor 자동화 테스트 | 12/12 통과 (기존 7 + `Model.ObjectCapture`, `Model.ObjectFilter`, `Live.HelloWorldRemoveLines`, `Live.SnapLine`, `Live.ParseCommands`, `Live.WatchedObjectsAndManualSources`) |
+| StateMonitor 빌드 | BuildPlugin 경고 0, `-StrictIncludes`(PCH·unity 없음) 통과 |
+| 실시간 프로토콜 | `tests/live_probe.py`: hello와 GameMode·GameState·PC0·PC0.PlayerState·PC0.Pawn 스냅샷 수신, 모든 줄이 유효한 JSON, pause·resync·알 수 없는 명령 처리 |
+| 게임 → GUI 종단 | 헤드리스 게임(`-game -nullrhi`)이 GUI(127.0.0.1:47731)에 자동 연결, 객체 그래프에 5개 노드와 소유 관계 표시 |
+| 뷰어 없을 때 | 게임 60fps 유지, 재시도 중 로그 없음, 20초 뒤 뷰어를 켜면 2초 안에 연결 |
+| 새 라인 (temp_proj 복사본) | smoke 통과 (17초), perf 통과 (p95 7.6ms, 600프레임, 304초), sizes 통과 (31 MB, 2초), trace 통과 (154 MB, 24초), play 창 확인 |
+| GUI | 경고 0 빌드, 9개 화면과 State Monitor 상태 전이·타임라인을 실제 데이터와 녹화로 화면 캡처 확인 |
+
+### 검증하지 않은 것 (v1.6)
+
+- 에디터 PIE(여러 클라이언트 포함)에서의 실시간 연결. 독립 실행 게임으로만 확인
+- 레벨 이동 시 `world` 메시지, `watch` 클래스 관찰을 실제 맵에서
+- 실패·크래시하는 맵의 스모크 실행 (단위 테스트로만), 여러 맵, 용량 기준 초과 프로젝트
+- `perf`·`trace`의 `nullrhi` 경로
+- Shipping·모놀리식 빌드에서 프로젝트 프로퍼티 판별

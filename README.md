@@ -4,44 +4,56 @@
 
 현재 가동 라인 (AI 미사용): **아키텍처 리포트(`analyze`)**, **검증(`verify`)**, **로그(`logs`)**, **맵 스모크(`smoke`)**, **성능(`perf`)**, **콘텐츠 용량(`sizes`)**, **Insights 트레이스(`trace`)**, 그리고 실시간 **State Monitor**
 
-## 설치 (PC당 1회)
+## 시작하기 (3단계)
+
+1. dwo-Lens를 받습니다. GitHub의 **Download ZIP**을 풀어도 되고 `git clone`해도 됩니다. 어느 폴더든 상관없습니다.
+2. 받은 폴더의 **`dwo-Lens.bat`을 더블클릭**합니다. 처음 한 번만 폴더를 등록하고 창을 빌드합니다(약 1분). 별도 설치 단계는 없습니다.
+3. 창에서 프로젝트를 엽니다(`파일 > 프로젝트 열기`, 또는 프로젝트 폴더나 `.uproject`를 창에 **끌어다 놓기**). 대시보드의 **부착** 버튼을 누르면 끝입니다.
+
+`dwo-Lens.bat`에 프로젝트 폴더나 `.uproject`를 끌어다 놓아도 그 프로젝트로 바로 열립니다. 이미 부착된 프로젝트는 프로젝트 안의 `__dwo-lens.bat`을 더블클릭해도 창이 열립니다.
+
+### 제거 (Uninstall)
+
+창에서 `도구 > 제거`(또는 명령 팔레트 `Ctrl+K` → 제거)를 누르면 지울 항목과 실행 기록 크기를 보여 주고, **실행 기록·로그를 보존할지 삭제할지** 묻습니다.
+
+| 지우는 것 | 내용 |
+|---|---|
+| 플러그인 | `Plugins/__DwoLensInspector`, dwo-Lens가 설치한 `Plugins/__StateMonitor` (프로젝트 코드가 StateMonitor를 쓰면 제거를 멈추고 알려 줌) |
+| 실행 파일·설정 | `__dwo-lens.bat`, `__dwo-lens/` (부착 정보, 화면 설정, 문제 음소거) |
+| git exclude | 부착 때 넣은 dwo-Lens 블록만 제거. 다른 내용은 그대로 |
+| 실행 기록 | `__dwo-lens/data`와 dwo-Lens 실행이 프로젝트에 남긴 파일(성능 캡처 CSV). **보존**을 고르면 `%LOCALAPPDATA%\dwo-Lens\uninstalled\<프로젝트>-<시각>`으로 옮기고, **삭제**를 고르면 지움 |
+
+제거 뒤 git 프로젝트는 `git status`가 부착 전과 같은지, git이 없는 프로젝트는 dwo-Lens 파일이 하나도 남지 않았는지 검사합니다. `Saved/`, `Intermediate/`, `DerivedDataCache/`처럼 에디터가 원래 쓰는 폴더는 건드리지 않습니다.
+
+### 명령줄
+
+창 없이 쓰려면 받은 폴더의 `dwo-Lens.bat <명령> <프로젝트 폴더>`, 또는 부착된 프로젝트 안의 `__dwo-lens.bat <명령>`을 씁니다.
 
 ```bat
-setup.bat
+dwo-Lens.bat attach "C:\Projects\MyGame"   :: 부착 (엔진 버전별 첫 회만 플러그인 빌드로 몇 분 걸림)
+__dwo-lens.bat                     :: 제어판 창 열기 (부착 전이면 부착)
+__dwo-lens.bat analyze             :: 아키텍처 리포트 + 품질 점검
+__dwo-lens.bat verify              :: BP 전체 컴파일, 데이터 검증, 자동화 테스트
+__dwo-lens.bat logs                :: Saved/Logs, Saved/Crashes 분석 (이전 실행 대비 새 오류)
+__dwo-lens.bat smoke               :: 맵마다 -game -nullrhi로 띄워 Fatal·크래시·ensure·오류 검사
+__dwo-lens.bat perf [맵]           :: CSV 프로파일러로 프레임 캡처, p95·히치를 예산과 비교
+__dwo-lens.bat sizes               :: Content 용량, 하드 참조로 함께 로드되는 무게 (엔진 불필요)
+__dwo-lens.bat trace [맵]          :: Unreal Insights 트레이스(.utrace) 기록
+__dwo-lens.bat play [맵]           :: 게임 창 실행 (State Monitor 연결용)
+__dwo-lens.bat sm-install          :: StateMonitor 설치 (아래 '제공 도구')
+__dwo-lens.bat status | doctor     :: 부착 정보 · 환경 점검
+__dwo-lens.bat update              :: dwo-Lens를 새 버전으로 바꾼 뒤 플러그인·실행 파일 갱신
+__dwo-lens.bat uninstall           :: 제거. 실행 기록 보존 여부를 물음 (--keep-data / --delete-data로 지정)
 ```
 
-`DWO_LENS_HOME` 환경 변수를 이 저장소로 등록합니다. 실행 후 새 터미널을 여세요.
-
-## 프로젝트에 부착
-
-1. `__dwo-lens.bat`을 대상 프로젝트 루트(`.uproject`가 있는 폴더)에 복사합니다.
-2. 실행합니다.
-
-```bat
-__dwo-lens.bat attach     :: 부착 (엔진 버전별 첫 회만 플러그인 빌드로 몇 분 걸림)
-__dwo-lens.bat analyze    :: ST-1~2 아키텍처 리포트 + 품질 점검
-__dwo-lens.bat verify     :: ST-3 BP 전체 컴파일, 데이터 검증, 자동화 테스트
-__dwo-lens.bat logs       :: ST-4 Saved/Logs, Saved/Crashes 분석 (이전 실행 대비 새 오류)
-__dwo-lens.bat smoke      :: 맵마다 -game -nullrhi로 띄워 Fatal·크래시·ensure·오류 검사
-__dwo-lens.bat perf [맵]  :: CSV 프로파일러로 N 프레임 캡처, 프레임 시간 p95·히치를 예산과 비교
-__dwo-lens.bat sizes      :: Content 용량 (에셋·폴더·형식), 하드 참조로 함께 로드되는 무게 (엔진 불필요)
-__dwo-lens.bat trace [맵] :: Unreal Insights 트레이스(.utrace) 기록
-__dwo-lens.bat play [맵]  :: 게임 창 실행 후 바로 반환 (pid 출력, 실행 기록 없음)
-__dwo-lens.bat tools      :: 도구 카탈로그 (ready / planned)
-__dwo-lens.bat gui        :: 제어판 창 열기
-__dwo-lens.bat sm-install :: StateMonitor 설치 (아래 '제공 도구')
-__dwo-lens.bat status     :: 부착 버전·엔진 확인
-__dwo-lens.bat doctor     :: 환경 점검
-__dwo-lens.bat update     :: 시스템 최신화
-__dwo-lens.bat detach     :: 제거 (--keep-data 로 분석 데이터 보존)
-```
+창에서 실행한 명령의 출력은 하단 **실행 로그** 패널에 표시되고, `%LOCALAPPDATA%\dwo-Lens\logs`에 파일로도 저장됩니다(최근 50개). 실패 알림의 **로그 파일 열기**로 바로 열 수 있습니다.
 
 ## 제어판 (GUI)
 
 명령어 대신 창에서 쓰려면 둘 중 하나를 실행합니다.
 
-- dwo-Lens 폴더의 **`gui.bat`을 더블클릭** → `파일 > 프로젝트 열기`(Ctrl+O)로 프로젝트 폴더 선택. 부착되지 않은 프로젝트는 대시보드의 `부착` 버튼으로 부착합니다.
-- 부착된 프로젝트에서 `__dwo-lens.bat gui`
+- dwo-Lens 폴더의 **`dwo-Lens.bat`을 더블클릭** → 프로젝트를 열거나 창에 끌어다 놓기. 부착되지 않은 프로젝트는 대시보드의 `부착` 버튼으로 부착합니다.
+- 부착된 프로젝트의 `__dwo-lens.bat`을 더블클릭
 
 화면은 IDE·프로파일러 형식입니다. 왼쪽 **액티비티 바**로 화면을 바꾸고, 각 화면은 **탐색(왼쪽) · 본문(가운데) · 속성(오른쪽) · 하단 패널**로 나뉩니다. 패널은 끌어서 다시 배치할 수 있고 `보기 > 레이아웃 초기화`로 되돌립니다.
 
@@ -118,26 +130,28 @@ powershell -File tests\package_check.ps1 -Source <폴더> -Name pkg -Config Ship
 
 ### 전제 조건
 
-- 대상 프로젝트는 **자체 git 저장소**여야 합니다 (상위 폴더 저장소에 포함된 경우 거부).
+- 형상관리는 선택입니다. git 저장소인 프로젝트는 dwo-Lens 파일을 `.git/info/exclude`로 숨기고, 상위 폴더 저장소 안에 있으면 그 저장소의 exclude에 프로젝트 경로를 붙여 숨깁니다. git이 없는 프로젝트는 숨길 대상이 없으므로 exclude를 쓰지 않습니다.
 - Epic Launcher 또는 소스 빌드로 프로젝트의 `EngineAssociation` 엔진이 설치되어 있어야 합니다.
-- Python 3.10 이상, git 2.31 이상.
-- GUI를 쓰려면 Visual Studio 2022(C++ 데스크톱 개발 워크로드). UE C++ 개발 환경이면 이미 있습니다.
+- Python 3.10 이상. git은 git 프로젝트일 때만 필요합니다.
+- 창(GUI)을 쓰려면 Visual Studio 2022(C++ 데스크톱 개발 워크로드). UE C++ 개발 환경이면 이미 있습니다.
 - C++ 프로젝트는 에디터 바이너리가 빌드된 상태여야 Commandlet이 실행됩니다.
 
 ## 부착 시 프로젝트에 생기는 것
 
 ```
 A/
-├─ __dwo-lens.bat
+├─ __dwo-lens.bat                 # 실행 파일 (dwo-Lens 설치 폴더의 도구를 실행)
 ├─ __dwo-lens/
-│  ├─ system/          # 이 저장소의 clone (버전 = 커밋)
-│  ├─ data/runs/<id>/  # 실행별 raw · out · run.json · 로그
-│  ├─ config.json      # (선택) 프로젝트별 규칙 덮어쓰기
-│  └─ state.json
-└─ Plugins/__DwoLensInspector/   # 미리 빌드된 에디터 전용 플러그인 (Source 없음)
+│  ├─ home.txt                    # dwo-Lens 설치 폴더 위치
+│  ├─ data/runs/<id>/             # 실행별 raw · out · run.json · 로그
+│  ├─ created-files.txt           # dwo-Lens 실행이 프로젝트에 남긴 파일 (제거 때 처리)
+│  ├─ config.json                 # (선택) 프로젝트별 규칙 덮어쓰기
+│  ├─ gui.json                    # 화면 설정 (문제 음소거)
+│  └─ state.json                  # 부착 정보 (버전, 형상관리 방식, 부착 전 git 상태)
+└─ Plugins/__DwoLensInspector/    # 미리 빌드된 에디터 전용 플러그인 (Source 없음, 기본 비활성)
 ```
 
-모두 `.git/info/exclude`의 표식 블록으로 git에서 숨겨집니다. `.uproject`, `Build.cs`, 기존 파일은 건드리지 않습니다. 제거 시 엔진 작업 폴더(`Saved/`, `Intermediate/`, `DerivedDataCache/`)를 뺀 git 상태가 부착 전과 같은지 검사합니다.
+도구 자체는 프로젝트에 복사하지 않고 dwo-Lens 설치 폴더에서 실행합니다. `.uproject`, `Build.cs`, 기존 파일은 건드리지 않습니다. 이전 버전처럼 `__dwo-lens/system` 복사본이 있으면 `update`나 부착 때 지웁니다.
 
 ## 라인과 도구
 
@@ -176,7 +190,8 @@ A/
 
 | 경로 | 역할 |
 |---|---|
-| `__dwo-lens.bat` | 부트스트랩: 사전 확인 → exclude → clone/pull → `lens.ps1` 호출 |
+| `dwo-Lens.bat` | 시작점: 폴더 등록, 창 열기, 끌어다 놓은 프로젝트 열기, 명령줄 실행 |
+| `__dwo-lens.bat` | 프로젝트 실행 파일: `home.txt`의 설치 폴더에서 `lens.ps1` 실행, 제거되면 스스로 삭제 |
 | `tools/lens.ps1` | 명령 실행, 엔진 호출, 실행 기록 (`run.json`) |
 | `tools/lens_analyze.py` | raw JSON → 통합 그래프, SQLite, 다이어그램, 게이트, HTML 리포트 |
 | `tools/lens_quality.py` | 이름 규칙, 미사용 에셋, BP 복잡도, StateMonitor 감지 |
@@ -184,7 +199,7 @@ A/
 | `tools/lens_verify.py` | 검증·로그 라인 판정과 리포트 |
 | `tools/lens_runtime.py` | 맵 부팅·성능 CSV·용량·트레이스 라인 판정과 리포트 |
 | `tools/catalog.json` | 도구 레지스트리 |
-| `gui/`, `gui.bat`, `tools/gui.ps1` | ImGui 제어판 (Dear ImGui 1.91.9b docking, nlohmann/json 3.11.3, MIT). State Monitor 뷰어 포함 |
+| `gui/`, `tools/gui.ps1` | ImGui 제어판 (Dear ImGui 1.91.9b docking, nlohmann/json 3.11.3, MIT). State Monitor 뷰어 포함 |
 | `config/default.json` | 규칙과 기준값 |
 | `plugin/DwoLensInspector` | 추출 Commandlet (읽기 전용, 패키지를 저장하지 않음) |
 

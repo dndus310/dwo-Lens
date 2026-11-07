@@ -302,14 +302,20 @@ class Runner
 public:
 	~Runner() { Cancel(); Join(); }
 
+	// Output of every command is also written to logDir/<time>-<command>.log (latest 50 kept).
+	fs::path logDir;
+	fs::path logFile;
+
 	bool Start(const std::wstring& commandLine, const fs::path& workDir, const std::string& label)
 	{
 		if (running) return false;
 		Join();
+		OpenLogFile(label, workDir);
 		{
 			std::lock_guard<std::mutex> lock(mutex);
 			AppendLocked("");
 			AppendLocked("> " + label);
+			if (!logFile.empty()) AppendLocked("[gui] 로그 파일: " + PathUtf8(logFile));
 		}
 		SECURITY_ATTRIBUTES sa{ sizeof(sa), nullptr, TRUE };
 		HANDLE readPipe = nullptr, writePipe = nullptr;
@@ -401,8 +407,30 @@ public:
 	std::string current;
 
 private:
+	void OpenLogFile(const std::string& label, const fs::path& workDir)
+	{
+		logFile.clear();
+		if (log.is_open()) log.close();
+		if (logDir.empty()) return;
+		std::error_code ec;
+		fs::create_directories(logDir, ec);
+		std::vector<fs::path> old;
+		for (auto& e : fs::directory_iterator(logDir, ec))
+			if (e.path().extension() == ".log") old.push_back(e.path());
+		std::sort(old.begin(), old.end());
+		for (size_t i = 0; i + 49 < old.size(); ++i) fs::remove(old[i], ec);
+		SYSTEMTIME t;
+		GetLocalTime(&t);
+		std::string name = label.substr(label.find(' ') == std::string::npos ? 0 : label.find(' ') + 1);
+		name = name.substr(0, name.find(' '));
+		logFile = logDir / Fmt("%04d%02d%02d-%02d%02d%02d-%s.log", t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond, name.c_str());
+		log.open(logFile, std::ios::binary);
+		log << "\xEF\xBB\xBF> " << label << "\r\n" << "project: " << PathUtf8(workDir) << "\r\n\r\n";
+	}
+
 	void AppendLocked(const std::string& line)
 	{
+		if (log.is_open()) { log << line << "\r\n"; log.flush(); }
 		lines.push_back(line);
 		if (lines.size() > 20000) lines.pop_front();
 		++version;
@@ -439,6 +467,10 @@ private:
 			if (!pending.empty()) AppendLocked(ConsoleToUtf8(pending));
 			AppendLocked("[gui] 종료 코드 " + std::to_string(code) + " (" + Duration(ElapsedSeconds()) + ")");
 		}
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			if (log.is_open()) log.close();
+		}
 		exitCode = (int)code;
 		running = false;
 		finished = true;
@@ -450,6 +482,7 @@ private:
 	}
 
 	std::mutex mutex;
+	std::ofstream log;
 	std::deque<std::string> lines;
 	std::thread reader;
 	HANDLE process = nullptr;

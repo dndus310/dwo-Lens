@@ -86,7 +86,7 @@ static std::vector<Command> BuildCommands(App& app)
 	list.push_back({ "부착", "attach", [&app] { app.Run("attach"); }, app.hasUProject && !app.attached });
 	list.push_back({ "시스템 업데이트", "update", [&app] { app.Run("update"); }, app.attached });
 	list.push_back({ "환경 점검", "doctor", [&app] { app.Run("doctor"); }, app.attached });
-	list.push_back({ "제거 (detach)...", "detach", [&app] { app.confirmDetach = true; }, app.attached });
+	list.push_back({ "제거 (uninstall)...", "uninstall", [&app] { app.confirmDetach = true; }, app.attached });
 	list.push_back({ "실행 로그 보기", "Ctrl+`", [&app] { app.showConsole = true; } });
 	list.push_back({ "실행 취소", "Esc", [&app] { app.runner.Cancel(); }, (bool)app.runner.running });
 	list.push_back({ "State Monitor 녹화 저장...", "JSONL", [&app] {
@@ -221,7 +221,7 @@ static void DrawMenuBar(App& app, bool& quit)
 		if (ImGui::MenuItem("부착", nullptr, false, app.hasUProject && !app.attached)) app.Run("attach");
 		if (ImGui::MenuItem("시스템 업데이트", nullptr, false, app.attached)) app.Run("update");
 		if (ImGui::MenuItem("환경 점검", nullptr, false, app.attached)) app.Run("doctor");
-		if (ImGui::MenuItem("제거 (detach)...", nullptr, false, app.attached)) app.confirmDetach = true;
+		if (ImGui::MenuItem("제거 (uninstall)...", nullptr, false, app.attached)) app.confirmDetach = true;
 		ImGui::EndMenu();
 	}
 	if (ImGui::BeginMenu("도움말"))
@@ -437,17 +437,92 @@ static void DrawConsole(App& app)
 	ImGui::EndChild();
 }
 
+// What uninstall will remove, shown before the user confirms.
+struct UninstallInventory
+{
+	int runs = 0;
+	double dataBytes = 0;
+	std::vector<std::string> created;   // files dwo-Lens caused outside __dwo-lens (perf CSVs)
+	bool inspector = false, stateMonitor = false, launcher = false;
+	std::string vcs, exclude;
+};
+
+static UninstallInventory TakeInventory(const App& app)
+{
+	UninstallInventory inv;
+	std::error_code ec;
+	fs::path data = app.project / "__dwo-lens" / "data";
+	if (fs::is_directory(data / "runs", ec))
+		for (auto& e : fs::directory_iterator(data / "runs", ec)) inv.runs += e.is_directory() ? 1 : 0;
+	if (fs::is_directory(data, ec))
+		for (auto it = fs::recursive_directory_iterator(data, ec); it != fs::recursive_directory_iterator(); it.increment(ec))
+			if (!ec && it->is_regular_file(ec)) inv.dataBytes += (double)it->file_size(ec);
+	std::ifstream ledger(app.project / "__dwo-lens" / "created-files.txt");
+	std::set<std::string> seen;
+	for (std::string line; std::getline(ledger, line);)
+	{
+		if (!line.empty() && line.back() == '\r') line.pop_back();
+		if (!line.empty() && seen.insert(line).second && fs::exists(app.project / fs::u8path(line), ec)) inv.created.push_back(line);
+	}
+	inv.inspector = fs::exists(app.project / "Plugins" / "__DwoLensInspector", ec);
+	inv.stateMonitor = app.stateMonitor == 1;
+	inv.launcher = fs::exists(app.project / "__dwo-lens.bat", ec);
+	inv.vcs = Str(app.state, "vcs", "own");
+	inv.exclude = Str(app.state, "excludeFile");
+	return inv;
+}
+
 static void DrawDetachModal(App& app)
 {
-	if (app.confirmDetach) { ImGui::OpenPopup("dwo-Lens 제거"); app.confirmDetach = false; }
+	static UninstallInventory inv;
+	static int dataChoice = 1;          // 0 keep, 1 delete
+	static bool forget = true;
+	if (app.confirmDetach)
+	{
+		inv = TakeInventory(app);
+		dataChoice = inv.runs > 0 ? 0 : 1;
+		ImGui::OpenPopup("dwo-Lens 제거");
+		app.confirmDetach = false;
+	}
+	ImGui::SetNextWindowSize(ImVec2(S(560), 0));
 	if (ImGui::BeginPopupModal("dwo-Lens 제거", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		Title("이 프로젝트에서 dwo-Lens를 제거할까요?");
-		TextDim("검사 플러그인, StateMonitor(dwo-Lens가 설치한 경우), exclude 블록, __dwo-lens 폴더가 삭제됩니다.");
-		static bool keep = true;
-		ImGui::Checkbox("분석 기록 보존 (--keep-data)", &keep);
+		Title("이 프로젝트에서 dwo-Lens를 제거합니다");
+		TextDim("부착할 때 넣은 것과 dwo-Lens가 만든 것을 모두 지웁니다. .uproject와 프로젝트 파일은 건드리지 않습니다.");
+		SectionHeader("지울 항목");
+		auto row = [](bool on, const char* what, const std::string& detail) {
+			TextColored(on ? col::Text : col::Muted, on ? ICON_DELETE : ICON_CHECK);
+			ImGui::SameLine();
+			ImGui::TextUnformatted(what);
+			ImGui::SameLine();
+			TextDim(detail);
+		};
+		row(inv.inspector, "검사 플러그인", "Plugins\\__DwoLensInspector");
+		row(inv.stateMonitor, "StateMonitor", inv.stateMonitor ? "Plugins\\__StateMonitor" : "dwo-Lens가 설치하지 않음");
+		row(inv.launcher, "실행 파일", "__dwo-lens.bat");
+		row(true, "설정", "__dwo-lens 폴더 (부착 정보, 화면 설정, 문제 음소거)");
+		if (inv.vcs == "none") row(false, "git exclude", "형상관리 없음: 추가한 항목 없음");
+		else row(true, "git exclude", inv.exclude.empty() ? "dwo-Lens 블록만 제거" : "dwo-Lens 블록만 제거 · " + inv.exclude);
+
+		SectionHeader("실행 기록과 로그");
+		ImGui::Text("실행 기록 %d개 · %s", inv.runs, Bytes(inv.dataBytes).c_str());
+		TextDim("분석·검증·로그·스모크·성능 결과, 리포트, 엔진 로그 (__dwo-lens\\data)");
+		if (!inv.created.empty())
+		{
+			ImGui::Text("프로젝트에 남은 실행 파일 %d개", (int)inv.created.size());
+			Tooltip(JoinStrings(json(inv.created), "\n").c_str());
+			TextDim("성능 캡처가 Saved\\Profiling\\CSV에 만든 CSV");
+		}
+		ImGui::RadioButton("보존: 프로젝트 밖(%LOCALAPPDATA%\\dwo-Lens\\uninstalled)으로 옮김", &dataChoice, 0);
+		ImGui::RadioButton("삭제: 기록과 파일을 모두 지움", &dataChoice, 1);
+		ImGui::Checkbox("dwo-Lens의 최근 프로젝트 목록에서도 빼기", &forget);
 		ImGui::Spacing();
-		if (DangerButton("제거", ImVec2(S(120), 0))) { app.Run(keep ? "detach --keep-data" : "detach"); ImGui::CloseCurrentPopup(); }
+		if (DangerButton("제거", ImVec2(S(120), 0)))
+		{
+			app.forgetAfterUninstall = forget;
+			app.Run(dataChoice == 0 ? "uninstall --keep-data" : "uninstall --delete-data");
+			ImGui::CloseCurrentPopup();
+		}
 		ImGui::SameLine();
 		if (ImGui::Button("취소", ImVec2(S(120), 0)) || ImGui::IsKeyPressed(ImGuiKey_Escape)) ImGui::CloseCurrentPopup();
 		ImGui::EndPopup();
@@ -602,7 +677,7 @@ static void DrawApp(App& app, bool& quit)
 	static const char* bottomFocus = nullptr;
 	if (enteredLive) { bottomFocus = "타임라인###timeline"; bottomFocusFrames = 3; }
 	else if (firstFrame || leftLive) { bottomFocus = "실행 로그###console"; bottomFocusFrames = 3; }
-	if (bottomFocusFrames > 0 && bottomFocus)
+	if (bottomFocusFrames > 0 && bottomFocus && !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId))
 	{
 		std::string name = bottomFocus;
 		if (name == "실행 로그###console") name = consoleTitle;
@@ -723,11 +798,21 @@ static bool SaveBackBuffer(const fs::path& path)
 	return ok;
 }
 
+static fs::path g_dropped;   // a folder or .uproject dropped onto the window
+
 static LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam)) return true;
 	switch (msg)
 	{
+	case WM_DROPFILES:
+	{
+		HDROP drop = (HDROP)wParam;
+		wchar_t path[MAX_PATH * 2] = {};
+		if (DragQueryFileW(drop, 0, path, (UINT)(sizeof(path) / sizeof(path[0])))) g_dropped = path;
+		DragFinish(drop);
+		return 0;
+	}
 	case WM_SIZE:
 		if (wParam == SIZE_MINIMIZED) return 0;
 		g_resizeWidth = (UINT)LOWORD(lParam);
@@ -778,6 +863,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 	std::wstring delayArg = ArgValue(argc, argv, L"--screenshot-delay");
 	double shotDelay = delayArg.empty() ? 0.8 : _wtof(delayArg.c_str());
 	if (modeArg == L"machine") ui.liveMode = 1;
+	bool openUninstall = ArgValue(argc, argv, L"--dialog") == L"uninstall";
 	LocalFree(argv);
 	if (homeArg.empty())
 	{
@@ -812,6 +898,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 	float scale = ImGui_ImplWin32_GetDpiScaleForHwnd(hwnd);
 	g_scale = scale;
 	SetWindowPos(hwnd, nullptr, 0, 0, (int)(1500 * scale), (int)(920 * scale), SWP_NOMOVE | SWP_NOZORDER);
+	DragAcceptFiles(hwnd, TRUE);
 	ShowWindow(hwnd, shotArg.empty() ? SW_SHOWDEFAULT : SW_SHOWNOACTIVATE);
 	UpdateWindow(hwnd);
 
@@ -857,6 +944,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 	}
 	if (!recordingArg.empty()) app.store.Import(recordingArg);
 	if (!runArg.empty() && app.hasUProject) app.Run(ToUtf8(runArg));
+	if (openUninstall && app.attached) app.confirmDetach = true;
 
 	bool done = false;
 	int frame = 0;
@@ -879,6 +967,14 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 			CreateRenderTarget();
 		}
 
+		if (!g_dropped.empty())
+		{
+			fs::path p = g_dropped;
+			g_dropped.clear();
+			if (p.extension() == ".uproject") p = p.parent_path();
+			std::error_code ec;
+			if (fs::is_directory(p, ec)) { app.SetProject(p); app.activity = Activity::Overview; }
+		}
 		ImGui_ImplDX11_NewFrame();
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();

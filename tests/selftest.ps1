@@ -5,7 +5,9 @@
 # The given project is never modified: the integration cycle runs on an isolated copy under .qa\.
 param(
     [string]$Project = '',
-    [switch]$SkipIntegration
+    [switch]$SkipIntegration,
+    # Copies for the no-git and parent-repository cycles must sit outside every git repository.
+    [string]$Scratch = (Join-Path $env:SystemDrive 'dwo-lens-selftest')
 )
 # Continue: native tools write progress to stderr, which 'Stop' would turn into a terminating error.
 # Every step is judged explicitly by Check instead.
@@ -65,12 +67,14 @@ if (-not $SkipIntegration -and $Project) {
     & git -C $copy add -A
     & git -C $copy -c user.name=selftest -c user.email=selftest@local commit -q -m baseline
     $before = (& git -C $copy status --porcelain) -join "`n"
-    $env:DWO_LENS_HOME = $repo
-    Copy-Item (Join-Path $repo '__dwo-lens.bat') $copy
+    $env:DWO_LENS_HOME = $null
+    $launcher = Join-Path $repo 'dwo-Lens.bat'
     $bat = Join-Path $copy '__dwo-lens.bat'
-    function Run([string]$Cmd) {
+    function Run([string]$Cmd, [string]$Target = $copy) {
         $sw.Restart()
-        $out = & cmd /c "`"$bat`" $Cmd" 2>&1 | Out-String
+        # attach goes through dwo-Lens.bat (as a user would); everything after through the project launcher.
+        $line = if ($Cmd -like 'attach*') { "`"$launcher`" $Cmd `"$Target`"" } else { "`"$(Join-Path $Target '__dwo-lens.bat')`" $Cmd" }
+        $out = & cmd /c $line 2>&1 | Out-String
         $code = $LASTEXITCODE
         [IO.File]::AppendAllText((Join-Path $qa 'integration.log'), "`n===== $Cmd (exit $code)`n$out")
         return [pscustomobject]@{ Code = $code; Out = $out; Seconds = $sw.Elapsed.TotalSeconds }
@@ -80,7 +84,7 @@ if (-not $SkipIntegration -and $Project) {
     }
 
     $r = Run 'attach'
-    Check 'cycle' 'attach' ($r.Code -eq 0 -and $r.Out -notmatch '\[fail\]') 'doctor all ok' $r.Seconds
+    Check 'cycle' 'attach' ($r.Code -eq 0 -and $r.Out -notmatch '\[fail\]' -and (Test-Path $bat)) 'doctor all ok, launcher placed' $r.Seconds
     $hidden = (& git -C $copy status --porcelain) -join "`n"
     Check 'cycle' 'hidden from git' ($hidden -eq $before) 'git status unchanged after attach'
 
@@ -121,22 +125,71 @@ if (-not $SkipIntegration -and $Project) {
     Set-Content -Encoding UTF8 $probe '#include "StateMonitorSubsystem.h"'
     $r = Run 'sm-remove'
     Check 'safety' 'sm-remove refuses while referenced' ($r.Code -ne 0 -and (Test-Path "$copy\Plugins\__StateMonitor")) ''
-    $r = Run 'detach'
-    Check 'safety' 'detach refuses while referenced' ($r.Code -ne 0 -and (Test-Path "$copy\__dwo-lens")) ''
+    $r = Run 'uninstall --delete-data'
+    Check 'safety' 'uninstall refuses while referenced' ($r.Code -ne 0 -and (Test-Path "$copy\__dwo-lens")) ''
     Remove-Item -Recurse -Force (Join-Path $copy 'Source\Probe')
     if (-not (Get-ChildItem (Join-Path $copy 'Source') -ErrorAction SilentlyContinue)) { Remove-Item -Force (Join-Path $copy 'Source') -ErrorAction SilentlyContinue }
     $r = Run 'sm-remove'
     Check 'cycle' 'sm-remove' ($r.Code -eq 0 -and -not (Test-Path "$copy\Plugins\__StateMonitor")) '' $r.Seconds
 
     $r = Run 'update'
-    $dirty = (& git -C (Join-Path $copy '__dwo-lens\system') status --porcelain) -join ' '
-    Check 'cycle' 'update keeps clone clean' ($r.Code -eq 0 -and -not $dirty) "$dirty" $r.Seconds
+    Check 'cycle' 'update' ($r.Code -eq 0 -and (Test-Path $bat) -and -not (Test-Path (Join-Path $copy '__dwo-lens\system'))) 'runs from the install folder' $r.Seconds
 
-    $r = Run 'detach'
+    $r = Run 'uninstall --delete-data'
     $leftovers = @(Get-ChildItem -Force $copy | Where-Object { $_.Name -like '__*' }) + @(Get-ChildItem -Force (Join-Path $copy 'Plugins') -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '__*' })
     $after = (& git -C $copy status --porcelain) -join "`n"
     $exclude = Get-Content -Raw (Join-Path $copy '.git\info\exclude')
-    Check 'cycle' 'detach leaves no trace' ($r.Code -eq 0 -and $leftovers.Count -eq 0 -and $after -eq $before -and $exclude -notmatch 'dwo-lens managed') "leftovers $($leftovers.Count)" $r.Seconds
+    Check 'cycle' 'uninstall leaves no trace' ($r.Code -eq 0 -and $leftovers.Count -eq 0 -and $after -eq $before -and $exclude -notmatch 'dwo-lens managed') "leftovers $($leftovers.Count)" $r.Seconds
+}
+
+# ---------------------------------------------------------------- 5. projects without their own repository
+if (-not $SkipIntegration -and $Project) {
+    if (Test-Path $Scratch) { Remove-Item -Recurse -Force $Scratch }
+    New-Item -ItemType Directory -Force $Scratch | Out-Null
+    $env:DWO_LENS_HOME = $null
+    # An install folder without .git, like an extracted GitHub zip.
+    $zip = Join-Path $Scratch 'install'
+    & robocopy $repo $zip /E /XD .git .qa Saved /NFL /NDL /NJH /NJS /NP | Out-Null
+    $zipLauncher = Join-Path $zip 'dwo-Lens.bat'
+    function Copy-Clean([string]$Dest) {
+        & robocopy $copy $Dest /E /XD .git Saved Intermediate DerivedDataCache __dwo-lens /XF __dwo-lens.bat .gitignore /NFL /NDL /NJH /NJS /NP | Out-Null
+    }
+    function Leftovers([string]$Dir) {
+        @(Get-ChildItem -Force $Dir | Where-Object { $_.Name -like '__*' }) + @(Get-ChildItem -Force (Join-Path $Dir 'Plugins') -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '__*' })
+    }
+
+    $plain = Join-Path $Scratch 'nogit\project'
+    Copy-Clean $plain
+    $sw.Restart()
+    $out = & cmd /c "`"$zipLauncher`" attach `"$plain`"" 2>&1 | Out-String
+    Check 'novcs' 'attach without git (zip install)' ($LASTEXITCODE -eq 0 -and $out -match 'No version control' -and (Test-Path (Join-Path $plain '__dwo-lens.bat'))) '' $sw.Elapsed.TotalSeconds
+    $out = & cmd /c "`"$(Join-Path $plain '__dwo-lens.bat')`" sizes" 2>&1 | Out-String
+    Check 'novcs' 'line through the project launcher' ($LASTEXITCODE -eq 0) ''
+    $out = & cmd /c "`"$(Join-Path $plain '__dwo-lens.bat')`" uninstall --delete-data" 2>&1 | Out-String
+    $left = Leftovers $plain
+    Check 'novcs' 'uninstall leaves no trace' ($LASTEXITCODE -eq 0 -and $left.Count -eq 0) "leftovers $($left.Count)"
+
+    $outer = Join-Path $Scratch 'parent'
+    $inner = Join-Path $outer 'games\project'
+    Copy-Clean $inner
+    & git -C $outer init -q
+    Set-Content -Encoding ASCII (Join-Path $outer '.gitignore') "games/*/Saved/`ngames/*/Intermediate/`ngames/*/DerivedDataCache/`ngames/*/Binaries/"
+    & git -C $outer add -A 2>$null
+    & git -C $outer -c user.name=selftest -c user.email=selftest@local commit -q -m baseline
+    $before = (& git -C $outer status --porcelain) -join "`n"
+    $excl = Join-Path $outer '.git\info\exclude'
+    $exclBefore = Get-Content -Raw $excl
+    $out = & cmd /c "`"$zipLauncher`" attach `"$inner`"" 2>&1 | Out-String
+    $hidden = ((& git -C $outer status --porcelain) -join "`n") -eq $before
+    Check 'parent' 'attach inside a parent repository' ($LASTEXITCODE -eq 0 -and $hidden -and (Get-Content -Raw $excl) -match '/games/project/__dwo-lens/') 'prefixed exclude, parent status unchanged'
+    $out = & cmd /c "`"$(Join-Path $inner '__dwo-lens.bat')`" uninstall --keep-data" 2>&1 | Out-String
+    $kept = if ($out -match 'kept at (.+)') { $Matches[1].Trim() } else { '' }
+    $left = Leftovers $inner
+    $clean = ((& git -C $outer status --porcelain) -join "`n") -eq $before -and (Get-Content -Raw $excl) -eq $exclBefore
+    Check 'parent' 'uninstall restores the parent exclude' ($LASTEXITCODE -eq 0 -and $left.Count -eq 0 -and $clean) "leftovers $($left.Count)"
+    Check 'parent' 'kept history moved out of the project' ($kept -and (Test-Path $kept)) $kept
+    if ($kept -and (Test-Path $kept)) { Remove-Item -Recurse -Force $kept }
+    Remove-Item -Recurse -Force $Scratch -ErrorAction SilentlyContinue
 }
 
 $failed = @($checks | Where-Object { -not $_.ok })

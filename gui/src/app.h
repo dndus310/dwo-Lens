@@ -279,6 +279,7 @@ struct App
 	Activity activity = Activity::Overview;
 	Activity requestActivity = Activity::Count;
 	bool showConsole = false;        // focus the run log
+	bool forgetAfterUninstall = false;
 	LiveServer live;
 	LiveStore store;
 	LiveSettings liveSettings;
@@ -319,10 +320,14 @@ struct App
 		std::ofstream(settingsDir / "gui.json", std::ios::binary) << s.dump(1);
 	}
 
-	fs::path ProjectSettingsFile() const
+	// Per-project GUI settings live inside the project's __dwo-lens folder, so uninstall removes them too.
+	fs::path ProjectSettingsFile() const { return project / "__dwo-lens" / "gui.json"; }
+
+	// The dwo-Lens install folder (where tools\lens.ps1 is).
+	bool HomeValid() const
 	{
-		size_t h = std::hash<std::string>{}(Lower(PathUtf8(project)));
-		return settingsDir / "projects" / (Fmt("%016zx", h) + ".json");
+		std::error_code ec;
+		return !home.empty() && fs::exists(home / "tools" / "lens.ps1", ec);
 	}
 
 	void LoadProjectSettings()
@@ -338,9 +343,9 @@ struct App
 		s["project"] = PathUtf8(project);
 		s["mutes"] = std::vector<std::string>(mutes.begin(), mutes.end());
 		std::error_code ec;
-		fs::create_directories(ProjectSettingsFile().parent_path(), ec);
-		std::ofstream(ProjectSettingsFile(), std::ios::binary) << s.dump(1);
 		problemsRevision = -1;
+		if (!fs::is_directory(project / "__dwo-lens", ec)) return;   // not attached: nothing to keep
+		std::ofstream(ProjectSettingsFile(), std::ios::binary) << s.dump(1);
 	}
 
 	// ---------------------------------------------------------------- project
@@ -393,8 +398,7 @@ struct App
 		auto st = ReadJson(project / "__dwo-lens" / "state.json");
 		attached = st.has_value();
 		state = st ? *st : json::object();
-		fs::path catalogFile = attached ? project / "__dwo-lens" / "system" / "tools" / "catalog.json" : home / "tools" / "catalog.json";
-		if (auto c = ReadJson(catalogFile)) catalog = *c;
+		if (auto c = ReadJson(home / "tools" / "catalog.json")) catalog = *c;
 		LoadRuns();
 	}
 
@@ -648,35 +652,29 @@ struct App
 
 	// ---------------------------------------------------------------- commands
 
-	fs::path Bat() const { return project / "__dwo-lens.bat"; }
-
+	// Runs a dwo-Lens command (same as the command line) straight from the install folder.
 	bool Run(const std::string& command)
 	{
 		if (runner.running)
 		{
 			queue.push_back(command);
-			PushToast("대기열에 추가", "__dwo-lens.bat " + command + " (앞의 작업이 끝나면 실행)", col::Info);
+			PushToast("대기열에 추가", command + " (앞의 작업이 끝나면 실행)", col::Info);
 			return true;
 		}
-		std::error_code ec;
-		if (!fs::exists(Bat(), ec))
+		if (!HomeValid())
 		{
-			if (home.empty() || !fs::exists(home / "__dwo-lens.bat", ec))
-			{
-				message = "DWO_LENS_HOME이 설정되지 않았습니다. dwo-Lens 폴더의 setup.bat을 먼저 실행하세요.";
-				PushToast("실행할 수 없음", message, col::Fail);
-				return false;
-			}
-			fs::copy_file(home / "__dwo-lens.bat", Bat(), fs::copy_options::overwrite_existing, ec);
-			if (ec)
-			{
-				PushToast("실행할 수 없음", "__dwo-lens.bat 복사 실패: " + ec.message(), col::Fail);
-				return false;
-			}
+			message = "dwo-Lens 폴더를 찾을 수 없습니다: " + PathUtf8(home) + ". dwo-Lens 폴더의 dwo-Lens.bat으로 다시 여세요.";
+			PushToast("실행할 수 없음", message, col::Fail);
+			return false;
 		}
-		if (!home.empty()) SetEnvironmentVariableW(L"DWO_LENS_HOME", home.wstring().c_str());
-		std::wstring cmd = L"cmd.exe /d /s /c \"\"" + Bat().wstring() + L"\" " + ToWide(command) + L"\"";
-		if (runner.Start(cmd, project, "__dwo-lens.bat " + command))
+		SetEnvironmentVariableW(L"DWO_LENS_HOME", home.wstring().c_str());
+		SetEnvironmentVariableW(L"DWO_LENS_FROM_BAT", nullptr);
+		std::string verb = command.substr(0, command.find(' '));
+		std::string rest = command.size() > verb.size() ? command.substr(verb.size()) : "";
+		std::wstring ps = L"powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"" + (home / "tools" / "lens.ps1").wstring() +
+		                  L"\" -Command " + ToWide(verb) + L" -Project \"" + project.wstring() + L"\"" + ToWide(rest);
+		runner.logDir = settingsDir / "logs";
+		if (runner.Start(ps, project, "dwo-lens " + command))
 		{
 			message.clear();
 			lastCommand = command;
@@ -711,8 +709,22 @@ struct App
 				          [this, target] { requestActivity = target; }, "결과 보기");
 			}
 			else
-				PushToast("__dwo-lens.bat " + done, code == 0 ? "완료" : "종료 코드 " + std::to_string(code),
-				          code == 0 ? col::Pass : col::Fail, [this] { showConsole = true; }, "로그 보기");
+			{
+				fs::path logFile = runner.logFile;
+				std::string verb = done.substr(0, done.find(' '));
+				std::string what = verb == "attach" ? "부착" : verb == "uninstall" ? "제거" : verb == "update" ? "업데이트" : verb;
+				std::string body = code == 0 ? "완료" : "실패 (종료 코드 " + std::to_string(code) + ") · " + runner.LastLine();
+				if (code == 0 && verb == "uninstall" && forgetAfterUninstall)
+				{
+					recent.erase(std::remove(recent.begin(), recent.end(), PathUtf8(project)), recent.end());
+					SaveSettings();
+				}
+				forgetAfterUninstall = false;
+				PushToast(what + (code == 0 ? " 완료" : " 실패"), body, code == 0 ? col::Pass : col::Fail,
+				          [logFile] { if (!logFile.empty()) ShellExecuteW(nullptr, L"open", L"notepad.exe", (L"\"" + logFile.wstring() + L"\"").c_str(), nullptr, SW_SHOWNORMAL); },
+				          "로그 파일 열기");
+				if (code != 0) showConsole = true;
+			}
 			if (!queue.empty())
 			{
 				std::string next = queue.front();

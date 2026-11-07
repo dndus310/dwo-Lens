@@ -159,16 +159,21 @@ static void DrawOverviewNav(App& app)
 	if (!app.attached)
 	{
 		if (PrimaryButton((std::string(ICON_LINK) + "  이 프로젝트에 부착").c_str(), ImVec2(-FLT_MIN, 0))) app.Run("attach");
-		Tooltip("__dwo-lens.bat을 복사해 부착합니다. .uproject와 기존 파일은 건드리지 않습니다.");
+		Tooltip("검사 플러그인과 __dwo-lens 폴더를 넣습니다. .uproject와 기존 파일은 건드리지 않고, 도구 > 제거로 모두 지울 수 있습니다.");
 	}
 	SectionHeader("최근 프로젝트");
 	for (auto& r : app.recent)
 	{
 		fs::path p = fs::u8path(r);
+		std::error_code ec;
+		if (!fs::exists(p, ec)) continue;   // moved or deleted projects
 		bool current = p == app.project;
 		std::string label = PathUtf8(p.filename()) + "##" + r;
 		if (ImGui::Selectable(label.c_str(), current)) { app.SetProject(p); break; }
 		Tooltip(r.c_str());
+		// same-named projects are told apart by their parent folder
+		ImGui::SameLine();
+		TextDim(PathUtf8(p.parent_path().filename()));
 	}
 }
 
@@ -176,7 +181,7 @@ static void DrawOverviewMain(App& app)
 {
 	if (!app.hasUProject)
 	{
-		if (EmptyState(ICON_FOLDER, "프로젝트를 여세요", "언리얼 프로젝트 폴더(.uproject가 있는 폴더)를 선택하면 분석·검증·로그·성능 결과를 한 화면에서 볼 수 있습니다.", "프로젝트 열기..."))
+		if (EmptyState(ICON_FOLDER, "프로젝트를 여세요", "언리얼 프로젝트 폴더(.uproject가 있는 폴더)를 고르거나 이 창으로 끌어다 놓으세요. 부착은 버튼 하나로 끝납니다.", "프로젝트 열기..."))
 		{
 			fs::path p;
 			if (PickOpen(g_hwnd, true, L".uproject가 있는 프로젝트 폴더 선택", p)) app.SetProject(p);
@@ -204,7 +209,7 @@ static void DrawOverviewMain(App& app)
 
 	if (!app.attached)
 	{
-		if (EmptyState(ICON_LINK, "아직 부착되지 않았습니다", "부착하면 프로젝트 폴더에 __dwo-lens 폴더와 미리 빌드된 검사 플러그인이 생깁니다. 모두 git에서 숨겨지며 언제든 제거할 수 있습니다.", "부착"))
+		if (EmptyState(ICON_LINK, "아직 부착되지 않았습니다", "부착하면 프로젝트 폴더에 __dwo-lens 폴더, __dwo-lens.bat, 미리 빌드된 검사 플러그인이 생깁니다. git 프로젝트라면 git에서 숨겨지고, 도구 > 제거로 흔적 없이 지울 수 있습니다.", "부착"))
 			app.Run("attach");
 		return;
 	}
@@ -2155,7 +2160,7 @@ static void DrawToolsNav(App& app)
 		if (ImGui::Button((std::string(ICON_INFO) + "  상태 (status)").c_str(), ImVec2(w, 0))) app.Run("status");
 		if (ImGui::Button((std::string(ICON_SYNC) + "  시스템 업데이트").c_str(), ImVec2(w, 0))) app.Run("update");
 		Tooltip("부착된 시스템을 dwo-Lens 저장소의 최신 커밋으로 맞춥니다.");
-		if (DangerButton((std::string(ICON_DELETE) + "  제거 (detach)").c_str(), ImVec2(w, 0))) app.confirmDetach = true;
+		if (DangerButton((std::string(ICON_DELETE) + "  제거 (uninstall)").c_str(), ImVec2(w, 0))) app.confirmDetach = true;
 	}
 	ImGui::EndDisabled();
 }

@@ -1,8 +1,9 @@
-# dwo-Lens control script. Invoked by __dwo-lens.bat from the project root.
+# dwo-Lens control script. Runs from the dwo-Lens install folder (a git clone or an extracted zip);
+# invoked by dwo-Lens.bat, the GUI, or the project's __dwo-lens.bat launcher.
 # Windows PowerShell 5.1 compatible. Never modifies tracked project files.
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('attach', 'update', 'status', 'analyze', 'verify', 'logs', 'smoke', 'perf', 'sizes', 'trace', 'play', 'tools', 'gui', 'sm-install', 'sm-remove', 'doctor', 'detach')]
+    [ValidateSet('attach', 'update', 'status', 'analyze', 'verify', 'logs', 'smoke', 'perf', 'sizes', 'trace', 'play', 'tools', 'gui', 'sm-install', 'sm-remove', 'doctor', 'uninstall', 'detach')]
     [string]$Command,
     [Parameter(Mandatory = $true)]
     [string]$Project,
@@ -23,7 +24,9 @@ $Marker      = '.dwo-lens-managed'
 $BlockStart  = '# >>> dwo-lens managed (do not edit) >>>'
 $BlockEnd    = '# <<< dwo-lens managed <<<'
 $SmDest      = Join-Path $Project 'Plugins\__StateMonitor'
-$ManagedPaths = @('/__dwo-lens/', '/__dwo-lens.bat', '/Plugins/__DwoLensInspector/', '/Plugins/__StateMonitor/')
+$ManagedPaths = @('__dwo-lens/', '__dwo-lens.bat', 'Plugins/__DwoLensInspector/', 'Plugins/__StateMonitor/')
+$LauncherPath = Join-Path $Project '__dwo-lens.bat'
+$LedgerPath  = Join-Path $LensDir 'created-files.txt'   # files dwo-Lens caused outside __dwo-lens (removed by uninstall)
 
 function Say([string]$Message) { Write-Host "[dwo-lens] $Message" }
 function Fail([string]$Message) { Write-Host "[dwo-lens] ERROR: $Message" -ForegroundColor Red; exit 1 }
@@ -79,30 +82,26 @@ function Resolve-Engine([string]$Association) {
 
 # ---------------------------------------------------------------- git
 function Invoke-Git([string[]]$GitArgs) {
+    # git is optional: a project without version control (or a PC without git) simply has no repository.
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) { return $null }
+    $ErrorActionPreference = 'Continue'
     $out = & git -C $Project @GitArgs 2>$null
     if ($LASTEXITCODE -ne 0) { return $null }
     return $out
 }
 
-function Test-OwnRepository {
-    # An empty prefix means the project folder is the repository root. Comparing prefixes instead of paths
-    # stays correct when the same folder is reached through a junction, symlink or redirected profile path.
-    $prefix = & git -C $Project rev-parse --show-prefix 2>$null
-    return ($LASTEXITCODE -eq 0 -and [string]::IsNullOrEmpty(($prefix | Out-String).Trim()))
-}
-
-function Assert-OwnRepository {
+# How the project is version controlled:
+#   own    - the project folder is a git repository root
+#   parent - the project sits inside a larger git repository (paths are prefixed in that repository's exclude)
+#   none   - no git; nothing to hide, so no exclude is written
+function Get-Vcs {
     $top = Invoke-Git @('rev-parse', '--show-toplevel')
-    if (-not $top) { Fail "$Project is not inside a git repository." }
-    if (-not (Test-OwnRepository)) {
-        Fail "The project is not its own git repository. Enclosing repository: $top. Run 'git init' in the project or use its real clone."
-    }
-}
-
-function Get-ExcludePath {
-    $p = Invoke-Git @('rev-parse', '--path-format=absolute', '--git-path', 'info/exclude')
-    if (-not $p) { Fail 'Cannot resolve .git/info/exclude.' }
-    return ($p -replace '/', '\')
+    if (-not $top) { return [pscustomobject]@{ Kind = 'none'; Top = $null; Prefix = ''; Exclude = $null } }
+    # Prefix comparison stays correct through junctions, symlinks and redirected profile paths.
+    $prefix = ((& git -C $Project rev-parse --show-prefix 2>$null) | Out-String).Trim()
+    $excl = Invoke-Git @('rev-parse', '--path-format=absolute', '--git-path', 'info/exclude')
+    return [pscustomobject]@{ Kind = $(if ($prefix) { 'parent' } else { 'own' }); Top = "$top"; Prefix = $prefix
+                              Exclude = $(if ($excl) { ("$excl" -replace '/', '\') } else { $null }) }
 }
 
 function Get-ExcludeLines([string]$Path) {
@@ -110,48 +109,76 @@ function Get-ExcludeLines([string]$Path) {
     return @([IO.File]::ReadAllLines($Path))
 }
 
+# One block per project, so several projects inside one parent repository keep separate entries.
+function Get-BlockId($Vcs) { if ($Vcs.Prefix) { return $Vcs.Prefix } else { return '.' } }
+
 function Set-ExcludeBlock {
-    $path = Get-ExcludePath
-    $lines = Get-ExcludeLines $path
-    $kept = Remove-Block $lines
-    $block = @($BlockStart) + $ManagedPaths + @($BlockEnd)
+    $vcs = Get-Vcs
+    if ($vcs.Kind -eq 'none' -or -not $vcs.Exclude) { return $vcs }
+    $id = Get-BlockId $vcs
+    $lines = Get-ExcludeLines $vcs.Exclude
+    $kept = Remove-Block $lines $id
+    $block = @("# >>> dwo-lens managed: $id (do not edit) >>>") + @($ManagedPaths | ForEach-Object { '/' + $vcs.Prefix + $_ }) + @($BlockEnd)
     $all = @($kept | Where-Object { $_ -ne $null }) + @('') + $block
-    $dir = Split-Path -Parent $path
+    $dir = Split-Path -Parent $vcs.Exclude
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force $dir | Out-Null }
-    [IO.File]::WriteAllText($path, (($all -join "`n").Trim() + "`n"), $Utf8)
+    [IO.File]::WriteAllText($vcs.Exclude, (($all -join "`n").Trim() + "`n"), $Utf8)
+    return $vcs
 }
 
-function Remove-Block([string[]]$Lines) {
+# Removes this project's block. The unnamed block of older versions belongs to the repository root project.
+function Remove-Block([string[]]$Lines, [string]$Id) {
     $out = New-Object System.Collections.Generic.List[string]
     $inside = $false
     foreach ($line in $Lines) {
-        if ($line -like '# >>> dwo-lens managed*') { $inside = $true; continue }
-        if ($line -like '# <<< dwo-lens managed*') { $inside = $false; continue }
-        if (-not $inside) { $out.Add($line) }
+        if ($line -like '# >>> dwo-lens managed*') {
+            $legacy = $line -notlike '# >>> dwo-lens managed: *'
+            $mine = ($legacy -and $Id -eq '.') -or $line -like "# >>> dwo-lens managed: $Id *"
+            if ($mine) { $inside = $true; continue }
+        }
+        if ($inside) {
+            if ($line -like '# <<< dwo-lens managed*') { $inside = $false }
+            continue
+        }
+        $out.Add($line)
     }
     while ($out.Count -gt 0 -and [string]::IsNullOrWhiteSpace($out[$out.Count - 1])) { $out.RemoveAt($out.Count - 1) }
     return ,$out.ToArray()
 }
 
 function Clear-ExcludeBlock {
-    $path = Get-ExcludePath
-    if (-not (Test-Path $path)) { return }
-    $kept = Remove-Block (Get-ExcludeLines $path)
+    $vcs = Get-Vcs
+    if ($vcs.Kind -eq 'none' -or -not $vcs.Exclude -or -not (Test-Path $vcs.Exclude)) { return $false }
+    $lines = Get-ExcludeLines $vcs.Exclude
+    $kept = Remove-Block $lines (Get-BlockId $vcs)
+    if ($kept.Count -eq ($lines | Where-Object { $_ -ne $null }).Count) { return $false }
     $text = ''
     if ($kept.Count -gt 0) { $text = ($kept -join "`n") + "`n" }
-    [IO.File]::WriteAllText($path, $text, $Utf8)
+    [IO.File]::WriteAllText($vcs.Exclude, $text, $Utf8)
+    return $true
+}
+
+function Test-BlockPresent {
+    $vcs = Get-Vcs
+    if ($vcs.Kind -eq 'none' -or -not $vcs.Exclude -or -not (Test-Path $vcs.Exclude)) { return $false }
+    $id = Get-BlockId $vcs
+    $text = Get-Content -Raw $vcs.Exclude
+    return ($text -like "*# >>> dwo-lens managed: $id *") -or ($id -eq '.' -and $text -like '*# >>> dwo-lens managed (do not edit)*')
 }
 
 # Folders the engine itself rewrites whenever an editor or commandlet runs (ignored by the standard UE .gitignore).
 $VolatileDirs = @('Saved/', 'Intermediate/', 'DerivedDataCache/', 'Binaries/', '.vs/')
 
 function Get-ProjectStatus {
-    # Porcelain status of the project, used to prove attach/detach leave no trace.
+    # Porcelain status of the project folder, used to prove attach/uninstall leave no trace.
     # Engine work folders are excluded: running the editor always touches them.
-    $s = Invoke-Git @('status', '--porcelain', '--untracked-files=all')
+    # Porcelain paths are relative to the repository root; strip the project prefix (parent repository case).
+    $prefix = ((& git -C $Project rev-parse --show-prefix 2>$null) | Out-String).Trim()
+    $s = Invoke-Git @('status', '--porcelain', '--untracked-files=all', '--', '.')
     if (-not $s) { return '' }
     $kept = @($s) | Where-Object {
         $path = $_.Substring(3).Trim('"')
+        if ($prefix -and $path.StartsWith($prefix)) { $path = $path.Substring($prefix.Length) }
         -not ($VolatileDirs | Where-Object { $path.StartsWith($_) })
     }
     return (@($kept) -join "`n")
@@ -184,7 +211,7 @@ function Get-PluginBuild($Engine, [string]$Name = 'DwoLensInspector') {
     $log = Join-Path $DataDir "logs\build-$Name.log"
     New-Item -ItemType Directory -Force (Split-Path -Parent $log) | Out-Null
     # Build from a copy: BuildPlugin writes files (Config/FilterPlugin.ini) into the plugin folder,
-    # and the system clone must stay clean so 'update' (git pull) keeps working.
+    # and the install folder must stay as shipped.
     $srcCopy = Join-Path $cacheRoot "src-$Name-$hash"
     if (Test-Path $srcCopy) { Remove-Item -Recurse -Force $srcCopy }
     Copy-Item -Recurse (Join-Path $SystemDir "plugin\$Name") $srcCopy
@@ -212,7 +239,15 @@ function Install-Plugin($Build) {
     [IO.File]::WriteAllText($upluginPath, ($uplugin | ConvertTo-Json -Depth 10), $Utf8)
     Copy-Item -Recurse (Join-Path $Build.Dir 'Binaries') $PluginDest
     if (Test-Path (Join-Path $Build.Dir 'Resources')) { Copy-Item -Recurse (Join-Path $Build.Dir 'Resources') $PluginDest }
-    [IO.File]::WriteAllText((Join-Path $PluginDest $Marker), "Managed by dwo-Lens. Removed by '__dwo-lens.bat detach'.`n", $Utf8)
+    [IO.File]::WriteAllText((Join-Path $PluginDest $Marker), "Managed by dwo-Lens. Removed by '__dwo-lens.bat uninstall'.`n", $Utf8)
+}
+
+function Remove-EmptyPluginsFolder {
+    # Remove Plugins\ only when attach created it (it did not exist before) and nothing else is in it now.
+    $plugins = Join-Path $Project 'Plugins'
+    $state = Read-State
+    $existed = $state -and $state.PSObject.Properties['pluginsFolderExisted'] -and [bool]$state.pluginsFolderExisted
+    if (-not $existed -and (Test-Path $plugins) -and -not (Get-ChildItem -Force $plugins)) { Remove-Item -Force $plugins }
 }
 
 function Remove-Plugin {
@@ -221,8 +256,7 @@ function Remove-Plugin {
         Fail "$PluginDest exists but is not managed by dwo-Lens. Leaving it untouched."
     }
     Remove-Item -Recurse -Force $PluginDest
-    $plugins = Join-Path $Project 'Plugins'
-    if ((Test-Path $plugins) -and -not (Get-ChildItem -Force $plugins)) { Remove-Item -Force $plugins }
+    Remove-EmptyPluginsFolder
 }
 
 # ---------------------------------------------------------------- commands
@@ -249,12 +283,12 @@ function Find-OwnStateMonitor {
 }
 
 function Invoke-SmInstall {
-    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-lens.bat attach first.' }
+    if (-not (Read-State)) { Fail 'Not attached. Run attach first.' }
     $own = Find-OwnStateMonitor
     if ($own) { Fail "The project already contains StateMonitor ($($own.FullName.Substring($Project.Length + 1))). Nothing to install." }
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
-    Set-ExcludeBlock
+    $null = Set-ExcludeBlock
     $build = Get-PluginBuild $engine 'StateMonitor'
     if (Test-Path $SmDest) { Remove-Item -Recurse -Force $SmDest }
     New-Item -ItemType Directory -Force $SmDest | Out-Null
@@ -275,13 +309,13 @@ function Invoke-SmInstall {
     [IO.File]::WriteAllText($upluginPath, ($uplugin | ConvertTo-Json -Depth 10), $Utf8)
     [IO.File]::WriteAllText((Join-Path $SmDest $Marker), "StateMonitor installed by dwo-Lens. Remove with '__dwo-lens.bat sm-remove'.`n", $Utf8)
     if ($runtime) {
-        Say "StateMonitor installed for runtime: Plugins\__StateMonitor (UE $($engine.Version), hidden from git)"
+        Say "StateMonitor installed for runtime: Plugins\__StateMonitor (UE $($engine.Version))"
         Say 'Packaged games include it only when the project declares it:'
         if ($uproject.IsCode) { Say '  C++ project: add "StateMonitor" to the Build.cs of the module that calls it.' }
         else { Say '  Blueprint-only project: add {"Name": "StateMonitor", "Enabled": true} to Plugins in the .uproject.' }
-        Say 'Remove those entries before sm-remove or detach.'
+        Say 'Remove those entries before sm-remove or uninstall.'
     } else {
-        Say "StateMonitor installed for editor and PIE: Plugins\__StateMonitor (UE $($engine.Version), hidden from git)"
+        Say "StateMonitor installed for editor and PIE: Plugins\__StateMonitor (UE $($engine.Version))"
         Say 'Packaged builds are not affected. For packaged games use: __dwo-lens.bat sm-install --runtime'
     }
     Say 'Live view: open dwo-Lens > State Monitor, then Play in the editor or run __dwo-lens.bat play. No project code needed.'
@@ -299,8 +333,7 @@ function Remove-StateMonitor([bool]$Force) {
         return $false
     }
     Remove-Item -Recurse -Force $SmDest
-    $plugins = Join-Path $Project 'Plugins'
-    if ((Test-Path $plugins) -and -not (Get-ChildItem -Force $plugins)) { Remove-Item -Force $plugins }
+    Remove-EmptyPluginsFolder
     Say 'StateMonitor removed.'
     return $true
 }
@@ -311,39 +344,85 @@ function Invoke-SmRemove {
 }
 
 function Get-SystemCommit {
-    $c = & git -C $SystemDir rev-parse --short HEAD 2>$null
-    if ($LASTEXITCODE -ne 0) { return 'unknown' }
-    return $c
+    # Version of the install folder: VERSION file, plus the commit when it is a git clone.
+    $versionFile = Join-Path $SystemDir 'VERSION'
+    $v = if (Test-Path $versionFile) { (Get-Content -Raw $versionFile).Trim() } else { 'dev' }
+    if (Test-Path (Join-Path $SystemDir '.git')) {
+        $c = & git -C $SystemDir rev-parse --short HEAD 2>$null
+        if ($LASTEXITCODE -eq 0 -and $c) { return "$v+$c" }
+    }
+    return $v
+}
+
+function Add-Created([string]$Path) {
+    # Remembers a file dwo-Lens caused outside __dwo-lens so uninstall can offer to remove it.
+    if (-not $Path -or -not (Test-Path $LensDir)) { return }
+    [IO.File]::AppendAllText($LedgerPath, $Path.Substring($Project.Length + 1) + "`n", $Utf8)
+}
+
+function Install-Launcher {
+    # The project's __dwo-lens.bat: a small launcher that finds this install folder (home.txt) and runs lens.ps1.
+    $src = Join-Path $SystemDir '__dwo-lens.bat'
+    $existing = if (Test-Path $LauncherPath) { [IO.File]::ReadAllBytes($LauncherPath) } else { $null }
+    $new = [IO.File]::ReadAllBytes($src)
+    if (-not $existing -or [Convert]::ToBase64String($existing) -ne [Convert]::ToBase64String($new)) {
+        # A running __dwo-lens.bat is read line by line by cmd; replace it only after it finished.
+        if ($env:DWO_LENS_FROM_BAT -eq '1') { Copy-Item $src (Join-Path $LensDir 'launcher.next') -Force }
+        else { Copy-Item $src $LauncherPath -Force }
+    }
 }
 
 function Invoke-Attach([string]$Mode) {
-    Assert-OwnRepository
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     $previous = Read-State
     $baseline = $null
     if ($previous -and $previous.gitStatusBeforeAttach -ne $null) { $baseline = $previous.gitStatusBeforeAttach }
+    $pluginsExisted = if ($previous -and $previous.PSObject.Properties['pluginsFolderExisted']) { [bool]$previous.pluginsFolderExisted } else { Test-Path (Join-Path $Project 'Plugins') }
 
-    Set-ExcludeBlock
-    if ($baseline -eq $null) { $baseline = Get-ProjectStatus }
+    # Hide everything before it exists (git only).
+    if ($baseline -eq $null -and (Get-Vcs).Kind -ne 'none') { $baseline = Get-ProjectStatus }
+    $vcs = Set-ExcludeBlock
+    switch ($vcs.Kind) {
+        'own'    { Say "git repository: dwo-Lens files are hidden through .git\info\exclude (local only, never committed)." }
+        'parent' { Say "The project is inside the git repository $($vcs.Top). dwo-Lens files are hidden there under /$($vcs.Prefix)." }
+        'none'   { Say 'No version control: nothing to hide, so no exclude entry is written.' }
+    }
+
+    New-Item -ItemType Directory -Force $LensDir | Out-Null
+    # Older versions kept a git clone of the system inside the project. The system now runs from the install folder.
+    $legacy = Join-Path $LensDir 'system'
+    if (Test-Path $legacy) {
+        Get-ChildItem $legacy -Recurse -Force -File | ForEach-Object { if ($_.IsReadOnly) { $_.IsReadOnly = $false } }
+        Remove-Item -Recurse -Force $legacy
+        Say 'Removed the old system copy (__dwo-lens\system); the system now runs from the dwo-Lens folder.'
+    }
+    [IO.File]::WriteAllText((Join-Path $LensDir 'home.txt'), $SystemDir, $Utf8)
+    Install-Launcher
 
     $build = Get-PluginBuild $engine
     Install-Plugin $build
 
     $state = [ordered]@{
-        schema                = 'lens.state/0.1'
+        schema                = 'lens.state/0.2'
         project               = $uproject.Name
         projectType           = $(if ($uproject.IsCode) { 'code' } else { 'blueprint-only' })
         engineVersion         = $engine.Version
         engineRoot            = $engine.Root
         systemCommit          = Get-SystemCommit
+        systemHome            = $SystemDir
         pluginHash            = $build.Hash
+        vcs                   = $vcs.Kind
+        vcsRoot               = $vcs.Top
+        excludeFile           = $vcs.Exclude
+        pluginsFolderExisted  = $pluginsExisted
         attachedAt            = $(if ($previous) { $previous.attachedAt } else { (Get-Date).ToString('o') })
         updatedAt             = (Get-Date).ToString('o')
         gitStatusBeforeAttach = $baseline
     }
     Write-Json $StatePath $state
-    Say "$Mode complete: $($uproject.Name) / UE $($engine.Version) / system $($state.systemCommit)"
+    Say "$Mode complete: $($uproject.Name) / UE $($engine.Version) / dwo-Lens $($state.systemCommit)"
+    Say "Open the control panel: dwo-Lens.bat (or __dwo-lens.bat in the project). Remove everything: __dwo-lens.bat uninstall"
     Invoke-Doctor | Out-Null
 }
 
@@ -352,12 +431,9 @@ function Invoke-Status {
     if (-not $state) { Say 'Not attached.'; return }
     Say "Project        : $($state.project) ($($state.projectType))"
     Say "Engine         : UE $($state.engineVersion)"
-    Say "System commit  : $($state.systemCommit)"
-    if ($env:DWO_LENS_HOME -and (Test-Path (Join-Path $env:DWO_LENS_HOME '.git'))) {
-        $latest = & git -C $env:DWO_LENS_HOME rev-parse --short HEAD 2>$null
-        if ($latest -and $latest -ne $state.systemCommit) { Say "Update available: $latest (run __dwo-lens.bat update)" }
-        else { Say 'System is up to date.' }
-    }
+    Say "dwo-Lens       : $(Get-SystemCommit) at $SystemDir"
+    if ($state.systemCommit -ne (Get-SystemCommit)) { Say "Attached with $($state.systemCommit). Run update to refresh the plugin and launcher." }
+    Say "Version control: $((Get-Vcs).Kind)"
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     if ($engine.Version -ne $state.engineVersion) { Say "Engine changed to $($engine.Version). Run __dwo-lens.bat update." }
@@ -374,13 +450,16 @@ function Invoke-Doctor {
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     Check "engine UE $($engine.Version)" (Test-Path $engine.Cmd) 'UnrealEditor-Cmd.exe not found'
-    $top = Invoke-Git @('rev-parse', '--show-toplevel')
-    Check 'project is its own git repository' ($top -and (Test-OwnRepository)) 'run git init in the project'
-    $excl = Get-ExcludePath
-    Check 'exclude block present' ((Test-Path $excl) -and ((Get-Content -Raw $excl) -like "*$BlockStart*")) 'run __dwo-lens.bat attach'
-    Check 'plugin installed' (Test-Path (Join-Path $PluginDest 'Binaries\Win64\UnrealEditor-DwoLensInspector.dll')) 'run __dwo-lens.bat attach'
-    $leaks = Invoke-Git @('status', '--porcelain', '--untracked-files=all', '--', '__dwo-lens', '__dwo-lens.bat', 'Plugins/__DwoLensInspector', 'Plugins/__StateMonitor')
-    Check 'dwo-lens files hidden from git' (-not $leaks) "visible to git: $leaks"
+    $vcs = Get-Vcs
+    if ($vcs.Kind -eq 'none') { Write-Host '  [info] no version control: exclude not needed' }
+    else {
+        if ($vcs.Kind -eq 'parent') { Write-Host "  [info] inside the git repository $($vcs.Top) (entries prefixed /$($vcs.Prefix))" }
+        Check 'exclude block present' (Test-BlockPresent) 'run attach again'
+        $leaks = Invoke-Git @('status', '--porcelain', '--untracked-files=all', '--', '__dwo-lens', '__dwo-lens.bat', 'Plugins/__DwoLensInspector', 'Plugins/__StateMonitor')
+        Check 'dwo-lens files hidden from git' (-not $leaks) "visible to git: $leaks"
+    }
+    Check 'plugin installed' (Test-Path (Join-Path $PluginDest 'Binaries\Win64\UnrealEditor-DwoLensInspector.dll')) 'run attach again'
+    Check 'project launcher' (Test-Path $LauncherPath) 'run attach again'
     $py = Get-Command python -ErrorAction SilentlyContinue
     Check 'python available' ($py -ne $null) 'install Python 3.10+'
     if ($uproject.IsCode) {
@@ -684,7 +763,7 @@ function Invoke-Perf {
         if ($found) { $csv = $found.FullName }
     }
     $copied = Join-Path $out 'perf.csv'
-    if (Test-Path $csv) { Copy-Item $csv $copied -Force }
+    if (Test-Path $csv) { Copy-Item $csv $copied -Force; Add-Created $csv }
     if ($r.Killed) { Say "P1 did not finish in $timeout s; stopped" }
     $stations.Add([ordered]@{ id = 'P1'; name = 'csv-capture'; exitCode = $r.ExitCode; ms = [int]($r.Seconds * 1000)
                               verdict = $(if (Test-Path $copied) { 'pass' } else { 'fail' }); log = 'raw\perf.log' })
@@ -809,28 +888,100 @@ function Invoke-Analyze {
     if ($verdict -eq 'fail') { exit 2 }
 }
 
-function Invoke-Detach {
-    $keepData = $Rest -contains '--keep-data'
-    $state = Read-State
-    if (-not (Remove-StateMonitor ($Rest -contains '--force'))) { Fail 'Detach stopped. StateMonitor is still in use.' }
-    Remove-Plugin
-    Clear-ExcludeBlock
-    if ($keepData -and (Test-Path $DataDir)) {
-        $dest = Join-Path $env:LOCALAPPDATA ("dwo-Lens\detached\" + (Split-Path -Leaf $Project) + '-' + (Get-Date).ToString('yyyyMMdd-HHmmss'))
-        New-Item -ItemType Directory -Force (Split-Path -Parent $dest) | Out-Null
-        Move-Item $DataDir $dest
-        Say "Analysis data kept at $dest"
+function Get-UninstallInventory {
+    # What attach and the lines left in the project, grouped for the keep/delete question.
+    $runs = @()
+    $runsDir = Join-Path $DataDir 'runs'
+    if (Test-Path $runsDir) { $runs = @(Get-ChildItem $runsDir -Directory) }
+    $dataBytes = 0
+    if (Test-Path $DataDir) { $dataBytes = (Get-ChildItem $DataDir -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum }
+    $created = @()
+    if (Test-Path $LedgerPath) {
+        $created = @(Get-Content -Encoding UTF8 $LedgerPath | Where-Object { $_ } | Select-Object -Unique |
+                     Where-Object { Test-Path (Join-Path $Project $_) })
     }
-    Set-Location $Project
-    if (Test-Path $LensDir) { Remove-Item -Recurse -Force $LensDir }
+    return [pscustomobject]@{ Runs = $runs; DataBytes = [long]$dataBytes; Created = $created }
+}
 
-    # __dwo-lens.bat deletes itself after this script returns; exclude it from the comparison.
-    $after = (@((Get-ProjectStatus) -split "`n") | Where-Object { $_ -and $_ -notmatch '__dwo-lens\.bat$' }) -join "`n"
-    if ($state -and $state.gitStatusBeforeAttach -ne $null) {
-        if ($after -eq $state.gitStatusBeforeAttach) { Say 'Detached. git status matches the state before attach.' }
-        else { Say 'Detached, but git status differs from before attach. Review: git status'; exit 3 }
+function Read-DataChoice($Inventory) {
+    if ($Rest -contains '--keep-data') { return 'keep' }
+    if ($Rest -contains '--delete-data') { return 'delete' }
+    if ($Inventory.Runs.Count -eq 0 -and $Inventory.Created.Count -eq 0) { return 'delete' }
+    $interactive = [Environment]::UserInteractive -and -not [Console]::IsInputRedirected
+    if (-not $interactive) {
+        Say 'No choice given for the run history (--keep-data or --delete-data); keeping it to be safe.'
+        return 'keep'
+    }
+    while ($true) {
+        $answer = Read-Host '[dwo-lens] Keep the run history and logs? [K]eep (moved out of the project) / [D]elete'
+        if ($answer -match '^[kK]') { return 'keep' }
+        if ($answer -match '^[dD]') { return 'delete' }
+    }
+}
+
+function Invoke-Uninstall {
+    $state = Read-State
+    if (-not $state -and -not (Test-Path $LensDir) -and -not (Test-Path $PluginDest) -and -not (Test-Path $SmDest)) {
+        Say 'dwo-Lens is not attached to this project.'
+        Clear-ExcludeBlock | Out-Null
+        if ($env:DWO_LENS_FROM_BAT -ne '1' -and (Test-Path $LauncherPath)) { Remove-Item -Force $LauncherPath }
+        return
+    }
+    $inv = Get-UninstallInventory
+    Say 'uninstall: removes everything dwo-Lens added to this project'
+    Write-Host "    plugins     : $(@(@($PluginDest, $SmDest) | Where-Object { Test-Path $_ } | ForEach-Object { Split-Path -Leaf $_ }) -join ', ')"
+    Write-Host "    launcher    : __dwo-lens.bat"
+    Write-Host "    exclude     : $(if (Test-BlockPresent) { (Get-Vcs).Exclude } else { 'none' })"
+    Write-Host ("    run history : {0} runs, {1:N1} MB (__dwo-lens\data)" -f $inv.Runs.Count, ($inv.DataBytes / 1MB))
+    Write-Host "    other files : $($inv.Created.Count) (perf CSV captures in Saved\Profiling)"
+
+    $choice = Read-DataChoice $inv
+    if (-not (Remove-StateMonitor ($Rest -contains '--force'))) { Fail 'Uninstall stopped. StateMonitor is still in use.' }
+    Remove-Plugin
+
+    if ($choice -eq 'keep') {
+        $dest = Join-Path $env:LOCALAPPDATA ("dwo-Lens\uninstalled\" + (Split-Path -Leaf $Project) + '-' + (Get-Date).ToString('yyyyMMdd-HHmmss'))
+        New-Item -ItemType Directory -Force $dest | Out-Null
+        if (Test-Path $DataDir) { Move-Item $DataDir (Join-Path $dest 'data') }
+        foreach ($f in $inv.Created) {
+            $target = Join-Path $dest ("project-files\" + $f)
+            New-Item -ItemType Directory -Force (Split-Path -Parent $target) | Out-Null
+            Move-Item (Join-Path $Project $f) $target
+        }
+        Say "Run history kept at $dest"
     } else {
-        Say 'Detached.'
+        foreach ($f in $inv.Created) { Remove-Item -Force (Join-Path $Project $f) -ErrorAction SilentlyContinue }
+        Say "Run history and $($inv.Created.Count) other file(s) deleted."
+    }
+    # Engine folders dwo-Lens runs created and that are now empty (for example Saved\Profiling\CSV).
+    foreach ($f in $inv.Created) {
+        $dir = Split-Path -Parent (Join-Path $Project $f)
+        while ($dir -and $dir.Length -gt $Project.Length -and (Test-Path $dir) -and -not (Get-ChildItem -Force $dir)) {
+            Remove-Item -Force $dir
+            $dir = Split-Path -Parent $dir
+        }
+    }
+
+    $cleared = Clear-ExcludeBlock
+    Set-Location $Project
+    if (Test-Path $LensDir) {
+        Get-ChildItem $LensDir -Recurse -Force -File | ForEach-Object { if ($_.IsReadOnly) { $_.IsReadOnly = $false } }
+        Remove-Item -Recurse -Force $LensDir
+    }
+    # A launcher run by itself deletes its own file after this script returns.
+    if ($env:DWO_LENS_FROM_BAT -ne '1' -and (Test-Path $LauncherPath)) { Remove-Item -Force $LauncherPath }
+
+    $left = @($PluginDest, $SmDest, $LensDir) | Where-Object { Test-Path $_ }
+    if ($env:DWO_LENS_FROM_BAT -ne '1' -and (Test-Path $LauncherPath)) { $left += $LauncherPath }
+    if ($left.Count -gt 0) { Say "Uninstalled, but these remain: $($left -join ', ')"; exit 3 }
+    if ($cleared) { Say 'Exclude entries removed.' }
+    $vcs = Get-Vcs
+    if ($vcs.Kind -ne 'none' -and $state -and $state.gitStatusBeforeAttach -ne $null) {
+        $after = (@((Get-ProjectStatus) -split "`n") | Where-Object { $_ -and $_ -notmatch '__dwo-lens\.bat$' }) -join "`n"
+        if ($after -ne $state.gitStatusBeforeAttach) { Say 'Uninstalled, but git status differs from before attach. Review: git status'; exit 3 }
+        Say 'Uninstalled. git status matches the state before attach.'
+    } else {
+        Say 'Uninstalled. No dwo-Lens files remain in the project.'
     }
 }
 
@@ -850,6 +1001,7 @@ switch ($Command) {
     'tools'   { Invoke-Tools }
     'sm-install' { Invoke-SmInstall }
     'sm-remove'  { Invoke-SmRemove }
-    'gui'     { & (Join-Path $SystemDir 'tools\gui.ps1') -SystemDir $SystemDir -Project $Project -LensHome $env:DWO_LENS_HOME }
-    'detach'  { Invoke-Detach }
+    'gui'     { & (Join-Path $SystemDir 'tools\gui.ps1') -SystemDir $SystemDir -Project $Project -LensHome $SystemDir }
+    'uninstall' { Invoke-Uninstall }
+    'detach'  { Invoke-Uninstall }
 }

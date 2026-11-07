@@ -109,3 +109,31 @@ QA 스크립트 자체의 오류(엔진 바이너리를 직접 실행, PowerShel
 - 실패·크래시하는 맵의 스모크 실행 (단위 테스트로만), 여러 맵, 용량 기준 초과 프로젝트
 - `perf`·`trace`의 `nullrhi` 경로
 - Shipping·모놀리식 빌드에서 프로젝트 프로퍼티 판별
+
+
+## 8. v1.7 설치·부착·제거 단순화 (2026-11-07)
+
+GitHub zip으로 받은 폴더에서 부착이 실패한 문제(설치 폴더에 `.git`이 없음, 프로젝트가 홈 폴더의 빈 git 저장소 안에 있음)를 계기로 절차를 바꿨습니다.
+
+| 변경 | 내용 |
+|---|---|
+| 설치 | `dwo-Lens.bat` 더블클릭 하나로 시작. 폴더 등록(`DWO_LENS_HOME`)과 창 빌드를 자동으로 처리. `setup.bat`은 선택 |
+| 실행 방식 | 프로젝트에 시스템을 git clone하지 않고 설치 폴더에서 실행. zip으로 받아도 동작. 버전은 `VERSION` (+ git이면 커밋) |
+| 부착 | 창의 부착 버튼, 프로젝트 끌어다 놓기, `dwo-Lens.bat attach <폴더>`. 프로젝트에 `__dwo-lens.bat` 실행 파일을 자동으로 넣음 |
+| 형상관리 | 자기 저장소면 그 exclude, 상위 저장소 안이면 상위 exclude에 프로젝트 경로를 붙인 블록, git이 없으면 exclude 없음 |
+| 제거 | `uninstall`: 플러그인·StateMonitor·실행 파일·`__dwo-lens`·exclude 블록 제거. 실행 기록과 dwo-Lens가 남긴 파일(성능 CSV)은 보존(프로젝트 밖으로 이동) 또는 삭제를 선택 |
+| 로그 | 창에서 실행한 명령 출력을 `%LOCALAPPDATA%\dwo-Lens\logs`에 저장, 실패 알림에서 바로 열기 |
+
+| 검증 | 결과 |
+|---|---|
+| 자체 검증 (selftest) | 33/33 통과 (기존 26 + git 없는 프로젝트 3, 상위 저장소 3, 실행 파일 갱신 1) |
+| git 없는 프로젝트 + zip 설치 | 부착 → sizes → analyze → sm-install → uninstall --delete-data, 남은 파일 0 |
+| 상위 저장소 안의 프로젝트 | 상위 exclude에 `/games/temp_proj/...` 블록, 상위 `git status` 변화 없음. uninstall --keep-data 후 exclude가 부착 전과 같고, 기록과 CSV가 `%LOCALAPPDATA%\dwo-Lens\uninstalled`로 이동 |
+| 이전 버전으로 부착된 프로젝트 | update 시 `__dwo-lens\system` 복사본과 이름 없는 옛 exclude 블록을 새 방식으로 교체, 실행 기록 18개 유지, uninstall 후 남은 파일 0 |
+| 제거 대화상자 | 지울 항목, 실행 기록 수·크기, 보존/삭제 선택을 화면 캡처로 확인 |
+
+### 검증하지 않은 것 (v1.7)
+
+- 명령줄 `uninstall`에서 선택을 묻는 대화형 입력 (자동 실행은 비대화형이라 `--keep-data`/`--delete-data`로만 확인)
+- 실제 성능 캡처가 남긴 CSV의 제거 (기록 파일에 경로를 넣어 시뮬레이션)
+- 창으로 끌어다 놓기와 실패 알림의 로그 파일 열기 (빌드와 코드 경로만 확인)

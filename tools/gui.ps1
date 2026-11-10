@@ -36,12 +36,15 @@ function Find-VcVars {
 # dwo-Lens 1.x kept its caches and GUI settings in %LOCALAPPDATA%\dwo-Lens; move them once.
 $appData = Join-Path $env:LOCALAPPDATA 'dwo-Forge'
 $legacyAppData = Join-Path $env:LOCALAPPDATA 'dwo-Lens'
+# 2.0.0 could leave a FILE named dwo-Forge here (settings copied before the folder existed); clear it.
+if (Test-Path $appData -PathType Leaf) { Remove-Item -Force $appData -ErrorAction SilentlyContinue }
 if (Test-Path $legacyAppData) {
     if (-not (Test-Path $appData)) {
         try { Move-Item $legacyAppData $appData -ErrorAction Stop; Say 'Moved %LOCALAPPDATA%\dwo-Lens to %LOCALAPPDATA%\dwo-Forge.' } catch { }
     }
     if (Test-Path $legacyAppData) {
         # Both exist (or a running old window holds a file): carry over settings and kept histories, drop old caches.
+        New-Item -ItemType Directory -Force $appData | Out-Null
         foreach ($name in @('gui.json', 'gui-layout-v2.ini')) {
             $from = Join-Path $legacyAppData $name
             if ((Test-Path $from) -and -not (Test-Path (Join-Path $appData $name))) { Copy-Item $from $appData -ErrorAction SilentlyContinue }

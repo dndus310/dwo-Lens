@@ -706,6 +706,8 @@ function Merge-Folder([string]$From, [string]$To) {
 
 function Move-LegacyAppData {
     # %LOCALAPPDATA%\dwo-Lens (plugin and GUI caches, GUI settings, kept run histories) -> %LOCALAPPDATA%\dwo-Forge
+    # 2.0.0's GUI launcher could leave a FILE named dwo-Forge (a copied gui.json); it blocks every cache below.
+    if (Test-Path $AppDataDir -PathType Leaf) { Remove-Item -Force $AppDataDir -ErrorAction SilentlyContinue }
     if (-not (Test-Path $LegacyAppData)) { return }
     $moved = $false
     if (-not (Test-Path $AppDataDir)) {

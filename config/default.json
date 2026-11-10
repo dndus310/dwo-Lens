@@ -1,6 +1,7 @@
 {
   "schema": "lens.config/0.1",
-  "_comment": "Defaults. A project can override any key with __dwo-lens/config.json (same shape, merged key by key).",
+  "_product": "dwo-Forge (Lens analysis settings; the schema id keeps its 1.x name so project overrides still apply)",
+  "_comment": "Defaults. A project can override any key with __dwo-forge/config.json (__dwo-lens/config.json before dwo-Forge 2.0 is migrated automatically) (same shape, merged key by key).",
 
   "naming": {
     "_comment": "Asset class name -> allowed prefixes (UE5 style guide, allar/ue5-style-guide). Classes not listed are not checked.",
@@ -104,8 +105,8 @@
   },
 
   "stateMonitor": {
-    "_comment": "Optional adapter. Active only when the project itself contains the StateMonitor plugin.",
-    "pluginName": "StateMonitor",
+    "_comment": "Optional adapter. Active when the project contains the DwoStateMonitor plugin (installed by sm-install or its own copy). StateMonitor is the dwo-Lens 1.x name. Automation tests keep the StateMonitor. prefix.",
+    "pluginName": ["DwoStateMonitor", "StateMonitor"],
     "testFilter": "StateMonitor."
   }
 }

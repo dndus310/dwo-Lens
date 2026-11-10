@@ -1,0 +1,1247 @@
+{
+ "schema": "designbridge/1",
+ "source": {
+  "tool": "sample",
+  "file": "sample_shop",
+  "exporter": "make_sample.py"
+ },
+ "images": {
+  "img_thumb": {
+   "data": "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",
+   "scale": 1
+  },
+  "img_star": {
+   "data": "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",
+   "scale": 2
+  }
+ },
+ "documents": [
+  {
+   "id": "S:1",
+   "name": "Shop",
+   "kind": "screen",
+   "root": {
+    "id": "S:1",
+    "name": "Shop",
+    "type": "frame",
+    "box": {
+     "x": 0,
+     "y": 0,
+     "w": 1280,
+     "h": 720
+    },
+    "fills": [
+     {
+      "type": "solid",
+      "color": [
+       0.06,
+       0.07,
+       0.09,
+       1.0
+      ]
+     }
+    ],
+    "clip": true,
+    "children": [
+     {
+      "id": "S:2",
+      "name": "Header",
+      "type": "frame",
+      "box": {
+       "x": 0,
+       "y": 0,
+       "w": 1280,
+       "h": 72
+      },
+      "constraints": {
+       "h": "stretch",
+       "v": "min"
+      },
+      "layout": {
+       "mode": "horizontal",
+       "gap": 16,
+       "padding": [
+        32,
+        0,
+        24,
+        0
+       ],
+       "mainAlign": "space-between",
+       "crossAlign": "center"
+      },
+      "fills": [
+       {
+        "type": "solid",
+        "color": [
+         0.1,
+         0.11,
+         0.14,
+         1.0
+        ]
+       }
+      ],
+      "effects": [
+       {
+        "type": "drop-shadow",
+        "color": [
+         0,
+         0,
+         0,
+         0.35
+        ],
+        "offset": [
+         0,
+         4
+        ],
+        "blur": 16,
+        "spread": 0
+       }
+      ],
+      "children": [
+       {
+        "id": "S:3",
+        "name": "ShopTitle",
+        "type": "text",
+        "box": {
+         "x": 32,
+         "y": 22,
+         "w": 120,
+         "h": 28
+        },
+        "text": {
+         "content": "Shop",
+         "font": {
+          "family": "Roboto",
+          "style": "Bold",
+          "size": 24
+         },
+         "color": [
+          1,
+          1,
+          1,
+          1
+         ],
+         "autoResize": "width"
+        }
+       },
+       {
+        "id": "S:4",
+        "name": "input_Search",
+        "type": "frame",
+        "box": {
+         "x": 500,
+         "y": 16,
+         "w": 280,
+         "h": 40
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           1,
+           1,
+           1,
+           0.06
+          ]
+         }
+        ],
+        "radius": [
+         20,
+         20,
+         20,
+         20
+        ],
+        "children": [
+         {
+          "id": "S:5",
+          "name": "Hint",
+          "type": "text",
+          "box": {
+           "x": 16,
+           "y": 10,
+           "w": 120,
+           "h": 20
+          },
+          "text": {
+           "content": "Search items...",
+           "font": {
+            "family": "Roboto",
+            "style": "Regular",
+            "size": 14
+           },
+           "color": [
+            1,
+            1,
+            1,
+            0.4
+           ],
+           "autoResize": "width"
+          }
+         }
+        ]
+       },
+       {
+        "id": "S:6",
+        "name": "btn_Close",
+        "type": "frame",
+        "box": {
+         "x": 1216,
+         "y": 16,
+         "w": 40,
+         "h": 40
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           1,
+           1,
+           1,
+           0.08
+          ]
+         }
+        ],
+        "radius": [
+         20,
+         20,
+         20,
+         20
+        ],
+        "layout": {
+         "mode": "horizontal",
+         "mainAlign": "center",
+         "crossAlign": "center"
+        },
+        "states": {
+         "hovered": {
+          "fills": [
+           {
+            "type": "solid",
+            "color": [
+             1,
+             0.3,
+             0.3,
+             0.6
+            ]
+           }
+          ],
+          "radius": [
+           20,
+           20,
+           20,
+           20
+          ]
+         }
+        },
+        "children": [
+         {
+          "id": "S:7",
+          "name": "X",
+          "type": "text",
+          "box": {
+           "x": 14,
+           "y": 8,
+           "w": 12,
+           "h": 24
+          },
+          "text": {
+           "content": "X",
+           "font": {
+            "family": "Roboto",
+            "style": "Bold",
+            "size": 18
+           },
+           "color": [
+            1,
+            1,
+            1,
+            1
+           ],
+           "autoResize": "width"
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "id": "S:10",
+      "name": "tile_Items",
+      "type": "frame",
+      "box": {
+       "x": 32,
+       "y": 104,
+       "w": 560,
+       "h": 584
+      },
+      "constraints": {
+       "h": "min",
+       "v": "stretch"
+      },
+      "layout": {
+       "mode": "wrap",
+       "gap": 16,
+       "crossGap": 16
+      },
+      "children": [
+       {
+        "id": "S:11",
+        "name": "Item1",
+        "type": "instance",
+        "box": {
+         "x": 0,
+         "y": 0,
+         "w": 160,
+         "h": 200
+        },
+        "component": {
+         "ref": "C:1",
+         "name": "ItemCard"
+        }
+       },
+       {
+        "id": "S:12",
+        "name": "Item2",
+        "type": "instance",
+        "box": {
+         "x": 176,
+         "y": 0,
+         "w": 160,
+         "h": 200
+        },
+        "component": {
+         "ref": "C:1",
+         "name": "ItemCard"
+        }
+       },
+       {
+        "id": "S:13",
+        "name": "Item3",
+        "type": "instance",
+        "box": {
+         "x": 352,
+         "y": 0,
+         "w": 160,
+         "h": 200
+        },
+        "component": {
+         "ref": "C:1",
+         "name": "ItemCard"
+        }
+       },
+       {
+        "id": "S:14",
+        "name": "Item4",
+        "type": "instance",
+        "box": {
+         "x": 0,
+         "y": 216,
+         "w": 160,
+         "h": 200
+        },
+        "component": {
+         "ref": "C:1",
+         "name": "ItemCard"
+        }
+       }
+      ]
+     },
+     {
+      "id": "P:1",
+      "name": "OfferPanel",
+      "type": "frame",
+      "box": {
+       "x": 900,
+       "y": 104,
+       "w": 340,
+       "h": 260
+      },
+      "constraints": {
+       "h": "max",
+       "v": "min"
+      },
+      "layout": {
+       "mode": "vertical",
+       "gap": 12,
+       "padding": [
+        20,
+        20,
+        20,
+        20
+       ],
+       "crossAlign": "stretch"
+      },
+      "fills": [
+       {
+        "type": "linear",
+        "stops": [
+         {
+          "position": 0,
+          "color": [
+           0.14,
+           0.16,
+           0.22,
+           1
+          ]
+         },
+         {
+          "position": 1,
+          "color": [
+           0.09,
+           0.1,
+           0.13,
+           1
+          ]
+         }
+        ],
+        "handles": [
+         0.5,
+         0,
+         0.5,
+         1,
+         1,
+         0
+        ]
+       }
+      ],
+      "radius": [
+       16,
+       16,
+       16,
+       16
+      ],
+      "stroke": {
+       "color": [
+        1,
+        1,
+        1,
+        0.1
+       ],
+       "width": 1,
+       "align": "inside"
+      },
+      "effects": [
+       {
+        "type": "drop-shadow",
+        "color": [
+         0,
+         0,
+         0,
+         0.5
+        ],
+        "offset": [
+         0,
+         8
+        ],
+        "blur": 24,
+        "spread": 0
+       }
+      ],
+      "children": [
+       {
+        "id": "P:2",
+        "name": "Title",
+        "type": "text",
+        "box": {
+         "x": 20,
+         "y": 20,
+         "w": 300,
+         "h": 28
+        },
+        "text": {
+         "content": "Daily Offers",
+         "font": {
+          "family": "Roboto",
+          "style": "Bold",
+          "size": 22
+         },
+         "color": [
+          1,
+          1,
+          1,
+          1
+         ],
+         "autoResize": "width",
+         "letterSpacing": {
+          "unit": "percent",
+          "value": 2
+         },
+         "case": "upper"
+        }
+       },
+       {
+        "id": "P:3",
+        "name": "Description",
+        "type": "text",
+        "box": {
+         "x": 20,
+         "y": 56,
+         "w": 300,
+         "h": 40
+        },
+        "text": {
+         "content": "Limited items refresh every day at midnight. Long text truncates with an ellipsis when it does not fit.",
+         "font": {
+          "family": "Roboto",
+          "style": "Regular",
+          "size": 13
+         },
+         "color": [
+          0.75,
+          0.78,
+          0.85,
+          1
+         ],
+         "autoResize": "height",
+         "lineHeight": {
+          "unit": "percent",
+          "value": 140
+         },
+         "maxLines": 2
+        },
+        "sizing": {
+         "h": "fill",
+         "v": "hug"
+        }
+       },
+       {
+        "id": "P:4",
+        "name": "Swatches",
+        "type": "frame",
+        "box": {
+         "x": 20,
+         "y": 110,
+         "w": 300,
+         "h": 64
+        },
+        "layout": {
+         "mode": "horizontal",
+         "gap": 12,
+         "padding": [
+          0,
+          0,
+          0,
+          0
+         ],
+         "mainAlign": "space-between",
+         "crossAlign": "center"
+        },
+        "sizing": {
+         "h": "fill",
+         "v": "hug"
+        },
+        "children": [
+         {
+          "id": "P:5",
+          "name": "GradientChip",
+          "type": "rectangle",
+          "box": {
+           "x": 0,
+           "y": 0,
+           "w": 64,
+           "h": 64
+          },
+          "fills": [
+           {
+            "type": "linear",
+            "stops": [
+             {
+              "position": 0,
+              "color": [
+               0.36,
+               0.55,
+               1,
+               1
+              ]
+             },
+             {
+              "position": 1,
+              "color": [
+               0.75,
+               0.3,
+               0.95,
+               1
+              ]
+             }
+            ],
+            "handles": [
+             0,
+             0,
+             1,
+             1,
+             0,
+             1
+            ]
+           }
+          ],
+          "radius": [
+           16,
+           16,
+           16,
+           16
+          ]
+         },
+         {
+          "id": "P:6",
+          "name": "DashedChip",
+          "type": "rectangle",
+          "box": {
+           "x": 76,
+           "y": 0,
+           "w": 64,
+           "h": 64
+          },
+          "fills": [
+           {
+            "type": "solid",
+            "color": [
+             1,
+             1,
+             1,
+             0.04
+            ]
+           }
+          ],
+          "stroke": {
+           "color": [
+            0.6,
+            0.65,
+            0.75,
+            1
+           ],
+           "width": 2,
+           "align": "center",
+           "dash": [
+            6,
+            4
+           ]
+          },
+          "radius": [
+           10,
+           10,
+           10,
+           10
+          ]
+         },
+         {
+          "id": "P:7",
+          "name": "InsetChip",
+          "type": "rectangle",
+          "box": {
+           "x": 152,
+           "y": 0,
+           "w": 64,
+           "h": 64
+          },
+          "fills": [
+           {
+            "type": "solid",
+            "color": [
+             0.2,
+             0.22,
+             0.27,
+             1.0
+            ]
+           }
+          ],
+          "effects": [
+           {
+            "type": "inner-shadow",
+            "color": [
+             0,
+             0,
+             0,
+             0.6
+            ],
+            "offset": [
+             0,
+             3
+            ],
+            "blur": 8,
+            "spread": 0
+           }
+          ],
+          "radius": [
+           10,
+           10,
+           10,
+           10
+          ]
+         },
+         {
+          "id": "P:8",
+          "name": "Dot",
+          "type": "ellipse",
+          "box": {
+           "x": 228,
+           "y": 12,
+           "w": 40,
+           "h": 40
+          },
+          "fills": [
+           {
+            "type": "solid",
+            "color": [
+             0.3,
+             0.85,
+             0.55,
+             1.0
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "id": "P:9",
+        "name": "btn_Buy",
+        "type": "instance",
+        "box": {
+         "x": 20,
+         "y": 190,
+         "w": 300,
+         "h": 44
+        },
+        "layout": {
+         "mode": "horizontal",
+         "gap": 8,
+         "padding": [
+          16,
+          0,
+          16,
+          0
+         ],
+         "mainAlign": "center",
+         "crossAlign": "center"
+        },
+        "sizing": {
+         "h": "fill",
+         "v": "fixed"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.1,
+           0.45,
+           0.95,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         10,
+         10,
+         10,
+         10
+        ],
+        "states": {
+         "hovered": {
+          "fills": [
+           {
+            "type": "solid",
+            "color": [
+             0.2,
+             0.55,
+             1.0,
+             1.0
+            ]
+           }
+          ],
+          "radius": [
+           10,
+           10,
+           10,
+           10
+          ]
+         },
+         "pressed": {
+          "fills": [
+           {
+            "type": "solid",
+            "color": [
+             0.05,
+             0.35,
+             0.8,
+             1.0
+            ]
+           }
+          ],
+          "radius": [
+           10,
+           10,
+           10,
+           10
+          ]
+         },
+         "disabled": {
+          "fills": [
+           {
+            "type": "solid",
+            "color": [
+             0.3,
+             0.32,
+             0.36,
+             1.0
+            ]
+           }
+          ],
+          "radius": [
+           10,
+           10,
+           10,
+           10
+          ]
+         }
+        },
+        "children": [
+         {
+          "id": "P:10",
+          "name": "Label",
+          "type": "text",
+          "box": {
+           "x": 120,
+           "y": 12,
+           "w": 60,
+           "h": 20
+          },
+          "text": {
+           "content": "Buy now",
+           "font": {
+            "family": "Roboto",
+            "style": "Bold",
+            "size": 15
+           },
+           "color": [
+            1,
+            1,
+            1,
+            1
+           ],
+           "autoResize": "width"
+          }
+         }
+        ]
+       },
+       {
+        "id": "P:11",
+        "name": "NewBadge",
+        "type": "frame",
+        "box": {
+         "x": 290,
+         "y": -10,
+         "w": 56,
+         "h": 24
+        },
+        "positioning": "absolute",
+        "constraints": {
+         "h": "max",
+         "v": "min"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.95,
+           0.3,
+           0.35,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         12,
+         12,
+         12,
+         12
+        ],
+        "layout": {
+         "mode": "horizontal",
+         "mainAlign": "center",
+         "crossAlign": "center"
+        },
+        "children": [
+         {
+          "id": "P:12",
+          "name": "BadgeText",
+          "type": "text",
+          "box": {
+           "x": 12,
+           "y": 4,
+           "w": 32,
+           "h": 16
+          },
+          "text": {
+           "content": "NEW",
+           "font": {
+            "family": "Roboto",
+            "style": "Bold",
+            "size": 11
+           },
+           "color": [
+            1,
+            1,
+            1,
+            1
+           ],
+           "autoResize": "width"
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "id": "S:20",
+      "name": "Decor",
+      "type": "group",
+      "box": {
+       "x": 900,
+       "y": 400,
+       "w": 120,
+       "h": 80
+      },
+      "children": [
+       {
+        "id": "S:21",
+        "name": "DecorA",
+        "type": "rectangle",
+        "box": {
+         "x": 0,
+         "y": 0,
+         "w": 80,
+         "h": 80
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.3,
+           0.35,
+           0.5,
+           0.5
+          ]
+         }
+        ],
+        "radius": [
+         40,
+         40,
+         40,
+         40
+        ]
+       },
+       {
+        "id": "S:22",
+        "name": "DecorB",
+        "type": "rectangle",
+        "box": {
+         "x": 40,
+         "y": 0,
+         "w": 80,
+         "h": 80
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.5,
+           0.3,
+           0.45,
+           0.5
+          ]
+         }
+        ],
+        "radius": [
+         40,
+         40,
+         40,
+         40
+        ]
+       }
+      ]
+     },
+     {
+      "id": "S:30",
+      "name": "StarIcon",
+      "type": "vector",
+      "box": {
+       "x": 1060,
+       "y": 416,
+       "w": 48,
+       "h": 48
+      },
+      "bake": {
+       "image": "img_star",
+       "overflow": [
+        8,
+        8,
+        8,
+        8
+       ]
+      }
+     },
+     {
+      "id": "S:40",
+      "name": "Frosted",
+      "type": "frame",
+      "box": {
+       "x": 900,
+       "y": 520,
+       "w": 340,
+       "h": 64
+      },
+      "constraints": {
+       "h": "max",
+       "v": "max"
+      },
+      "fills": [
+       {
+        "type": "solid",
+        "color": [
+         1,
+         1,
+         1,
+         0.05
+        ]
+       }
+      ],
+      "radius": [
+       12,
+       12,
+       12,
+       12
+      ],
+      "effects": [
+       {
+        "type": "background-blur",
+        "radius": 20
+       }
+      ],
+      "layout": {
+       "mode": "horizontal",
+       "padding": [
+        16,
+        0,
+        16,
+        0
+       ],
+       "crossAlign": "center"
+      },
+      "children": [
+       {
+        "id": "S:41",
+        "name": "$Score",
+        "type": "text",
+        "box": {
+         "x": 16,
+         "y": 20,
+         "w": 200,
+         "h": 24
+        },
+        "text": {
+         "content": "Gold: 12,400",
+         "font": {
+          "family": "Roboto",
+          "style": "SemiBold",
+          "size": 18
+         },
+         "color": [
+          1,
+          0.85,
+          0.35,
+          1
+         ],
+         "autoResize": "width"
+        }
+       }
+      ]
+     },
+     {
+      "id": "S:50",
+      "name": "DebugOverlay",
+      "type": "rectangle",
+      "box": {
+       "x": 0,
+       "y": 0,
+       "w": 1280,
+       "h": 720
+      },
+      "visible": false,
+      "fills": [
+       {
+        "type": "solid",
+        "color": [
+         1,
+         0,
+         0,
+         0.2
+        ]
+       }
+      ]
+     },
+     {
+      "id": "S:60",
+      "name": "_notes",
+      "type": "frame",
+      "box": {
+       "x": 0,
+       "y": 700,
+       "w": 200,
+       "h": 20
+      }
+     }
+    ]
+   }
+  }
+ ],
+ "components": [
+  {
+   "id": "C:1",
+   "name": "ItemCard",
+   "root": {
+    "id": "C:1",
+    "name": "ItemCard",
+    "type": "component",
+    "box": {
+     "x": 0,
+     "y": 0,
+     "w": 160,
+     "h": 200
+    },
+    "layout": {
+     "mode": "vertical",
+     "gap": 8,
+     "padding": [
+      10,
+      10,
+      10,
+      10
+     ],
+     "mainAlign": "start",
+     "crossAlign": "stretch"
+    },
+    "fills": [
+     {
+      "type": "solid",
+      "color": [
+       0.16,
+       0.17,
+       0.21,
+       1.0
+      ]
+     }
+    ],
+    "radius": [
+     12,
+     12,
+     12,
+     12
+    ],
+    "stroke": {
+     "color": [
+      1,
+      1,
+      1,
+      0.08
+     ],
+     "width": 1,
+     "align": "inside"
+    },
+    "children": [
+     {
+      "id": "C:2",
+      "name": "Thumbnail",
+      "type": "rectangle",
+      "box": {
+       "x": 10,
+       "y": 10,
+       "w": 140,
+       "h": 110
+      },
+      "sizing": {
+       "h": "fill",
+       "v": "fixed"
+      },
+      "fills": [
+       {
+        "type": "image",
+        "image": "img_thumb",
+        "scaleMode": "fill"
+       }
+      ],
+      "radius": [
+       8,
+       8,
+       8,
+       8
+      ]
+     },
+     {
+      "id": "C:3",
+      "name": "$ItemName",
+      "type": "text",
+      "box": {
+       "x": 10,
+       "y": 128,
+       "w": 140,
+       "h": 20
+      },
+      "text": {
+       "content": "Crystal Sword",
+       "font": {
+        "family": "Roboto",
+        "style": "SemiBold",
+        "size": 15
+       },
+       "color": [
+        1,
+        1,
+        1,
+        1
+       ],
+       "autoResize": "truncate"
+      },
+      "sizing": {
+       "h": "fill",
+       "v": "hug"
+      }
+     },
+     {
+      "id": "C:4",
+      "name": "$Price",
+      "type": "text",
+      "box": {
+       "x": 10,
+       "y": 156,
+       "w": 60,
+       "h": 18
+      },
+      "text": {
+       "content": "1,200 G",
+       "font": {
+        "family": "Roboto",
+        "style": "Regular",
+        "size": 13
+       },
+       "color": [
+        1.0,
+        0.8,
+        0.3,
+        1
+       ],
+       "autoResize": "width"
+      }
+     }
+    ]
+   }
+  }
+ ],
+ "lint": [
+  {
+   "level": "info",
+   "node": "S:30",
+   "name": "StarIcon",
+   "message": "Vector baked to image (2x)"
+  }
+ ]
+}

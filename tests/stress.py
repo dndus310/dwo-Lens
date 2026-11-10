@@ -1,4 +1,4 @@
-"""dwo-Lens stress tests: large synthetic inputs for the analyzer, log parser and quality checks.
+"""dwo-Forge Lens stress tests: large synthetic inputs for the analyzer, log parser and quality checks.
 
     python tests/stress.py [--scale 1.0] [--out .qa/stress]
 

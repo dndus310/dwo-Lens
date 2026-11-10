@@ -1,15 +1,15 @@
-# Builds (once per source version) and launches the dwo-Lens ImGui control panel.
+# Builds (once per source version) and launches the dwo-Forge ImGui control panel.
 # Windows PowerShell 5.1 compatible.
 param(
     [Parameter(Mandatory = $true)][string]$SystemDir,
     [string]$Project = '',
-    [string]$LensHome = '',
+    [Alias('LensHome')][string]$ForgeHome = '',
     [switch]$BuildOnly
 )
 
 $ErrorActionPreference = 'Stop'
-function Say([string]$Message) { Write-Host "[dwo-lens] $Message" }
-function Fail([string]$Message) { Write-Host "[dwo-lens] ERROR: $Message" -ForegroundColor Red; exit 1 }
+function Say([string]$Message) { Write-Host "[dwo-forge] $Message" }
+function Fail([string]$Message) { Write-Host "[dwo-forge] ERROR: $Message" -ForegroundColor Red; exit 1 }
 
 $guiDir = Join-Path $SystemDir 'gui'
 
@@ -33,9 +33,25 @@ function Find-VcVars {
     return $vcvars
 }
 
+# dwo-Lens 1.x kept its caches and GUI settings in %LOCALAPPDATA%\dwo-Lens; move them once.
+$appData = Join-Path $env:LOCALAPPDATA 'dwo-Forge'
+$legacyAppData = Join-Path $env:LOCALAPPDATA 'dwo-Lens'
+if (Test-Path $legacyAppData) {
+    if (-not (Test-Path $appData)) {
+        try { Move-Item $legacyAppData $appData -ErrorAction Stop; Say 'Moved %LOCALAPPDATA%\dwo-Lens to %LOCALAPPDATA%\dwo-Forge.' } catch { }
+    }
+    if (Test-Path $legacyAppData) {
+        # Both exist (or a running old window holds a file): carry over settings and kept histories, drop old caches.
+        foreach ($name in @('gui.json', 'gui-layout-v2.ini')) {
+            $from = Join-Path $legacyAppData $name
+            if ((Test-Path $from) -and -not (Test-Path (Join-Path $appData $name))) { Copy-Item $from $appData -ErrorAction SilentlyContinue }
+        }
+    }
+}
+
 $hash = Get-SourceHash
-$cache = Join-Path $env:LOCALAPPDATA "dwo-Lens\gui-cache\$hash"
-$exe = Join-Path $cache 'dwo-lens-gui.exe'
+$cache = Join-Path $appData "gui-cache\$hash"
+$exe = Join-Path $cache 'dwo-forge-gui.exe'
 
 if (-not (Test-Path $exe)) {
     Say "Building the GUI (first time for this version, about a minute)..."
@@ -67,7 +83,7 @@ if ($BuildOnly) { exit 0 }
 
 $argList = @()
 if ($Project) { $argList += @('--project', "`"$Project`"") }
-if ($LensHome) { $argList += @('--home', "`"$LensHome`"") }
+if ($ForgeHome) { $argList += @('--home', "`"$ForgeHome`"") }
 if ($argList.Count -gt 0) { Start-Process -FilePath $exe -ArgumentList ($argList -join ' ') }
 else { Start-Process -FilePath $exe }
 Say 'GUI started.'

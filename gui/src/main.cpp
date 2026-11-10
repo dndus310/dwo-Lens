@@ -1,15 +1,16 @@
-// dwo-Lens control panel: Dear ImGui (docking) + Win32 + DirectX 11.
+// dwo-Forge control panel: Dear ImGui (docking) + Win32 + DirectX 11.
 //
-// Runs the same commands as __dwo-lens.bat and reads the same run.json / out/*.json files, so the GUI and the
-// command line always show identical results. Also hosts the State Monitor live link (127.0.0.1:47731).
+// Runs the same commands as __dwo-forge.bat and reads the same run.json / out/*.json files, so the GUI and the
+// command line always show identical results. Groups the three provided tools: Lens (analysis lines),
+// DwoStateMonitor (live link on 127.0.0.1:47731) and DwoCanvas (design file -> UMG importer).
 //
-//   dwo-lens-gui.exe [--project <folder with .uproject>] [--home <dwo-Lens repository>]
-//                     [--view overview|architecture|problems|tests|logs|performance|live|history|tools]
-//                     [--select <run id>] [--run <command>] [--open-recording <file.jsonl>]
-//   dwo-lens-gui.exe --project <folder> --export-report <file.html>   (no window: every line's latest report in one HTML)
-//   dwo-lens-gui.exe ... --screenshot <file.bmp>                      (renders a few frames, saves the window, exits)
+//   dwo-forge-gui.exe [--project <folder with .uproject>] [--home <dwo-Forge repository>]
+//                     [--view overview|architecture|problems|tests|logs|performance|live|canvas|history|tools]
+//                     [--select <run id>] [--run <command>] [--open-recording <file.jsonl>] [--canvas-file <design.json>]
+//   dwo-forge-gui.exe --project <folder> --export-report <file.html>   (no window: every line's latest report in one HTML)
+//   dwo-forge-gui.exe ... --screenshot <file.bmp>                      (renders a few frames, saves the window, exits)
 
-#include "views_live.h"
+#include "views_canvas.h"
 
 #include "backends/imgui_impl_dx11.h"
 #include "backends/imgui_impl_win32.h"
@@ -27,19 +28,42 @@ struct ActivityDef
 	const char* name;
 	const char* key;    // --view value
 	const char* shortcut;
+	ImGuiKey hotkey;    // with Ctrl
+	const char* group;  // tool group shown in the activity bar: Lens, DwoStateMonitor, DwoCanvas, Forge
 };
 
+// Shortcuts keep their dwo-Lens 1.x numbers (Ctrl+1..9); the new DwoCanvas view takes Ctrl+0.
 static const ActivityDef kActivities[] = {
-	{ Activity::Overview, ICON_DASHBOARD, "대시보드", "overview", "Ctrl+1" },
-	{ Activity::Architecture, ICON_LAYERS, "아키텍처", "architecture", "Ctrl+2" },
-	{ Activity::Problems, ICON_WARNING, "문제", "problems", "Ctrl+3" },
-	{ Activity::Tests, ICON_CHECKLIST, "검증", "tests", "Ctrl+4" },
-	{ Activity::Logs, ICON_LIST, "로그", "logs", "Ctrl+5" },
-	{ Activity::Performance, ICON_SPEED, "성능·용량", "performance", "Ctrl+6" },
-	{ Activity::Live, ICON_EYE, "State Monitor", "live", "Ctrl+7" },
-	{ Activity::History, ICON_HISTORY, "실행 기록", "history", "Ctrl+8" },
-	{ Activity::Tools, ICON_PUZZLE, "도구", "tools", "Ctrl+9" },
+	{ Activity::Overview, ICON_DASHBOARD, "대시보드", "overview", "Ctrl+1", ImGuiKey_1, "Lens" },
+	{ Activity::Architecture, ICON_LAYERS, "아키텍처", "architecture", "Ctrl+2", ImGuiKey_2, "Lens" },
+	{ Activity::Problems, ICON_WARNING, "문제", "problems", "Ctrl+3", ImGuiKey_3, "Lens" },
+	{ Activity::Tests, ICON_CHECKLIST, "검증", "tests", "Ctrl+4", ImGuiKey_4, "Lens" },
+	{ Activity::Logs, ICON_LIST, "로그", "logs", "Ctrl+5", ImGuiKey_5, "Lens" },
+	{ Activity::Performance, ICON_SPEED, "성능·용량", "performance", "Ctrl+6", ImGuiKey_6, "Lens" },
+	{ Activity::Live, ICON_EYE, "DwoStateMonitor", "live", "Ctrl+7", ImGuiKey_7, "DwoStateMonitor" },
+	{ Activity::Canvas, ICON_CANVAS, "DwoCanvas", "canvas", "Ctrl+0", ImGuiKey_0, "DwoCanvas" },
+	{ Activity::History, ICON_HISTORY, "실행 기록", "history", "Ctrl+8", ImGuiKey_8, "Forge" },
+	{ Activity::Tools, ICON_PUZZLE, "도구", "tools", "Ctrl+9", ImGuiKey_9, "Forge" },
 };
+
+// Short caption drawn above each group in the activity bar.
+static const char* GroupCaption(const char* group)
+{
+	std::string g = group;
+	if (g == "Lens") return "LENS";
+	if (g == "DwoStateMonitor") return "STATE";
+	if (g == "DwoCanvas") return "CANVAS";
+	return "FORGE";
+}
+
+static ImU32 GroupColor(const char* group)
+{
+	std::string g = group;
+	if (g == "Lens") return col::Accent;
+	if (g == "DwoStateMonitor") return col::Pass;
+	if (g == "DwoCanvas") return col::Purple;
+	return col::Dim;
+}
 
 static const ActivityDef& DefOf(Activity a)
 {
@@ -68,7 +92,7 @@ static std::vector<Command> BuildCommands(App& app)
 	for (auto& a : kActivities)
 	{
 		Activity id = a.id;
-		list.push_back({ std::string("이동: ") + a.name, a.shortcut, [&app, id] { app.requestActivity = id; } });
+		list.push_back({ std::string("이동: ") + (std::string(a.group) == "Lens" ? "Lens · " : "") + a.name, a.shortcut, [&app, id] { app.requestActivity = id; } });
 	}
 	for (int i = 0; i < kLineCount; ++i)
 	{
@@ -76,10 +100,16 @@ static std::vector<Command> BuildCommands(App& app)
 		list.push_back({ std::string("실행: ") + kLines[i].name, cmd, [&app, cmd] { app.Run(cmd); }, app.attached });
 	}
 	list.push_back({ "실행: 기본 라인 모두", "analyze, logs, sizes", [&app] { app.RunAll(); }, app.attached });
-	list.push_back({ "게임 실행 (State Monitor 연결)", "play", [&app] { app.Run("play"); app.requestActivity = Activity::Live; }, app.attached });
-	list.push_back({ "StateMonitor 설치 (에디터 전용)", "sm-install", [&app] { app.Run("sm-install"); }, app.attached && app.stateMonitor == 0 });
-	list.push_back({ "StateMonitor 설치 (패키지 게임 포함)", "sm-install --runtime", [&app] { app.Run("sm-install --runtime"); }, app.attached && app.stateMonitor == 0 });
-	list.push_back({ "StateMonitor 제거", "sm-remove", [&app] { app.Run("sm-remove"); }, app.stateMonitor == 1 });
+	list.push_back({ "게임 실행 (DwoStateMonitor 연결)", "play", [&app] { app.Run("play"); app.requestActivity = Activity::Live; }, app.attached });
+	list.push_back({ "DwoStateMonitor 설치 (에디터 전용)", "sm-install", [&app] { app.Run("sm-install"); }, app.attached && app.stateMonitor == 0 });
+	list.push_back({ "DwoStateMonitor 설치 (패키지 게임 포함)", "sm-install --runtime", [&app] { app.Run("sm-install --runtime"); }, app.attached && app.stateMonitor == 0 });
+	list.push_back({ "DwoStateMonitor 제거", "sm-remove", [&app] { app.Run("sm-remove"); }, app.stateMonitor == 1 });
+	list.push_back({ "DwoCanvas 설치", "canvas-install", [&app] { app.Run("canvas-install"); }, app.attached && app.canvas == 0 });
+	list.push_back({ "DwoCanvas 제거", "canvas-remove", [&app] { app.Run("canvas-remove"); }, app.canvas == 1 });
+	list.push_back({ "DwoCanvas: 디자인 파일 열기...", "*.dwocanvas.json", [&app] { PickDesignFile(app); app.requestActivity = Activity::Canvas; } });
+	list.push_back({ "DwoCanvas: 검사", "canvas-validate", [&app] { RunCanvas(app, "canvas-validate"); }, !app.canvasFile.empty() && app.hasUProject });
+	list.push_back({ "DwoCanvas: 가져오기", "canvas-import", [&app] { RunCanvas(app, "canvas-import"); }, !app.canvasFile.empty() && app.canvas != 0 });
+	list.push_back({ "DwoCanvas: 초기화하고 가져오기", "canvas-import --reset", [&app] { RunCanvas(app, "canvas-import", true); }, !app.canvasFile.empty() && app.canvas != 0 });
 	list.push_back({ "종합 리포트 저장...", "HTML", [&app] { SaveBundleReport(app); }, !app.runs.empty() });
 	list.push_back({ "프로젝트 열기...", "Ctrl+O", [&app] { fs::path p; if (PickOpen(g_hwnd, true, L".uproject가 있는 프로젝트 폴더 선택", p)) app.SetProject(p); } });
 	list.push_back({ "새로고침", "F5", [&app] { app.outputs.clear(); app.metrics.clear(); app.structureFor.clear(); app.Refresh(); } });
@@ -89,13 +119,13 @@ static std::vector<Command> BuildCommands(App& app)
 	list.push_back({ "제거 (uninstall)...", "uninstall", [&app] { app.confirmDetach = true; }, app.attached });
 	list.push_back({ "실행 로그 보기", "Ctrl+`", [&app] { app.showConsole = true; } });
 	list.push_back({ "실행 취소", "Esc", [&app] { app.runner.Cancel(); }, (bool)app.runner.running });
-	list.push_back({ "State Monitor 녹화 저장...", "JSONL", [&app] {
+	list.push_back({ "DwoStateMonitor 녹화 저장...", "JSONL", [&app] {
 		fs::path p;
 		if (PickSaveFile(g_hwnd, ToWide(app.projectName + "_state.jsonl"), L"JSON Lines", L"*.jsonl", L"jsonl", p)) app.store.Export(p);
 	}, !app.store.recording.empty() });
-	list.push_back({ "State Monitor 녹화 열기...", "JSONL", [&app] {
+	list.push_back({ "DwoStateMonitor 녹화 열기...", "JSONL", [&app] {
 		fs::path p;
-		if (PickOpen(g_hwnd, false, L"State Monitor 녹화 열기", p, L"JSON Lines", L"*.jsonl")) { app.store.Import(p); app.requestActivity = Activity::Live; }
+		if (PickOpen(g_hwnd, false, L"DwoStateMonitor 녹화 열기", p, L"JSON Lines", L"*.jsonl")) { app.store.Import(p); app.requestActivity = Activity::Live; }
 	} });
 	for (auto& r : app.recent)
 	{
@@ -170,9 +200,9 @@ static void DrawMenuBar(App& app, bool& quit)
 {
 	if (!ImGui::BeginMainMenuBar()) return;
 	ImGui::PushFont(g_fonts.bold);
-	TextColored(col::Accent, ICON_EYE);
+	TextColored(col::Accent, ICON_FORGE);
 	ImGui::SameLine(0, S(4));
-	ImGui::TextUnformatted("dwo-Lens");
+	ImGui::TextUnformatted("dwo-Forge");
 	ImGui::PopFont();
 	ImGui::Dummy(ImVec2(S(8), 0));
 	if (ImGui::BeginMenu("파일"))
@@ -205,8 +235,17 @@ static void DrawMenuBar(App& app, bool& quit)
 	}
 	if (ImGui::BeginMenu("보기"))
 	{
+		const char* group = nullptr;
 		for (auto& a : kActivities)
+		{
+			if (!group || std::string(group) != a.group)
+			{
+				if (group) ImGui::Separator();
+				group = a.group;
+				ImGui::TextDisabled("%s", std::string(group) == "Forge" ? "dwo-Forge" : group);
+			}
 			if (ImGui::MenuItem((std::string(a.icon) + "  " + a.name).c_str(), a.shortcut, app.activity == a.id)) app.requestActivity = a.id;
+		}
 		ImGui::Separator();
 		if (ImGui::MenuItem("명령 팔레트", "Ctrl+K")) g_paletteOpen = true;
 		if (ImGui::MenuItem("레이아웃 초기화")) app.message = "reset-layout";
@@ -214,10 +253,19 @@ static void DrawMenuBar(App& app, bool& quit)
 	}
 	if (ImGui::BeginMenu("도구"))
 	{
-		if (ImGui::MenuItem("StateMonitor 설치 (에디터 전용)", nullptr, false, app.attached && app.stateMonitor == 0)) app.Run("sm-install");
-		if (ImGui::MenuItem("StateMonitor 설치 (패키지 게임 포함)", nullptr, false, app.attached && app.stateMonitor == 0)) app.Run("sm-install --runtime");
-		if (ImGui::MenuItem("StateMonitor 제거", nullptr, false, app.stateMonitor == 1)) app.Run("sm-remove");
+		ImGui::TextDisabled("DwoStateMonitor");
+		if (ImGui::MenuItem("설치 (에디터 전용)", nullptr, false, app.attached && app.stateMonitor == 0)) app.Run("sm-install");
+		if (ImGui::MenuItem("설치 (패키지 게임 포함)", nullptr, false, app.attached && app.stateMonitor == 0)) app.Run("sm-install --runtime");
+		if (ImGui::MenuItem("dwo-Lens 1.x 설치 옮기기", nullptr, false, app.attached && app.stateMonitorLegacy)) app.Run("update");
+		if (ImGui::MenuItem("제거##sm", nullptr, false, app.stateMonitor == 1)) app.Run("sm-remove");
 		ImGui::Separator();
+		ImGui::TextDisabled("DwoCanvas");
+		if (ImGui::MenuItem("설치##canvas", nullptr, false, app.attached && app.canvas == 0)) app.Run("canvas-install");
+		if (ImGui::MenuItem("디자인 파일 열기...", nullptr, false, app.hasUProject)) { PickDesignFile(app); app.requestActivity = Activity::Canvas; }
+		if (ImGui::MenuItem("가져오기", nullptr, false, !app.canvasFile.empty() && app.canvas != 0)) RunCanvas(app, "canvas-import");
+		if (ImGui::MenuItem("제거##canvas", nullptr, false, app.canvas == 1)) app.Run("canvas-remove");
+		ImGui::Separator();
+		ImGui::TextDisabled("dwo-Forge");
 		if (ImGui::MenuItem("부착", nullptr, false, app.hasUProject && !app.attached)) app.Run("attach");
 		if (ImGui::MenuItem("시스템 업데이트", nullptr, false, app.attached)) app.Run("update");
 		if (ImGui::MenuItem("환경 점검", nullptr, false, app.attached)) app.Run("doctor");
@@ -228,7 +276,9 @@ static void DrawMenuBar(App& app, bool& quit)
 	{
 		if (ImGui::MenuItem("가이드 문서")) OpenWithShell(app.home / "docs" / "guide.html");
 		if (ImGui::MenuItem("README")) OpenWithShell(app.home / "README.md");
-		if (ImGui::MenuItem("StateMonitor 사용법")) OpenWithShell(app.home / "plugin" / "StateMonitor" / "README.md");
+		if (ImGui::MenuItem("DwoStateMonitor 사용법")) OpenWithShell(app.home / "plugin" / "DwoStateMonitor" / "README.md");
+		if (ImGui::MenuItem("DwoCanvas 사용법")) OpenWithShell(app.home / "plugin" / "DwoCanvas" / "README.md");
+		if (ImGui::MenuItem("DwoCanvas 스키마 설계")) OpenWithShell(app.home / "canvas" / "docs" / "SchemaFirstArchitecture.md");
 		ImGui::EndMenu();
 	}
 	// right side: project chip and palette button
@@ -271,11 +321,25 @@ static void DrawActivityBar(App& app)
 	int newProblems = 0;
 	for (auto& p : app.problems) newProblems += p.isNew && !p.muted && p.severity != "info";
 	int connected = app.live.ConnectedCount();
+	const char* group = nullptr;
 	for (auto& a : kActivities)
 	{
+		if (!group || std::string(group) != a.group)
+		{
+			// group caption: a thin rule and a small label (LENS / STATE / CANVAS / FORGE)
+			ImVec2 c = ImGui::GetCursorScreenPos();
+			float h = S(16);
+			if (group) dl->AddLine(c + ImVec2(S(10), S(2)), c + ImVec2(g_activityWidth - S(10), S(2)), col::Border, S(1));
+			const char* cap = GroupCaption(a.group);
+			float fs = g_fonts.bold->FontSize * 0.62f;
+			ImVec2 ts = g_fonts.bold->CalcTextSizeA(fs, FLT_MAX, 0, cap);
+			dl->AddText(g_fonts.bold, fs, c + ImVec2((g_activityWidth - ts.x) * 0.5f, S(5)), WithAlpha(GroupColor(a.group), 0.85f), cap);
+			ImGui::Dummy(ImVec2(g_activityWidth, h));
+			group = a.group;
+		}
 		ImGui::PushID((int)a.id);
 		ImVec2 p = ImGui::GetCursorScreenPos();
-		ImVec2 size(g_activityWidth, S(46));
+		ImVec2 size(g_activityWidth, S(42));
 		bool clicked = ImGui::InvisibleButton("act", size);
 		bool hovered = ImGui::IsItemHovered();
 		bool active = app.activity == a.id;
@@ -294,6 +358,14 @@ static void DrawActivityBar(App& app)
 		}
 		if (a.id == Activity::Live && connected)
 			dl->AddCircleFilled(p + ImVec2(size.x - S(14), S(12)), S(4), col::Pass);
+		if (a.id == Activity::Canvas && app.runner.running && app.runner.current.find("canvas-") != std::string::npos)
+		{
+			float t = (float)ImGui::GetTime() * 6;
+			dl->PathArcTo(p + ImVec2(size.x - S(14), S(12)), S(4), t, t + 4.5f, 10);
+			dl->PathStroke(col::Purple, 0, S(1.5f));
+		}
+		else if (a.id == Activity::Canvas && !app.canvasReports.empty() && app.CanvasReportAt(0)->errors > 0)
+			dl->AddCircleFilled(p + ImVec2(size.x - S(14), S(12)), S(4), col::Fail);
 		if (a.id == Activity::Overview && app.runner.running)
 		{
 			float t = (float)ImGui::GetTime() * 6;
@@ -304,6 +376,7 @@ static void DrawActivityBar(App& app)
 		{
 			ImGui::SetNextWindowPos(ImVec2(p.x + size.x + S(4), p.y + S(10)));
 			ImGui::BeginTooltip();
+			if (std::string(a.group) == "Lens") { TextDim("Lens"); ImGui::SameLine(); }
 			ImGui::Text("%s", a.name);
 			ImGui::SameLine();
 			TextDim(a.shortcut);
@@ -355,7 +428,7 @@ static void DrawStatusBar(App& app)
 	{
 		StatusDot(app.attached ? col::Pass : col::Muted);
 		ImGui::SameLine();
-		ImGui::TextUnformatted(app.hasUProject ? (app.projectName + (app.attached ? "  ·  UE " + app.Engine() : "  ·  부착 안 됨")).c_str() : "프로젝트 없음");
+		ImGui::TextUnformatted(app.hasUProject ? (app.projectName + (app.attached ? "  ·  UE " + app.Engine() : app.legacyAttached ? "  ·  dwo-Lens 1.x 부착 (이전 중)" : "  ·  부착 안 됨")).c_str() : "프로젝트 없음");
 	}
 	// right side
 	app.RebuildProblems();
@@ -368,7 +441,7 @@ static void DrawStatusBar(App& app)
 		warnings += r == 3;
 	}
 	int connected = app.live.ConnectedCount();
-	std::string liveText = app.live.listening ? (connected ? Fmt("State Monitor %d 연결", connected) : Fmt("State Monitor :%d", app.live.port)) : "State Monitor 꺼짐";
+	std::string liveText = app.live.listening ? (connected ? Fmt("DwoStateMonitor %d 연결", connected) : Fmt("DwoStateMonitor :%d", app.live.port)) : "DwoStateMonitor 꺼짐";
 	std::string probText = Fmt("%s %d   %s %d", ICON_ERROR, errors, ICON_WARNING, warnings);
 	float w = ImGui::CalcTextSize(liveText.c_str()).x + ImGui::CalcTextSize(probText.c_str()).x + S(80);
 	ImGui::SameLine(ImGui::GetWindowWidth() - w);
@@ -420,7 +493,7 @@ static void DrawConsole(App& app)
 				if (l.rfind("> ", 0) == 0) c = col::Accent;
 				else if (low.find("error") != std::string::npos || low.find("fail") != std::string::npos || low.find("오류") != std::string::npos) c = col::Fail;
 				else if (low.find("warn") != std::string::npos || low.find("경고") != std::string::npos) c = col::Warn;
-				else if (l.rfind("[dwo-lens]", 0) == 0) c = IM_COL32(0xA8, 0xC8, 0xF0, 255);
+				else if (l.rfind("[dwo-forge]", 0) == 0 || l.rfind("[dwo-lens]", 0) == 0) c = IM_COL32(0xA8, 0xC8, 0xF0, 255);
 				else if (l.rfind("[gui]", 0) == 0) c = col::Dim;
 				TextColored(c, l.c_str());
 			}
@@ -442,8 +515,8 @@ struct UninstallInventory
 {
 	int runs = 0;
 	double dataBytes = 0;
-	std::vector<std::string> created;   // files dwo-Lens caused outside __dwo-lens (perf CSVs)
-	bool inspector = false, stateMonitor = false, launcher = false;
+	std::vector<std::string> created;   // files dwo-Forge caused outside __dwo-forge (perf CSVs)
+	bool inspector = false, stateMonitor = false, stateMonitorLegacy = false, launcher = false, canvas = false;
 	std::string vcs, exclude;
 };
 
@@ -451,13 +524,13 @@ static UninstallInventory TakeInventory(const App& app)
 {
 	UninstallInventory inv;
 	std::error_code ec;
-	fs::path data = app.project / "__dwo-lens" / "data";
+	fs::path data = app.ForgeDir() / "data";
 	if (fs::is_directory(data / "runs", ec))
 		for (auto& e : fs::directory_iterator(data / "runs", ec)) inv.runs += e.is_directory() ? 1 : 0;
 	if (fs::is_directory(data, ec))
 		for (auto it = fs::recursive_directory_iterator(data, ec); it != fs::recursive_directory_iterator(); it.increment(ec))
 			if (!ec && it->is_regular_file(ec)) inv.dataBytes += (double)it->file_size(ec);
-	std::ifstream ledger(app.project / "__dwo-lens" / "created-files.txt");
+	std::ifstream ledger(app.ForgeDir() / "created-files.txt");
 	std::set<std::string> seen;
 	for (std::string line; std::getline(ledger, line);)
 	{
@@ -466,7 +539,9 @@ static UninstallInventory TakeInventory(const App& app)
 	}
 	inv.inspector = fs::exists(app.project / "Plugins" / "__DwoLensInspector", ec);
 	inv.stateMonitor = app.stateMonitor == 1;
-	inv.launcher = fs::exists(app.project / "__dwo-lens.bat", ec);
+	inv.stateMonitorLegacy = app.stateMonitorLegacy;
+	inv.launcher = fs::exists(app.project / "__dwo-forge.bat", ec);
+	inv.canvas = app.canvas == 1;
 	inv.vcs = Str(app.state, "vcs", "own");
 	inv.exclude = Str(app.state, "excludeFile");
 	return inv;
@@ -481,14 +556,14 @@ static void DrawDetachModal(App& app)
 	{
 		inv = TakeInventory(app);
 		dataChoice = inv.runs > 0 ? 0 : 1;
-		ImGui::OpenPopup("dwo-Lens 제거");
+		ImGui::OpenPopup("dwo-Forge 제거");
 		app.confirmDetach = false;
 	}
 	ImGui::SetNextWindowSize(ImVec2(S(560), 0));
-	if (ImGui::BeginPopupModal("dwo-Lens 제거", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::BeginPopupModal("dwo-Forge 제거", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		Title("이 프로젝트에서 dwo-Lens를 제거합니다");
-		TextDim("부착할 때 넣은 것과 dwo-Lens가 만든 것을 모두 지웁니다. .uproject와 프로젝트 파일은 건드리지 않습니다.");
+		Title("이 프로젝트에서 dwo-Forge를 제거합니다");
+		TextDim("부착할 때 넣은 것과 dwo-Forge가 만든 것을 모두 지웁니다. .uproject와 프로젝트 파일은 건드리지 않습니다.");
 		SectionHeader("지울 항목");
 		auto row = [](bool on, const char* what, const std::string& detail) {
 			TextColored(on ? col::Text : col::Muted, on ? ICON_DELETE : ICON_CHECK);
@@ -497,25 +572,33 @@ static void DrawDetachModal(App& app)
 			ImGui::SameLine();
 			TextDim(detail);
 		};
-		row(inv.inspector, "검사 플러그인", "Plugins\\__DwoLensInspector");
-		row(inv.stateMonitor, "StateMonitor", inv.stateMonitor ? "Plugins\\__StateMonitor" : "dwo-Lens가 설치하지 않음");
-		row(inv.launcher, "실행 파일", "__dwo-lens.bat");
-		row(true, "설정", "__dwo-lens 폴더 (부착 정보, 화면 설정, 문제 음소거)");
+		row(inv.inspector, "Lens 검사 플러그인", "Plugins\\__DwoLensInspector");
+		row(inv.stateMonitor, "DwoStateMonitor", !inv.stateMonitor ? "dwo-Forge가 설치하지 않음" : inv.stateMonitorLegacy ? "Plugins\\__StateMonitor (dwo-Lens 1.x)" : "Plugins\\__DwoStateMonitor");
+		row(inv.launcher, "실행 파일", "__dwo-forge.bat");
+		row(true, "설정", "__dwo-forge 폴더 (부착 정보, 화면 설정, 문제 음소거)");
 		if (inv.vcs == "none") row(false, "git exclude", "형상관리 없음: 추가한 항목 없음");
-		else row(true, "git exclude", inv.exclude.empty() ? "dwo-Lens 블록만 제거" : "dwo-Lens 블록만 제거 · " + inv.exclude);
+		else row(true, "git exclude", inv.exclude.empty() ? "dwo-Forge 블록만 제거" : "dwo-Forge 블록만 제거 · " + inv.exclude);
+		if (inv.canvas)
+		{
+			TextColored(col::Info, ICON_PIN);
+			ImGui::SameLine();
+			ImGui::TextUnformatted("DwoCanvas 유지");
+			ImGui::SameLine();
+			TextDim("생성된 위젯이 DwoCanvasRuntime을 씁니다. 필요 없으면 DwoCanvas 화면에서 제거하세요.");
+		}
 
 		SectionHeader("실행 기록과 로그");
 		ImGui::Text("실행 기록 %d개 · %s", inv.runs, Bytes(inv.dataBytes).c_str());
-		TextDim("분석·검증·로그·스모크·성능 결과, 리포트, 엔진 로그 (__dwo-lens\\data)");
+		TextDim("분석·검증·로그·스모크·성능 결과, 리포트, 엔진 로그 (__dwo-forge\\data)");
 		if (!inv.created.empty())
 		{
 			ImGui::Text("프로젝트에 남은 실행 파일 %d개", (int)inv.created.size());
 			Tooltip(JoinStrings(json(inv.created), "\n").c_str());
 			TextDim("성능 캡처가 Saved\\Profiling\\CSV에 만든 CSV");
 		}
-		ImGui::RadioButton("보존: 프로젝트 밖(%LOCALAPPDATA%\\dwo-Lens\\uninstalled)으로 옮김", &dataChoice, 0);
+		ImGui::RadioButton("보존: 프로젝트 밖(%LOCALAPPDATA%\\dwo-Forge\\uninstalled)으로 옮김", &dataChoice, 0);
 		ImGui::RadioButton("삭제: 기록과 파일을 모두 지움", &dataChoice, 1);
-		ImGui::Checkbox("dwo-Lens의 최근 프로젝트 목록에서도 빼기", &forget);
+		ImGui::Checkbox("dwo-Forge의 최근 프로젝트 목록에서도 빼기", &forget);
 		ImGui::Spacing();
 		if (DangerButton("제거", ImVec2(S(120), 0)))
 		{
@@ -560,8 +643,8 @@ static void DrawApp(App& app, bool& quit)
 	if (ImGui::IsKeyPressed(ImGuiKey_F5, false)) { app.outputs.clear(); app.metrics.clear(); app.structureFor.clear(); app.Refresh(); }
 	if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_GraveAccent, false)) app.showConsole = true;
 	if (io.KeyCtrl && !io.WantTextInput)
-		for (int i = 0; i < (int)Activity::Count; ++i)
-			if (ImGui::IsKeyPressed((ImGuiKey)(ImGuiKey_1 + i), false)) app.requestActivity = (Activity)i;
+		for (auto& a : kActivities)
+			if (ImGui::IsKeyPressed(a.hotkey, false)) app.requestActivity = a.id;
 	if (app.requestActivity != Activity::Count)
 	{
 		if (app.activity != app.requestActivity) ui.filter[0] = 0;
@@ -587,7 +670,7 @@ static void DrawApp(App& app, bool& quit)
 	ImGui::Begin("##host", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking |
 	                                    ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNav);
 	ImGui::PopStyleVar(2);
-	ImGuiID dockspace = ImGui::GetID("dwo-lens-dock");
+	ImGuiID dockspace = ImGui::GetID("dwo-lens-dock");   // id kept: saved layouts of dwo-Lens 1.x still apply
 	static bool layoutChecked = false;
 	if (!layoutChecked || app.message == "reset-layout")
 	{
@@ -612,6 +695,7 @@ static void DrawApp(App& app, bool& quit)
 		case Activity::Logs: DrawLogsNav(app); break;
 		case Activity::Performance: DrawPerformanceNav(app); break;
 		case Activity::Live: DrawLiveNav(app); break;
+		case Activity::Canvas: DrawCanvasNav(app); break;
 		case Activity::History: DrawHistoryNav(app); break;
 		case Activity::Tools: DrawToolsNav(app); break;
 		default: break;
@@ -632,6 +716,7 @@ static void DrawApp(App& app, bool& quit)
 		case Activity::Logs: DrawLogsMain(app); break;
 		case Activity::Performance: DrawPerformanceMain(app); break;
 		case Activity::Live: DrawLiveMain(app); break;
+		case Activity::Canvas: DrawCanvasMain(app); break;
 		case Activity::History: DrawHistoryMain(app); break;
 		case Activity::Tools: DrawToolsMain(app); break;
 		default: break;
@@ -651,6 +736,7 @@ static void DrawApp(App& app, bool& quit)
 		case Activity::Logs: DrawLogsInspector(app); break;
 		case Activity::Performance: DrawPerformanceInspector(app); break;
 		case Activity::Live: DrawLiveInspector(app); break;
+		case Activity::Canvas: DrawCanvasInspector(app); break;
 		case Activity::History: DrawHistoryInspector(app); break;
 		case Activity::Tools: DrawToolsInspector(app); break;
 		default: break;
@@ -798,7 +884,7 @@ static bool SaveBackBuffer(const fs::path& path)
 	return ok;
 }
 
-static fs::path g_dropped;   // a folder or .uproject dropped onto the window
+static fs::path g_dropped;   // a folder, .uproject or design file (*.json) dropped onto the window
 
 static LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -844,7 +930,15 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 	static App app;
 	wchar_t local[MAX_PATH] = {};
 	GetEnvironmentVariableW(L"LOCALAPPDATA", local, MAX_PATH);
-	app.settingsDir = fs::path(local) / L"dwo-Lens";
+	app.settingsDir = fs::path(local) / L"dwo-Forge";
+	{
+		// Settings of dwo-Lens 1.x (recent projects, layout): copied once when dwo-Forge has none yet.
+		std::error_code ec;
+		fs::path legacy = fs::path(local) / L"dwo-Lens";
+		fs::create_directories(app.settingsDir, ec);
+		for (const wchar_t* name : { L"gui.json", L"gui-layout-v2.ini" })
+			if (fs::exists(legacy / name, ec) && !fs::exists(app.settingsDir / name, ec)) fs::copy_file(legacy / name, app.settingsDir / name, ec);
+	}
 	app.LoadSettings();
 
 	int argc = 0;
@@ -861,6 +955,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 	std::wstring portArg = ArgValue(argc, argv, L"--port");
 	std::wstring modeArg = ArgValue(argc, argv, L"--mode");
 	std::wstring delayArg = ArgValue(argc, argv, L"--screenshot-delay");
+	std::wstring canvasFileArg = ArgValue(argc, argv, L"--canvas-file");
 	double shotDelay = delayArg.empty() ? 0.8 : _wtof(delayArg.c_str());
 	if (modeArg == L"machine") ui.liveMode = 1;
 	bool openUninstall = ArgValue(argc, argv, L"--dialog") == L"uninstall";
@@ -868,7 +963,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 	if (homeArg.empty())
 	{
 		wchar_t buf[MAX_PATH] = {};
-		if (GetEnvironmentVariableW(L"DWO_LENS_HOME", buf, MAX_PATH)) homeArg = buf;
+		if (GetEnvironmentVariableW(L"DWO_FORGE_HOME", buf, MAX_PATH)) homeArg = buf;
+		else if (GetEnvironmentVariableW(L"DWO_LENS_HOME", buf, MAX_PATH)) homeArg = buf;   // dwo-Lens 1.x registration
 	}
 	app.home = homeArg;
 
@@ -882,17 +978,17 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 		return err.empty() ? 0 : 1;
 	}
 
-	WNDCLASSEXW wc{ sizeof(wc), CS_CLASSDC, WndProc, 0, 0, hInstance, nullptr, LoadCursor(nullptr, IDC_ARROW), nullptr, nullptr, L"DwoLensGui", nullptr };
+	WNDCLASSEXW wc{ sizeof(wc), CS_CLASSDC, WndProc, 0, 0, hInstance, nullptr, LoadCursor(nullptr, IDC_ARROW), nullptr, nullptr, L"DwoForgeGui", nullptr };
 	wc.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
 	RegisterClassExW(&wc);
-	HWND hwnd = g_hwnd = CreateWindowW(wc.lpszClassName, L"dwo-Lens", WS_OVERLAPPEDWINDOW, 80, 60, 1500, 920, nullptr, nullptr, wc.hInstance, nullptr);
+	HWND hwnd = g_hwnd = CreateWindowW(wc.lpszClassName, L"dwo-Forge", WS_OVERLAPPEDWINDOW, 80, 60, 1500, 920, nullptr, nullptr, wc.hInstance, nullptr);
 	BOOL dark = TRUE;
 	DwmSetWindowAttribute(hwnd, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, &dark, sizeof(dark));
 	if (!CreateDeviceD3D(hwnd))
 	{
 		CleanupDeviceD3D();
 		UnregisterClassW(wc.lpszClassName, wc.hInstance);
-		MessageBoxW(nullptr, L"DirectX 11 장치를 만들 수 없습니다.", L"dwo-Lens", MB_ICONERROR);
+		MessageBoxW(nullptr, L"DirectX 11 장치를 만들 수 없습니다.", L"dwo-Forge", MB_ICONERROR);
 		return 1;
 	}
 	float scale = ImGui_ImplWin32_GetDpiScaleForHwnd(hwnd);
@@ -943,6 +1039,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 		if (viewArg.empty()) app.activity = Activity::History;
 	}
 	if (!recordingArg.empty()) app.store.Import(recordingArg);
+	if (!canvasFileArg.empty()) app.canvasFile = canvasFileArg;   // not added to the recent list (tests, screenshots)
 	if (!runArg.empty() && app.hasUProject) app.Run(ToUtf8(runArg));
 	if (openUninstall && app.attached) app.confirmDetach = true;
 
@@ -971,9 +1068,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 		{
 			fs::path p = g_dropped;
 			g_dropped.clear();
-			if (p.extension() == ".uproject") p = p.parent_path();
 			std::error_code ec;
-			if (fs::is_directory(p, ec)) { app.SetProject(p); app.activity = Activity::Overview; }
+			if (IsDesignFile(p) && fs::is_regular_file(p, ec)) { app.SetCanvasFile(p); app.activity = Activity::Canvas; }
+			else
+			{
+				if (p.extension() == ".uproject") p = p.parent_path();
+				if (fs::is_directory(p, ec)) { app.SetProject(p); app.activity = Activity::Overview; }
+			}
 		}
 		ImGui_ImplDX11_NewFrame();
 		ImGui_ImplWin32_NewFrame();

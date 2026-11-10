@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "description": "Default DwoCanvas team naming rules: layer-name prefix -> role. The longest matching prefix wins. The prefix is stripped from widgetName. variablePrefix marks a Blueprint variable.",
+  "variablePrefix": "$",
+  "prefixes": [
+    { "prefix": "btn_", "role": "button", "variable": true },
+    { "prefix": "list_", "role": "list", "variable": true },
+    { "prefix": "tile_", "role": "tile", "variable": true },
+    { "prefix": "scroll_", "role": "scroll", "variable": true },
+    { "prefix": "input_", "role": "textInput", "variable": true },
+    { "prefix": "chk_", "role": "checkBox", "variable": true },
+    { "prefix": "slider_", "role": "slider", "variable": true },
+    { "prefix": "progress_", "role": "progressBar", "variable": true },
+    { "prefix": "switch_", "role": "switcher", "variable": true },
+    { "prefix": "slot_", "role": "namedSlot", "variable": true },
+    { "prefix": "spacer_", "role": "spacer", "variable": false },
+    { "prefix": "_", "role": "ignore", "variable": false }
+  ]
+}

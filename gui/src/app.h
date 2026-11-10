@@ -10,7 +10,7 @@ struct LineDef
 {
 	const char* line;       // run.json "line"
 	const char* prefix;     // run id prefix
-	const char* command;    // __dwo-lens.bat command
+	const char* command;    // __dwo-forge.bat command
 	const char* name;
 	const char* icon;
 	const char* desc;
@@ -240,10 +240,105 @@ enum class Activity
 	Logs,
 	Performance,
 	Live,
+	Canvas,
 	History,
 	Tools,
 	Count
 };
+
+// ============================================================================ DwoCanvas reports (Saved/DwoCanvas/Reports/*.txt)
+
+struct CanvasEntry
+{
+	std::string severity;   // error | warn | info
+	std::string text;
+};
+
+struct CanvasReport
+{
+	fs::path path;
+	std::string name;
+	long long mtime = 0;     // file time in seconds, newest first
+	std::string status;      // first line: "DwoCanvas import - N error(s), M warning(s)"
+	std::string widgets;     // "Widgets: ..." line
+	int errors = 0, warnings = 0, infos = 0;
+	std::vector<std::pair<std::string, int>> counts;   // the Widgets line, parsed: created, regenerated, ...
+	std::vector<std::string> written;
+	std::vector<CanvasEntry> entries;
+	bool parsed = false;
+};
+
+static std::string TrimLeft(const std::string& s, size_t from)
+{
+	size_t p = s.find_first_not_of(' ', from);
+	return p == std::string::npos ? std::string() : s.substr(p);
+}
+
+// Reads a report written by the DwoCanvasImport commandlet or the editor importer. Lenient: unknown lines are
+// kept as info entries, so a newer report format still shows something useful.
+static void ParseCanvasReport(CanvasReport& r)
+{
+	r = CanvasReport{ r.path, r.name, r.mtime };
+	r.parsed = true;
+	std::ifstream in(r.path, std::ios::binary);
+	std::string line;
+	bool first = true;
+	bool counted = false;
+	static const std::regex head(R"((\d+)\s+error\(s\),\s*(\d+)\s+warning\(s\))");
+	static const std::regex count(R"((\d+)\s+([^,]+))");
+	std::smatch m;
+	while (std::getline(in, line))
+	{
+		if (!line.empty() && line.back() == '\r') line.pop_back();
+		if (first && line.size() >= 3 && (unsigned char)line[0] == 0xEF) line = line.substr(3);
+		if (first)
+		{
+			first = false;
+			r.status = line;
+			if (std::regex_search(line, m, head)) { r.errors = std::stoi(m[1]); r.warnings = std::stoi(m[2]); counted = true; }
+			continue;
+		}
+		if (line.rfind("Widgets:", 0) == 0)
+		{
+			r.widgets = line;
+			std::string rest = line.substr(8);
+			for (auto it = std::sregex_iterator(rest.begin(), rest.end(), count); it != std::sregex_iterator(); ++it)
+			{
+				std::string label = (*it)[2];
+				while (!label.empty() && label.back() == ' ') label.pop_back();
+				r.counts.push_back({ label, std::stoi((*it)[1]) });
+			}
+			continue;
+		}
+		if (line.rfind("  wrote ", 0) == 0) { r.written.push_back(line.substr(8)); continue; }
+		if (line.empty()) continue;
+		if (line.rfind("ERROR", 0) == 0) r.entries.push_back({ "error", TrimLeft(line, 5) });
+		else if (line.rfind("WARN", 0) == 0) r.entries.push_back({ "warn", TrimLeft(line, 4) });
+		else if (line.rfind("info", 0) == 0) r.entries.push_back({ "info", TrimLeft(line, 4) });
+		else r.entries.push_back({ "info", line });
+	}
+	int e = 0, w = 0;
+	for (auto& x : r.entries)
+	{
+		if (x.severity == "error") ++e;
+		else if (x.severity == "warn") ++w;
+		else ++r.infos;
+	}
+	if (!counted) { r.errors = e; r.warnings = w; }
+}
+
+// The "schema" value of a design file, read from its start (files can embed large base64 images).
+static std::string DesignSchemaOf(const fs::path& file)
+{
+	std::ifstream in(file, std::ios::binary);
+	std::string head(16384, '\0');
+	in.read(&head[0], (std::streamsize)head.size());
+	head.resize((size_t)in.gcount());
+	static const std::regex schema(R"re("(?:schema|format)"\s*:\s*"([^"]+)")re");
+	std::smatch m;
+	if (std::regex_search(head, m, schema)) return m[1];
+	return {};
+}
 
 struct LiveSettings
 {
@@ -263,8 +358,17 @@ struct App
 	bool hasUProject = false;
 	bool attached = false;
 	bool isCodeProject = false;
-	int stateMonitor = 0;        // 0 none, 1 installed by dwo-Lens, 2 part of the project
+	int stateMonitor = 0;        // 0 none, 1 installed by dwo-Forge, 2 part of the project
+	bool stateMonitorLegacy = false;   // installed by dwo-Lens 1.x as Plugins/__StateMonitor (update migrates it)
 	std::string stateMonitorMode;
+	int canvas = 0;              // DwoCanvas: 0 none, 1 installed by dwo-Forge (Plugins/DwoCanvas), 2 part of the project
+	std::string canvasVersion;
+	fs::path canvasFile;         // design file picked in the DwoCanvas view
+	std::vector<std::string> canvasRecent;
+	std::vector<CanvasReport> canvasReports;
+	std::string canvasLastCommand;
+	bool legacyAttached = false; // project still has dwo-Lens 1.x __dwo-lens (migrated by the next command)
+	bool migrationStarted = false;
 	json state;
 	json catalog;
 	std::vector<RunInfo> runs;
@@ -300,6 +404,7 @@ struct App
 		if (auto s = ReadJson(settingsDir / "gui.json"))
 		{
 			for (auto& r : Arr(*s, "recent")) if (r.is_string()) recent.push_back(r.get<std::string>());
+			for (auto& r : Arr(*s, "canvasRecent")) if (r.is_string()) canvasRecent.push_back(r.get<std::string>());
 			const json& l = Obj(*s, "live");
 			liveSettings.port = (int)l.value("port", 47731);
 			liveSettings.autoObserve = l.value("auto", true);
@@ -313,6 +418,7 @@ struct App
 	{
 		json s;
 		s["recent"] = recent;
+		s["canvasRecent"] = canvasRecent;
 		s["live"] = { { "port", liveSettings.port }, { "auto", liveSettings.autoObserve }, { "engine", liveSettings.engineProps },
 		              { "interval", liveSettings.interval }, { "watch", liveSettings.watch } };
 		std::error_code ec;
@@ -320,14 +426,15 @@ struct App
 		std::ofstream(settingsDir / "gui.json", std::ios::binary) << s.dump(1);
 	}
 
-	// Per-project GUI settings live inside the project's __dwo-lens folder, so uninstall removes them too.
-	fs::path ProjectSettingsFile() const { return project / "__dwo-lens" / "gui.json"; }
+	// Per-project GUI settings live inside the project's __dwo-forge folder, so uninstall removes them too.
+	fs::path ForgeDir() const { return project / "__dwo-forge"; }
+	fs::path ProjectSettingsFile() const { return ForgeDir() / "gui.json"; }
 
-	// The dwo-Lens install folder (where tools\lens.ps1 is).
+	// The dwo-Forge install folder (where tools\forge.ps1 is).
 	bool HomeValid() const
 	{
 		std::error_code ec;
-		return !home.empty() && fs::exists(home / "tools" / "lens.ps1", ec);
+		return !home.empty() && fs::exists(home / "tools" / "forge.ps1", ec);
 	}
 
 	void LoadProjectSettings()
@@ -344,7 +451,7 @@ struct App
 		s["mutes"] = std::vector<std::string>(mutes.begin(), mutes.end());
 		std::error_code ec;
 		problemsRevision = -1;
-		if (!fs::is_directory(project / "__dwo-lens", ec)) return;   // not attached: nothing to keep
+		if (!fs::is_directory(ForgeDir(), ec)) return;   // not attached: nothing to keep
 		std::ofstream(ProjectSettingsFile(), std::ios::binary) << s.dump(1);
 	}
 
@@ -353,6 +460,7 @@ struct App
 	void SetProject(const fs::path& path)
 	{
 		project = path;
+		migrationStarted = false;
 		std::string u = PathUtf8(path);
 		recent.erase(std::remove(recent.begin(), recent.end(), u), recent.end());
 		recent.insert(recent.begin(), u);
@@ -380,33 +488,93 @@ struct App
 				}
 		isCodeProject = fs::exists(project / "Source", ec);
 		stateMonitor = 0;
+		stateMonitorLegacy = false;
 		stateMonitorMode.clear();
-		fs::path own = project / "Plugins" / "__StateMonitor" / "StateMonitor.uplugin";
-		if (fs::exists(own, ec))
+		canvas = 0;
+		canvasVersion.clear();
+		fs::path managed = project / "Plugins" / "__DwoStateMonitor" / "DwoStateMonitor.uplugin";
+		fs::path legacy = project / "Plugins" / "__StateMonitor" / "StateMonitor.uplugin";
+		fs::path installed = fs::exists(managed, ec) ? managed : fs::exists(legacy, ec) ? legacy : fs::path();
+		if (!installed.empty())
 		{
 			stateMonitor = 1;
-			std::string text = ReadText(own);
+			stateMonitorLegacy = installed == legacy;
+			std::string text = ReadText(installed);
 			stateMonitorMode = text.find("TargetAllowList") != std::string::npos ? "editor" : "runtime";
 		}
-		else if (fs::is_directory(project / "Plugins", ec))
+		fs::path canvasPlugin = project / "Plugins" / "DwoCanvas" / "DwoCanvas.uplugin";
+		if (fs::exists(canvasPlugin, ec))
+		{
+			canvas = fs::exists(project / "Plugins" / "DwoCanvas" / ".dwo-forge-installed", ec) ? 1 : 2;
+			if (auto u = ReadJson(canvasPlugin)) canvasVersion = Str(*u, "VersionName");
+		}
+		if (fs::is_directory(project / "Plugins", ec))
 			for (auto it = fs::recursive_directory_iterator(project / "Plugins", ec); it != fs::recursive_directory_iterator(); it.increment(ec))
 			{
 				if (ec) break;
+				if (it.depth() == 0 && PathUtf8(it->path().filename()).rfind("__", 0) == 0) { it.disable_recursion_pending(); continue; }
 				if (it.depth() > 3) { it.disable_recursion_pending(); continue; }
-				if (it->path().filename() == "StateMonitor.uplugin" && PathUtf8(it->path()).find("__") == std::string::npos) { stateMonitor = 2; break; }
+				fs::path name = it->path().filename();
+				if (stateMonitor == 0 && (name == "DwoStateMonitor.uplugin" || name == "StateMonitor.uplugin")) stateMonitor = 2;
+				if (canvas == 0 && name == "DwoCanvas.uplugin") canvas = 2;
 			}
-		auto st = ReadJson(project / "__dwo-lens" / "state.json");
+		auto st = ReadJson(ForgeDir() / "state.json");
 		attached = st.has_value();
 		state = st ? *st : json::object();
+		legacyAttached = !attached && fs::exists(project / "__dwo-lens" / "state.json", ec);
+		LoadCanvasReports();
 		if (auto c = ReadJson(home / "tools" / "catalog.json")) catalog = *c;
 		LoadRuns();
+	}
+
+	// Saved/DwoCanvas/Reports, newest first. Reports are parsed lazily (only the ones shown).
+	void LoadCanvasReports()
+	{
+		std::vector<CanvasReport> list;
+		std::error_code ec;
+		fs::path dir = project / "Saved" / "DwoCanvas" / "Reports";
+		if (fs::is_directory(dir, ec))
+			for (auto& e : fs::directory_iterator(dir, ec))
+			{
+				if (e.path().extension() != ".txt") continue;
+				CanvasReport r;
+				r.path = e.path();
+				r.name = PathUtf8(e.path().filename());
+				auto ft = fs::last_write_time(e.path(), ec);
+				r.mtime = (long long)std::chrono::duration_cast<std::chrono::seconds>(ft.time_since_epoch()).count();
+				list.push_back(std::move(r));
+			}
+		std::sort(list.begin(), list.end(), [](const CanvasReport& a, const CanvasReport& b) { return a.mtime > b.mtime; });
+		if (list.size() > 200) list.resize(200);
+		// keep parsed results of reports that did not change
+		for (auto& r : list)
+			for (auto& old : canvasReports)
+				if (old.parsed && old.path == r.path && old.mtime == r.mtime) { r = old; break; }
+		canvasReports = std::move(list);
+	}
+
+	CanvasReport* CanvasReportAt(size_t i)
+	{
+		if (i >= canvasReports.size()) return nullptr;
+		if (!canvasReports[i].parsed) ParseCanvasReport(canvasReports[i]);
+		return &canvasReports[i];
+	}
+
+	void SetCanvasFile(const fs::path& file)
+	{
+		canvasFile = file;
+		std::string u = PathUtf8(file);
+		canvasRecent.erase(std::remove(canvasRecent.begin(), canvasRecent.end(), u), canvasRecent.end());
+		canvasRecent.insert(canvasRecent.begin(), u);
+		if (canvasRecent.size() > 12) canvasRecent.resize(12);
+		SaveSettings();
 	}
 
 	void LoadRuns()
 	{
 		runs.clear();
 		std::error_code ec;
-		fs::path root = project / "__dwo-lens" / "data" / "runs";
+		fs::path root = ForgeDir() / "data" / "runs";
 		if (fs::is_directory(root, ec))
 			for (auto& e : fs::directory_iterator(root, ec))
 			{
@@ -652,7 +820,7 @@ struct App
 
 	// ---------------------------------------------------------------- commands
 
-	// Runs a dwo-Lens command (same as the command line) straight from the install folder.
+	// Runs a dwo-Forge command (same as the command line) straight from the install folder.
 	bool Run(const std::string& command)
 	{
 		if (runner.running)
@@ -663,18 +831,19 @@ struct App
 		}
 		if (!HomeValid())
 		{
-			message = "dwo-Lens 폴더를 찾을 수 없습니다: " + PathUtf8(home) + ". dwo-Lens 폴더의 dwo-Lens.bat으로 다시 여세요.";
+			message = "dwo-Forge 폴더를 찾을 수 없습니다: " + PathUtf8(home) + ". dwo-Forge 폴더의 dwo-Forge.bat으로 다시 여세요.";
 			PushToast("실행할 수 없음", message, col::Fail);
 			return false;
 		}
-		SetEnvironmentVariableW(L"DWO_LENS_HOME", home.wstring().c_str());
+		SetEnvironmentVariableW(L"DWO_FORGE_HOME", home.wstring().c_str());
+		SetEnvironmentVariableW(L"DWO_FORGE_FROM_BAT", nullptr);
 		SetEnvironmentVariableW(L"DWO_LENS_FROM_BAT", nullptr);
 		std::string verb = command.substr(0, command.find(' '));
 		std::string rest = command.size() > verb.size() ? command.substr(verb.size()) : "";
-		std::wstring ps = L"powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"" + (home / "tools" / "lens.ps1").wstring() +
+		std::wstring ps = L"powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"" + (home / "tools" / "forge.ps1").wstring() +
 		                  L"\" -Command " + ToWide(verb) + L" -Project \"" + project.wstring() + L"\"" + ToWide(rest);
 		runner.logDir = settingsDir / "logs";
-		if (runner.Start(ps, project, "dwo-lens " + command))
+		if (runner.Start(ps, project, "dwo-forge " + command))
 		{
 			message.clear();
 			lastCommand = command;
@@ -712,7 +881,11 @@ struct App
 			{
 				fs::path logFile = runner.logFile;
 				std::string verb = done.substr(0, done.find(' '));
-				std::string what = verb == "attach" ? "부착" : verb == "uninstall" ? "제거" : verb == "update" ? "업데이트" : verb;
+				std::string what = verb == "attach" ? "부착" : verb == "uninstall" ? "제거" : verb == "update" ? "업데이트"
+				                 : verb == "canvas-import" ? "DwoCanvas 가져오기" : verb == "canvas-validate" ? "디자인 파일 검사"
+				                 : verb == "canvas-install" ? "DwoCanvas 설치" : verb == "canvas-remove" ? "DwoCanvas 제거"
+				                 : verb == "sm-install" ? "DwoStateMonitor 설치" : verb == "sm-remove" ? "DwoStateMonitor 제거"
+				                 : verb == "status" && migrationStarted ? "dwo-Lens 1.x 이전" : verb;
 				std::string body = code == 0 ? "완료" : "실패 (종료 코드 " + std::to_string(code) + ") · " + runner.LastLine();
 				if (code == 0 && verb == "uninstall" && forgetAfterUninstall)
 				{
@@ -720,6 +893,9 @@ struct App
 					SaveSettings();
 				}
 				forgetAfterUninstall = false;
+				if (verb == "canvas-import" && !canvasReports.empty())
+					body = std::string(code == 0 ? "오류 없음" : "오류 있음") + " · " + canvasReports.front().name;
+				if (verb.rfind("canvas-", 0) == 0) canvasLastCommand = done;
 				PushToast(what + (code == 0 ? " 완료" : " 실패"), body, code == 0 ? col::Pass : col::Fail,
 				          [logFile] { if (!logFile.empty()) ShellExecuteW(nullptr, L"open", L"notepad.exe", (L"\"" + logFile.wstring() + L"\"").c_str(), nullptr, SW_SHOWNORMAL); },
 				          "로그 파일 열기");
@@ -731,6 +907,14 @@ struct App
 				queue.pop_front();
 				Run(next);
 			}
+		}
+		// A project still attached with dwo-Lens 1.x: any command migrates it (__dwo-lens -> __dwo-forge), so run
+		// the cheapest one once and show the result.
+		if (legacyAttached && !migrationStarted && !runner.running && HomeValid())
+		{
+			migrationStarted = true;
+			PushToast("dwo-Lens 1.x 프로젝트", "__dwo-lens를 __dwo-forge로 옮깁니다 (기록과 설정 유지).", col::Info);
+			Run("status");
 		}
 		std::vector<LiveMessage> messages;
 		live.Drain(messages);

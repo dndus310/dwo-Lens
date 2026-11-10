@@ -55,6 +55,8 @@
 #define ICON_POWER     u8"\uE7E8"
 #define ICON_SORT      u8"\uE8CB"
 #define ICON_PIN       u8"\uE718"
+#define ICON_CANVAS    u8"\uE790"
+#define ICON_FORGE     u8"\uE90F"
 
 // ============================================================================ palette
 

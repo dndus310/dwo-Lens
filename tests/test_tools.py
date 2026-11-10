@@ -1,4 +1,4 @@
-"""Unit tests for the dwo-Lens Python tools. Standard library only.
+"""Unit tests for the dwo-Forge Lens Python tools. Standard library only.
 
     python -m unittest discover -s tests -v
 """
@@ -295,6 +295,20 @@ class QualityTests(TempDir):
         self.assertEqual(data["testFilter"], "StateMonitor.")
         self.assertEqual(findings[0]["rule"], "state-monitor")
 
+    def test_dwo_state_monitor_detection(self):
+        # dwo-Forge installs the renamed plugin as Plugins/__DwoStateMonitor; BP nodes reference /Script/DwoStateMonitor.
+        write(self.tmp / "P.uproject", json.dumps({"Plugins": []}))
+        write(self.tmp / "Plugins/__DwoStateMonitor/DwoStateMonitor.uplugin", "{}")
+        bp = {"asset": "/Game/BP_A.BP_A", "graphs": [{"name": "EventGraph", "nodes": [
+            {"id": "n1", "role": "call", "member": "SubmitStateSnapshot", "memberOwner": "/Script/DwoStateMonitor.StateMonitorLibrary"},
+            {"id": "n2", "role": "call", "member": "WatchStateObject", "memberOwner": "/Script/StateMonitor.StateMonitorLibrary"}]}]}
+        cfg = json.loads((ROOT / "config" / "default.json").read_text(encoding="utf-8"))
+        findings, data = quality.check_state_monitor(self.ctx(bp_index={"bp:a": bp}), cfg)
+        self.assertTrue(data["present"] and data["enabled"])
+        self.assertEqual(data["plugin"].replace("\\", "/"), "Plugins/__DwoStateMonitor/DwoStateMonitor.uplugin")
+        self.assertEqual(len(data["bpCalls"]), 2, "assets saved against the old module still count")
+        self.assertEqual(data["testFilter"], "StateMonitor.")
+
     def test_state_monitor_absent(self):
         findings, data = quality.check_state_monitor(self.ctx(), {"stateMonitor": {}})
         self.assertFalse(data["present"])
@@ -479,7 +493,13 @@ class CatalogAndConfigTests(unittest.TestCase):
         for t in catalog["tools"]:
             self.assertIn(t["kind"], ("build", "wrap", "ai"))
             self.assertIn(t["status"], ("ready", "planned"))
-            self.assertRegex(t["station"], r"^(ST-[1-5]|OPS)$")
+            self.assertRegex(t["station"], r"^(ST-[1-5]|OPS|UI)$")
+            self.assertIn(t["tool"], ("lens", "statemonitor", "canvas", "forge"))
+        tools = {t["tool"] for t in catalog["tools"]}
+        self.assertEqual(tools, {"lens", "statemonitor", "canvas", "forge"}, "every dwo-Forge tool group has catalog entries")
+        commands = " ".join(t["command"] for t in catalog["tools"])
+        for command in ("canvas-install", "canvas-remove", "canvas-import", "canvas-validate", "sm-install", "sm-remove"):
+            self.assertIn(command, commands)
 
     def test_default_config_is_valid_json_with_all_sections(self):
         cfg = json.loads((ROOT / "config" / "default.json").read_text(encoding="utf-8"))

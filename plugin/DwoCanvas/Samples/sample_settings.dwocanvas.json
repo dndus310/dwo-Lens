@@ -1,0 +1,3507 @@
+{
+ "schema": "dwocanvas/2",
+ "source": {
+  "tool": "hand",
+  "adapter": "dwocanvas-sample/0.2.0",
+  "mode": "extract",
+  "file": "sample_settings",
+  "x-generator": "canvas/tools/make_sample_settings.py"
+ },
+ "capabilities": [
+  "layout.flow",
+  "layout.constraints",
+  "paint.gradient",
+  "paint.image",
+  "effects",
+  "components",
+  "variants",
+  "tokens",
+  "stable-ids"
+ ],
+ "tokens": {
+  "color": {
+   "accent": {
+    "$type": "color",
+    "$value": "#5c9eff"
+   }
+  }
+ },
+ "assets": {
+  "img_panel": {
+   "data": "iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAj0lEQVR42u3asQ2AMAxEUY9BxQQMyEysxhBhAGSBRQz48iO5je61PpsF37q1ljnW+2UHTgN5H07zsmdOF8ibgSOgUPivg3uQkuFvIf4e/hJRGlAlvIsAAOABoFr4EwIAAAAAAAAAAAAAAAAAAAAAAADAMLshVosARu4INBsaiZJPomaVKLolTg0kjj2qnNscR4T4OVpVA10AAAAASUVORK5CYII=",
+   "scale": 1,
+   "nineSlice": [
+    12,
+    12,
+    12,
+    12
+   ]
+  },
+  "img_avatar": {
+   "data": "iVBORw0KGgoAAAANSUhEUgAAAHgAAABQCAYAAADSm7GJAAAC5UlEQVR42u3RR3IbQQyFYRxs1n0I55xzlLOtnHOOzvFKWPsaMDh0Ux7aLIlqDDkDv8X3SiqVRKh/OjbNAn7RcR3wi07MsIBfdFIH/KJTsyzgF53WAb/ozBwL+EVndcAvOjfPAn7ReR3wiy4ssIBfdFEH/KJLiyzgF13WAXvyc+BAvbiDriyxgK3DxI3KvoWu6oCNbsK2K+smurbMAjZSApd1E13XgXQpcaMy7qIbKyyQxiJuZH0b3dSBNJaBrW+jW6sskMYysPVtdFsH0lgGtr6N7qyxQBrLwNa30V0dSGMZ2Po2urfOAmksA1vfRvd1II1lYOvb6MEGC6SxDGx9Gz3UgXQWccu4ix5tsoCNlLhl3USPdcBGSuCybqKBLRaw1U3Ysm+hJzpg7zBxe3EHPd1mAb/omQ74Rc93WMAveqEDftHLXRbwi17pgF/0eo8F/KI3OuAXDb5lAb9oSAf8ouF3LOAXjeiAXzT6ngX8ojEd8IvGP7CAXzShA37R5EcWL7LZINlcm/k2C/s8/e+d0JROneVR/9RF4NxiU93foROa/sRSR9lMaDIKHNX1PTqhGZ06aYUtKXC21FS3d+mEZj+z1EU2HXoWuKFOb/PXW+2FHM3pN1WXh416GDi3HKQOb1R4r99x88DzX1iqrBC3T4Ebqv5O+VvthkLcPPCC/qCKsqnQVJHAUWXfqxH3X4GzQf1CLX7lymjFrWDgbKVibxXDHhQ4WtJf6pdsMhTjVjRw1M+3yt9rJ3QfOBsKsvyNey6PW7PAudXev1ceNjpK4GhF/1jZWmFrHLihJ2+1HYpxUwPnhoOsfmdz2URochI4KuWtGmGjMgJHa/phqVphnQbO1ppM3morFOOWHTg3EmT9B3clGw/7/pPALetHeK9G2KgfgQtG24y1GQ//feCCjTabbbYCAiMwAiMwAiMwAiMwAiMwAiMwAiMwAiMwAiMwAiMwAiMwAiMwAiMwAiMwAiPwgYF/AWeE2UUxrKAkAAAAAElFTkSuQmCC",
+   "scale": 1
+  },
+  "img_stripe": {
+   "data": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAVklEQVR42qXTsQ0AIAhE0RuH0gHcP26F0cLEICpcQcf7FUBb1duIlOuAwWMHDHYDv/gYiGATiOItkMErkMUzwOBn4OfIwGA3EDlvMNgEMo8FBq8A89IdzF5An8KPVjMAAAAASUVORK5CYII=",
+   "scale": 1
+  }
+ },
+ "documents": [
+  {
+   "id": "S:1",
+   "name": "Settings",
+   "kind": "screen",
+   "root": {
+    "id": "S:1",
+    "name": "Settings",
+    "type": "frame",
+    "box": {
+     "x": 0,
+     "y": 0,
+     "w": 1280,
+     "h": 720
+    },
+    "fills": [
+     {
+      "type": "radial",
+      "stops": [
+       {
+        "position": 0,
+        "color": [
+         0.12,
+         0.15,
+         0.22,
+         1
+        ]
+       },
+       {
+        "position": 1,
+        "color": [
+         0.04,
+         0.05,
+         0.07,
+         1
+        ]
+       }
+      ],
+      "handles": [
+       0.5,
+       0.35,
+       1.1,
+       0.35,
+       0.5,
+       1.2
+      ]
+     }
+    ],
+    "clip": true,
+    "children": [
+     {
+      "id": "S:2",
+      "name": "Dialog",
+      "type": "frame",
+      "box": {
+       "x": 140,
+       "y": 60,
+       "w": 1000,
+       "h": 600
+      },
+      "constraints": {
+       "h": "center",
+       "v": "center"
+      },
+      "layout": {
+       "mode": "horizontal",
+       "gap": 24,
+       "padding": [
+        24,
+        24,
+        24,
+        24
+       ]
+      },
+      "fills": [
+       {
+        "type": "solid",
+        "color": [
+         0.09,
+         0.11,
+         0.15,
+         0.96
+        ]
+       }
+      ],
+      "radius": [
+       18,
+       18,
+       18,
+       18
+      ],
+      "stroke": {
+       "color": [
+        1,
+        1,
+        1,
+        0.08
+       ],
+       "width": 1,
+       "align": "inside"
+      },
+      "effects": [
+       {
+        "type": "drop-shadow",
+        "color": [
+         0,
+         0,
+         0,
+         0.55
+        ],
+        "offset": [
+         0,
+         16
+        ],
+        "blur": 40,
+        "spread": 0
+       }
+      ],
+      "children": [
+       {
+        "id": "S:3",
+        "name": "Sidebar",
+        "type": "frame",
+        "box": {
+         "x": 24,
+         "y": 24,
+         "w": 200,
+         "h": 552
+        },
+        "sizing": {
+         "h": "fixed",
+         "v": "fill"
+        },
+        "layout": {
+         "mode": "vertical",
+         "gap": 6
+        },
+        "children": [
+         {
+          "id": "S:4",
+          "name": "Title",
+          "type": "text",
+          "box": {
+           "x": 0,
+           "y": 0,
+           "w": 200,
+           "h": 32
+          },
+          "text": {
+           "content": "Settings",
+           "font": {
+            "family": "Roboto",
+            "weight": 700,
+            "italic": false,
+            "size": 26,
+            "style": "Bold"
+           },
+           "color": [
+            0.92,
+            0.94,
+            0.97,
+            1
+           ],
+           "autoResize": "width"
+          },
+          "variable": false,
+          "widgetName": "Title"
+         },
+         {
+          "id": "S:5",
+          "name": "spacer_Title",
+          "type": "frame",
+          "box": {
+           "x": 0,
+           "y": 32,
+           "w": 10,
+           "h": 18
+          },
+          "role": "spacer",
+          "variable": false,
+          "widgetName": "Title"
+         },
+         {
+          "id": "S:6",
+          "name": "btn_TabGraphics",
+          "type": "frame",
+          "box": {
+           "x": 0,
+           "y": 50,
+           "w": 200,
+           "h": 44
+          },
+          "sizing": {
+           "h": "fill",
+           "v": "fixed"
+          },
+          "layout": {
+           "mode": "horizontal",
+           "padding": [
+            16,
+            0,
+            16,
+            0
+           ],
+           "crossAlign": "center"
+          },
+          "fills": [
+           {
+            "type": "solid",
+            "color": [
+             0.36,
+             0.62,
+             1.0,
+             0.25
+            ]
+           }
+          ],
+          "radius": [
+           10,
+           10,
+           10,
+           10
+          ],
+          "states": {
+           "hovered": {
+            "fills": [
+             {
+              "type": "solid",
+              "color": [
+               1,
+               1,
+               1,
+               0.08
+              ]
+             }
+            ],
+            "radius": [
+             10,
+             10,
+             10,
+             10
+            ]
+           }
+          },
+          "children": [
+           {
+            "id": "S:6t",
+            "name": "Label",
+            "type": "text",
+            "box": {
+             "x": 16,
+             "y": 12,
+             "w": 120,
+             "h": 20
+            },
+            "text": {
+             "content": "Graphics",
+             "font": {
+              "family": "Roboto",
+              "weight": 700,
+              "italic": false,
+              "size": 15,
+              "style": "Bold"
+             },
+             "color": [
+              0.92,
+              0.94,
+              0.97,
+              1
+             ],
+             "autoResize": "width"
+            },
+            "variable": false,
+            "widgetName": "Label"
+           }
+          ],
+          "role": "button",
+          "variable": true,
+          "widgetName": "TabGraphics"
+         },
+         {
+          "id": "S:7",
+          "name": "btn_TabAudio",
+          "type": "frame",
+          "box": {
+           "x": 0,
+           "y": 100,
+           "w": 200,
+           "h": 44
+          },
+          "sizing": {
+           "h": "fill",
+           "v": "fixed"
+          },
+          "layout": {
+           "mode": "horizontal",
+           "padding": [
+            16,
+            0,
+            16,
+            0
+           ],
+           "crossAlign": "center"
+          },
+          "fills": [
+           {
+            "type": "solid",
+            "color": [
+             0.36,
+             0.62,
+             1.0,
+             0.0
+            ]
+           }
+          ],
+          "radius": [
+           10,
+           10,
+           10,
+           10
+          ],
+          "states": {
+           "hovered": {
+            "fills": [
+             {
+              "type": "solid",
+              "color": [
+               1,
+               1,
+               1,
+               0.08
+              ]
+             }
+            ],
+            "radius": [
+             10,
+             10,
+             10,
+             10
+            ]
+           }
+          },
+          "children": [
+           {
+            "id": "S:7t",
+            "name": "Label",
+            "type": "text",
+            "box": {
+             "x": 16,
+             "y": 12,
+             "w": 120,
+             "h": 20
+            },
+            "text": {
+             "content": "Audio",
+             "font": {
+              "family": "Roboto",
+              "weight": 400,
+              "italic": false,
+              "size": 15,
+              "style": "Regular"
+             },
+             "color": [
+              0.92,
+              0.94,
+              0.97,
+              1
+             ],
+             "autoResize": "width"
+            },
+            "variable": false,
+            "widgetName": "Label"
+           }
+          ],
+          "role": "button",
+          "variable": true,
+          "widgetName": "TabAudio"
+         },
+         {
+          "id": "S:8",
+          "name": "btn_TabControls",
+          "type": "frame",
+          "box": {
+           "x": 0,
+           "y": 150,
+           "w": 200,
+           "h": 44
+          },
+          "sizing": {
+           "h": "fill",
+           "v": "fixed"
+          },
+          "layout": {
+           "mode": "horizontal",
+           "padding": [
+            16,
+            0,
+            16,
+            0
+           ],
+           "crossAlign": "center"
+          },
+          "fills": [
+           {
+            "type": "solid",
+            "color": [
+             0.36,
+             0.62,
+             1.0,
+             0.0
+            ]
+           }
+          ],
+          "radius": [
+           10,
+           10,
+           10,
+           10
+          ],
+          "states": {
+           "hovered": {
+            "fills": [
+             {
+              "type": "solid",
+              "color": [
+               1,
+               1,
+               1,
+               0.08
+              ]
+             }
+            ],
+            "radius": [
+             10,
+             10,
+             10,
+             10
+            ]
+           }
+          },
+          "children": [
+           {
+            "id": "S:8t",
+            "name": "Label",
+            "type": "text",
+            "box": {
+             "x": 16,
+             "y": 12,
+             "w": 120,
+             "h": 20
+            },
+            "text": {
+             "content": "Controls",
+             "font": {
+              "family": "Roboto",
+              "weight": 400,
+              "italic": false,
+              "size": 15,
+              "style": "Regular"
+             },
+             "color": [
+              0.92,
+              0.94,
+              0.97,
+              1
+             ],
+             "autoResize": "width"
+            },
+            "variable": false,
+            "widgetName": "Label"
+           }
+          ],
+          "role": "button",
+          "variable": true,
+          "widgetName": "TabControls"
+         },
+         {
+          "id": "S:9",
+          "name": "spacer_Fill",
+          "type": "frame",
+          "box": {
+           "x": 0,
+           "y": 200,
+           "w": 10,
+           "h": 10
+          },
+          "sizing": {
+           "h": "fixed",
+           "v": "fill"
+          },
+          "role": "spacer",
+          "variable": false,
+          "widgetName": "Fill"
+         },
+         {
+          "id": "S:10",
+          "name": "Profile",
+          "type": "frame",
+          "box": {
+           "x": 0,
+           "y": 400,
+           "w": 200,
+           "h": 150
+          },
+          "layout": {
+           "mode": "vertical",
+           "gap": 8,
+           "padding": [
+            10,
+            10,
+            10,
+            10
+           ],
+           "crossAlign": "stretch"
+          },
+          "fills": [
+           {
+            "type": "image",
+            "image": "img_panel",
+            "scaleMode": "fill"
+           }
+          ],
+          "children": [
+           {
+            "id": "S:11",
+            "name": "Avatar",
+            "type": "rectangle",
+            "box": {
+             "x": 10,
+             "y": 10,
+             "w": 180,
+             "h": 70
+            },
+            "sizing": {
+             "h": "fill",
+             "v": "fixed"
+            },
+            "fills": [
+             {
+              "type": "solid",
+              "color": [
+               0.05,
+               0.06,
+               0.08,
+               1.0
+              ]
+             },
+             {
+              "type": "image",
+              "image": "img_avatar",
+              "scaleMode": "fit"
+             }
+            ],
+            "variable": false,
+            "widgetName": "Avatar"
+           },
+           {
+            "id": "S:12",
+            "name": "input_PlayerName",
+            "type": "frame",
+            "box": {
+             "x": 10,
+             "y": 88,
+             "w": 180,
+             "h": 32
+            },
+            "sizing": {
+             "h": "fill",
+             "v": "fixed"
+            },
+            "fills": [
+             {
+              "type": "solid",
+              "color": [
+               1,
+               1,
+               1,
+               0.06
+              ]
+             }
+            ],
+            "radius": [
+             6,
+             6,
+             6,
+             6
+            ],
+            "children": [
+             {
+              "id": "S:13",
+              "name": "Hint",
+              "type": "text",
+              "box": {
+               "x": 8,
+               "y": 7,
+               "w": 120,
+               "h": 18
+              },
+              "text": {
+               "content": "Player name",
+               "font": {
+                "family": "Roboto",
+                "weight": 400,
+                "italic": false,
+                "size": 13,
+                "style": "Regular"
+               },
+               "color": [
+                1,
+                1,
+                1,
+                0.4
+               ],
+               "autoResize": "width"
+              },
+              "variable": false,
+              "widgetName": "Hint"
+             }
+            ],
+            "role": "textInput",
+            "variable": true,
+            "widgetName": "PlayerName"
+           }
+          ],
+          "variable": false,
+          "widgetName": "Profile"
+         }
+        ],
+        "variable": false,
+        "widgetName": "Sidebar"
+       },
+       {
+        "id": "S:20",
+        "name": "Content",
+        "type": "frame",
+        "box": {
+         "x": 248,
+         "y": 24,
+         "w": 728,
+         "h": 552
+        },
+        "sizing": {
+         "h": "fill",
+         "v": "fill"
+        },
+        "layout": {
+         "mode": "vertical",
+         "gap": 16
+        },
+        "children": [
+         {
+          "id": "S:21",
+          "name": "switch_Pages",
+          "type": "frame",
+          "box": {
+           "x": 0,
+           "y": 0,
+           "w": 728,
+           "h": 480
+          },
+          "sizing": {
+           "h": "fill",
+           "v": "fill"
+          },
+          "children": [
+           {
+            "id": "G:1",
+            "name": "GraphicsPage",
+            "type": "frame",
+            "box": {
+             "x": 0,
+             "y": 0,
+             "w": 560,
+             "h": 520
+            },
+            "layout": {
+             "mode": "vertical",
+             "gap": 10,
+             "crossAlign": "stretch"
+            },
+            "children": [
+             {
+              "id": "G:2",
+              "name": "Row_Resolution",
+              "type": "instance",
+              "box": {
+               "x": 0,
+               "y": 0,
+               "w": 520,
+               "h": 40
+              },
+              "sizing": {
+               "h": "fill",
+               "v": "fixed"
+              },
+              "component": {
+               "ref": "K:1",
+               "name": "SettingRow",
+               "overridden": true
+              },
+              "layout": {
+               "mode": "horizontal",
+               "gap": 12,
+               "padding": [
+                14,
+                0,
+                14,
+                0
+               ],
+               "mainAlign": "space-between",
+               "crossAlign": "center"
+              },
+              "fills": [
+               {
+                "type": "solid",
+                "color": [
+                 0.13,
+                 0.15,
+                 0.2,
+                 1.0
+                ]
+               }
+              ],
+              "radius": [
+               8,
+               8,
+               8,
+               8
+              ],
+              "children": [
+               {
+                "id": "G:2a",
+                "name": "$Label",
+                "type": "text",
+                "box": {
+                 "x": 14,
+                 "y": 11,
+                 "w": 200,
+                 "h": 18
+                },
+                "text": {
+                 "content": "Resolution",
+                 "font": {
+                  "family": "Roboto",
+                  "weight": 400,
+                  "italic": false,
+                  "size": 14,
+                  "style": "Regular"
+                 },
+                 "color": [
+                  0.92,
+                  0.94,
+                  0.97,
+                  1
+                 ],
+                 "autoResize": "width"
+                },
+                "variable": true,
+                "widgetName": "Label"
+               },
+               {
+                "id": "G:2b",
+                "name": "$Value",
+                "type": "text",
+                "box": {
+                 "x": 440,
+                 "y": 11,
+                 "w": 60,
+                 "h": 18
+                },
+                "text": {
+                 "content": "1920 x 1080",
+                 "font": {
+                  "family": "Roboto",
+                  "weight": 700,
+                  "italic": false,
+                  "size": 14,
+                  "style": "Bold"
+                 },
+                 "color": [
+                  0.36,
+                  0.62,
+                  1.0,
+                  1
+                 ],
+                 "autoResize": "width"
+                },
+                "variable": true,
+                "widgetName": "Value"
+               }
+              ],
+              "variable": false,
+              "widgetName": "Row_Resolution"
+             },
+             {
+              "id": "G:3",
+              "name": "Row_FrameLimit",
+              "type": "instance",
+              "box": {
+               "x": 0,
+               "y": 50,
+               "w": 520,
+               "h": 40
+              },
+              "sizing": {
+               "h": "fill",
+               "v": "fixed"
+              },
+              "component": {
+               "ref": "K:1",
+               "name": "SettingRow",
+               "overridden": true
+              },
+              "layout": {
+               "mode": "horizontal",
+               "gap": 12,
+               "padding": [
+                14,
+                0,
+                14,
+                0
+               ],
+               "mainAlign": "space-between",
+               "crossAlign": "center"
+              },
+              "fills": [
+               {
+                "type": "solid",
+                "color": [
+                 0.13,
+                 0.15,
+                 0.2,
+                 1.0
+                ]
+               }
+              ],
+              "radius": [
+               8,
+               8,
+               8,
+               8
+              ],
+              "children": [
+               {
+                "id": "G:3a",
+                "name": "$Label",
+                "type": "text",
+                "box": {
+                 "x": 14,
+                 "y": 11,
+                 "w": 200,
+                 "h": 18
+                },
+                "text": {
+                 "content": "Frame Limit",
+                 "font": {
+                  "family": "Roboto",
+                  "weight": 400,
+                  "italic": false,
+                  "size": 14,
+                  "style": "Regular"
+                 },
+                 "color": [
+                  0.92,
+                  0.94,
+                  0.97,
+                  1
+                 ],
+                 "autoResize": "width"
+                },
+                "variable": true,
+                "widgetName": "Label"
+               },
+               {
+                "id": "G:3b",
+                "name": "$Value",
+                "type": "text",
+                "box": {
+                 "x": 440,
+                 "y": 11,
+                 "w": 60,
+                 "h": 18
+                },
+                "text": {
+                 "content": "144",
+                 "font": {
+                  "family": "Roboto",
+                  "weight": 700,
+                  "italic": false,
+                  "size": 14,
+                  "style": "Bold"
+                 },
+                 "color": [
+                  0.36,
+                  0.62,
+                  1.0,
+                  1
+                 ],
+                 "autoResize": "width"
+                },
+                "variable": true,
+                "widgetName": "Value"
+               }
+              ],
+              "variable": false,
+              "widgetName": "Row_FrameLimit"
+             },
+             {
+              "id": "G:4",
+              "name": "VSyncRow",
+              "type": "frame",
+              "box": {
+               "x": 0,
+               "y": 100,
+               "w": 560,
+               "h": 40
+              },
+              "sizing": {
+               "h": "fill",
+               "v": "fixed"
+              },
+              "layout": {
+               "mode": "horizontal",
+               "padding": [
+                14,
+                0,
+                14,
+                0
+               ],
+               "mainAlign": "space-between",
+               "crossAlign": "center"
+              },
+              "fills": [
+               {
+                "type": "solid",
+                "color": [
+                 0.13,
+                 0.15,
+                 0.2,
+                 1.0
+                ]
+               }
+              ],
+              "radius": [
+               8,
+               8,
+               8,
+               8
+              ],
+              "children": [
+               {
+                "id": "G:5",
+                "name": "Label",
+                "type": "text",
+                "box": {
+                 "x": 14,
+                 "y": 11,
+                 "w": 120,
+                 "h": 18
+                },
+                "text": {
+                 "content": "V-Sync",
+                 "font": {
+                  "family": "Roboto",
+                  "weight": 400,
+                  "italic": false,
+                  "size": 14,
+                  "style": "Regular"
+                 },
+                 "color": [
+                  0.92,
+                  0.94,
+                  0.97,
+                  1
+                 ],
+                 "autoResize": "width"
+                },
+                "variable": false,
+                "widgetName": "Label"
+               },
+               {
+                "id": "G:6",
+                "name": "chk_VSync",
+                "type": "frame",
+                "box": {
+                 "x": 500,
+                 "y": 10,
+                 "w": 20,
+                 "h": 20
+                },
+                "fills": [
+                 {
+                  "type": "solid",
+                  "color": [
+                   0.36,
+                   0.62,
+                   1.0,
+                   1.0
+                  ]
+                 }
+                ],
+                "radius": [
+                 4,
+                 4,
+                 4,
+                 4
+                ],
+                "role": "checkBox",
+                "variable": true,
+                "widgetName": "VSync"
+               }
+              ],
+              "variable": false,
+              "widgetName": "VSyncRow"
+             },
+             {
+              "id": "G:7",
+              "name": "BrightnessRow",
+              "type": "frame",
+              "box": {
+               "x": 0,
+               "y": 150,
+               "w": 560,
+               "h": 56
+              },
+              "sizing": {
+               "h": "fill",
+               "v": "fixed"
+              },
+              "layout": {
+               "mode": "vertical",
+               "gap": 6,
+               "padding": [
+                14,
+                8,
+                14,
+                8
+               ]
+              },
+              "fills": [
+               {
+                "type": "solid",
+                "color": [
+                 0.13,
+                 0.15,
+                 0.2,
+                 1.0
+                ]
+               }
+              ],
+              "radius": [
+               8,
+               8,
+               8,
+               8
+              ],
+              "children": [
+               {
+                "id": "G:8",
+                "name": "Label",
+                "type": "text",
+                "box": {
+                 "x": 14,
+                 "y": 8,
+                 "w": 120,
+                 "h": 16
+                },
+                "text": {
+                 "content": "Brightness",
+                 "font": {
+                  "family": "Roboto",
+                  "weight": 400,
+                  "italic": false,
+                  "size": 13,
+                  "style": "Regular"
+                 },
+                 "color": [
+                  0.92,
+                  0.94,
+                  0.97,
+                  1
+                 ],
+                 "autoResize": "width"
+                },
+                "variable": false,
+                "widgetName": "Label"
+               },
+               {
+                "id": "G:9",
+                "name": "slider_Brightness",
+                "type": "frame",
+                "box": {
+                 "x": 14,
+                 "y": 30,
+                 "w": 532,
+                 "h": 16
+                },
+                "sizing": {
+                 "h": "fill",
+                 "v": "fixed"
+                },
+                "role": "slider",
+                "variable": true,
+                "widgetName": "Brightness"
+               }
+              ],
+              "variable": false,
+              "widgetName": "BrightnessRow"
+             },
+             {
+              "id": "G:10",
+              "name": "PresetTitle",
+              "type": "text",
+              "box": {
+               "x": 0,
+               "y": 220,
+               "w": 200,
+               "h": 18
+              },
+              "text": {
+               "content": "Quality Presets",
+               "font": {
+                "family": "Roboto",
+                "weight": 700,
+                "italic": false,
+                "size": 13,
+                "style": "Bold"
+               },
+               "color": [
+                0.7,
+                0.75,
+                0.85,
+                1
+               ],
+               "autoResize": "width",
+               "letterSpacing": {
+                "unit": "px",
+                "value": 1.5
+               },
+               "case": "upper"
+              },
+              "variable": false,
+              "widgetName": "PresetTitle"
+             },
+             {
+              "id": "G:11",
+              "name": "Presets",
+              "type": "frame",
+              "box": {
+               "x": 0,
+               "y": 246,
+               "w": 560,
+               "h": 150
+              },
+              "sizing": {
+               "h": "fill",
+               "v": "hug"
+              },
+              "layout": {
+               "mode": "grid",
+               "columns": 3,
+               "gap": 10,
+               "crossGap": 10
+              },
+              "children": [
+               {
+                "id": "G:12",
+                "name": "Low",
+                "type": "rectangle",
+                "box": {
+                 "x": 0,
+                 "y": 0,
+                 "w": 180,
+                 "h": 70
+                },
+                "sizing": {
+                 "h": "fill",
+                 "v": "fixed"
+                },
+                "fills": [
+                 {
+                  "type": "radial",
+                  "stops": [
+                   {
+                    "position": 0,
+                    "color": [
+                     0.3,
+                     0.35,
+                     0.45,
+                     1
+                    ]
+                   },
+                   {
+                    "position": 1,
+                    "color": [
+                     0.12,
+                     0.14,
+                     0.18,
+                     1
+                    ]
+                   }
+                  ],
+                  "handles": [
+                   0.5,
+                   0.5,
+                   1.0,
+                   0.5,
+                   0.5,
+                   1.0
+                  ]
+                 }
+                ],
+                "radius": [
+                 10,
+                 10,
+                 10,
+                 10
+                ],
+                "variable": false,
+                "widgetName": "Low"
+               },
+               {
+                "id": "G:13",
+                "name": "Medium",
+                "type": "rectangle",
+                "box": {
+                 "x": 190,
+                 "y": 0,
+                 "w": 180,
+                 "h": 70
+                },
+                "sizing": {
+                 "h": "fill",
+                 "v": "fixed"
+                },
+                "fills": [
+                 {
+                  "type": "angular",
+                  "stops": [
+                   {
+                    "position": 0,
+                    "color": [
+                     0.36,
+                     0.62,
+                     1,
+                     1
+                    ]
+                   },
+                   {
+                    "position": 0.5,
+                    "color": [
+                     0.75,
+                     0.4,
+                     1,
+                     1
+                    ]
+                   },
+                   {
+                    "position": 1,
+                    "color": [
+                     0.36,
+                     0.62,
+                     1,
+                     1
+                    ]
+                   }
+                  ],
+                  "handles": [
+                   0.5,
+                   0.5,
+                   1.0,
+                   0.5,
+                   0.5,
+                   1.0
+                  ]
+                 }
+                ],
+                "radius": [
+                 10,
+                 10,
+                 10,
+                 10
+                ],
+                "variable": false,
+                "widgetName": "Medium"
+               },
+               {
+                "id": "G:14",
+                "name": "High",
+                "type": "rectangle",
+                "box": {
+                 "x": 380,
+                 "y": 0,
+                 "w": 180,
+                 "h": 70
+                },
+                "sizing": {
+                 "h": "fill",
+                 "v": "fixed"
+                },
+                "fills": [
+                 {
+                  "type": "diamond",
+                  "stops": [
+                   {
+                    "position": 0,
+                    "color": [
+                     1,
+                     0.75,
+                     0.3,
+                     1
+                    ]
+                   },
+                   {
+                    "position": 1,
+                    "color": [
+                     0.55,
+                     0.25,
+                     0.1,
+                     1
+                    ]
+                   }
+                  ],
+                  "handles": [
+                   0.5,
+                   0.5,
+                   1.0,
+                   0.5,
+                   0.5,
+                   1.0
+                  ]
+                 }
+                ],
+                "radius": [
+                 10,
+                 10,
+                 10,
+                 10
+                ],
+                "variable": false,
+                "widgetName": "High"
+               },
+               {
+                "id": "G:15",
+                "name": "Ultra",
+                "type": "rectangle",
+                "box": {
+                 "x": 0,
+                 "y": 80,
+                 "w": 180,
+                 "h": 70
+                },
+                "sizing": {
+                 "h": "fill",
+                 "v": "fixed"
+                },
+                "fills": [
+                 {
+                  "type": "solid",
+                  "color": [
+                   0.18,
+                   0.2,
+                   0.26,
+                   1.0
+                  ]
+                 }
+                ],
+                "radius": [
+                 10,
+                 10,
+                 10,
+                 10
+                ],
+                "stroke": {
+                 "color": [
+                  1,
+                  0.8,
+                  0.3,
+                  1
+                 ],
+                 "width": 3,
+                 "align": "outside"
+                },
+                "variable": false,
+                "widgetName": "Ultra"
+               },
+               {
+                "id": "G:16",
+                "name": "Custom",
+                "type": "rectangle",
+                "box": {
+                 "x": 190,
+                 "y": 80,
+                 "w": 180,
+                 "h": 70
+                },
+                "sizing": {
+                 "h": "fill",
+                 "v": "fixed"
+                },
+                "fills": [
+                 {
+                  "type": "image",
+                  "image": "img_stripe",
+                  "scaleMode": "tile",
+                  "scalingFactor": 1
+                 }
+                ],
+                "radius": [
+                 10,
+                 10,
+                 10,
+                 10
+                ],
+                "variable": false,
+                "widgetName": "Custom"
+               },
+               {
+                "id": "G:17",
+                "name": "Off",
+                "type": "rectangle",
+                "box": {
+                 "x": 380,
+                 "y": 80,
+                 "w": 180,
+                 "h": 70
+                },
+                "sizing": {
+                 "h": "fill",
+                 "v": "fixed"
+                },
+                "fills": [
+                 {
+                  "type": "solid",
+                  "color": [
+                   0.2,
+                   0.2,
+                   0.22,
+                   1.0
+                  ]
+                 }
+                ],
+                "radius": [
+                 10,
+                 10,
+                 10,
+                 10
+                ],
+                "blendMode": "multiply",
+                "variable": false,
+                "widgetName": "Off"
+               }
+              ],
+              "variable": false,
+              "widgetName": "Presets"
+             }
+            ],
+            "variable": false,
+            "widgetName": "GraphicsPage"
+           },
+           {
+            "id": "A:1",
+            "name": "AudioPage",
+            "type": "frame",
+            "box": {
+             "x": 0,
+             "y": 0,
+             "w": 560,
+             "h": 520
+            },
+            "layout": {
+             "mode": "vertical",
+             "gap": 10,
+             "crossAlign": "stretch"
+            },
+            "children": [
+             {
+              "id": "A:2",
+              "name": "MasterLabel",
+              "type": "text",
+              "box": {
+               "x": 0,
+               "y": 0,
+               "w": 200,
+               "h": 18
+              },
+              "text": {
+               "content": "Master Volume",
+               "font": {
+                "family": "Roboto",
+                "weight": 400,
+                "italic": false,
+                "size": 13,
+                "style": "Regular"
+               },
+               "color": [
+                0.92,
+                0.94,
+                0.97,
+                1
+               ],
+               "autoResize": "width"
+              },
+              "variable": false,
+              "widgetName": "MasterLabel"
+             },
+             {
+              "id": "A:3",
+              "name": "progress_MasterVolume",
+              "type": "frame",
+              "box": {
+               "x": 0,
+               "y": 26,
+               "w": 560,
+               "h": 12
+              },
+              "sizing": {
+               "h": "fill",
+               "v": "fixed"
+              },
+              "fills": [
+               {
+                "type": "solid",
+                "color": [
+                 0.2,
+                 0.22,
+                 0.28,
+                 1.0
+                ]
+               }
+              ],
+              "radius": [
+               6,
+               6,
+               6,
+               6
+              ],
+              "role": "progressBar",
+              "variable": true,
+              "widgetName": "MasterVolume"
+             },
+             {
+              "id": "A:4",
+              "name": "MusicLabel",
+              "type": "text",
+              "box": {
+               "x": 0,
+               "y": 50,
+               "w": 200,
+               "h": 18
+              },
+              "text": {
+               "content": "Music",
+               "font": {
+                "family": "Roboto",
+                "weight": 400,
+                "italic": false,
+                "size": 13,
+                "style": "Regular"
+               },
+               "color": [
+                0.92,
+                0.94,
+                0.97,
+                1
+               ],
+               "autoResize": "width"
+              },
+              "variable": false,
+              "widgetName": "MusicLabel"
+             },
+             {
+              "id": "A:5",
+              "name": "slider_Music",
+              "type": "frame",
+              "box": {
+               "x": 0,
+               "y": 76,
+               "w": 560,
+               "h": 16
+              },
+              "sizing": {
+               "h": "fill",
+               "v": "fixed"
+              },
+              "role": "slider",
+              "variable": true,
+              "widgetName": "Music"
+             },
+             {
+              "id": "A:6",
+              "name": "Row_OutputDevice",
+              "type": "instance",
+              "box": {
+               "x": 0,
+               "y": 110,
+               "w": 520,
+               "h": 40
+              },
+              "sizing": {
+               "h": "fill",
+               "v": "fixed"
+              },
+              "component": {
+               "ref": "K:1",
+               "name": "SettingRow",
+               "overridden": true
+              },
+              "layout": {
+               "mode": "horizontal",
+               "gap": 12,
+               "padding": [
+                14,
+                0,
+                14,
+                0
+               ],
+               "mainAlign": "space-between",
+               "crossAlign": "center"
+              },
+              "fills": [
+               {
+                "type": "solid",
+                "color": [
+                 0.13,
+                 0.15,
+                 0.2,
+                 1.0
+                ]
+               }
+              ],
+              "radius": [
+               8,
+               8,
+               8,
+               8
+              ],
+              "children": [
+               {
+                "id": "A:6a",
+                "name": "$Label",
+                "type": "text",
+                "box": {
+                 "x": 14,
+                 "y": 11,
+                 "w": 200,
+                 "h": 18
+                },
+                "text": {
+                 "content": "Output Device",
+                 "font": {
+                  "family": "Roboto",
+                  "weight": 400,
+                  "italic": false,
+                  "size": 14,
+                  "style": "Regular"
+                 },
+                 "color": [
+                  0.92,
+                  0.94,
+                  0.97,
+                  1
+                 ],
+                 "autoResize": "width"
+                },
+                "variable": true,
+                "widgetName": "Label"
+               },
+               {
+                "id": "A:6b",
+                "name": "$Value",
+                "type": "text",
+                "box": {
+                 "x": 440,
+                 "y": 11,
+                 "w": 60,
+                 "h": 18
+                },
+                "text": {
+                 "content": "Speakers",
+                 "font": {
+                  "family": "Roboto",
+                  "weight": 700,
+                  "italic": false,
+                  "size": 14,
+                  "style": "Bold"
+                 },
+                 "color": [
+                  0.36,
+                  0.62,
+                  1.0,
+                  1
+                 ],
+                 "autoResize": "width"
+                },
+                "variable": true,
+                "widgetName": "Value"
+               }
+              ],
+              "variable": false,
+              "widgetName": "Row_OutputDevice"
+             }
+            ],
+            "variable": false,
+            "widgetName": "AudioPage"
+           },
+           {
+            "id": "C:1",
+            "name": "ControlsPage",
+            "type": "frame",
+            "box": {
+             "x": 0,
+             "y": 0,
+             "w": 560,
+             "h": 520
+            },
+            "layout": {
+             "mode": "vertical",
+             "gap": 8
+            },
+            "children": [
+             {
+              "id": "C:2",
+              "name": "scroll_KeyBindings",
+              "type": "frame",
+              "box": {
+               "x": 0,
+               "y": 0,
+               "w": 560,
+               "h": 520
+              },
+              "sizing": {
+               "h": "fill",
+               "v": "fill"
+              },
+              "layout": {
+               "mode": "vertical",
+               "gap": 8,
+               "crossAlign": "stretch"
+              },
+              "children": [
+               {
+                "id": "C:10",
+                "name": "Row_MoveForward",
+                "type": "instance",
+                "box": {
+                 "x": 0,
+                 "y": 0,
+                 "w": 520,
+                 "h": 40
+                },
+                "sizing": {
+                 "h": "fill",
+                 "v": "fixed"
+                },
+                "component": {
+                 "ref": "K:1",
+                 "name": "SettingRow",
+                 "overridden": true
+                },
+                "layout": {
+                 "mode": "horizontal",
+                 "gap": 12,
+                 "padding": [
+                  14,
+                  0,
+                  14,
+                  0
+                 ],
+                 "mainAlign": "space-between",
+                 "crossAlign": "center"
+                },
+                "fills": [
+                 {
+                  "type": "solid",
+                  "color": [
+                   0.13,
+                   0.15,
+                   0.2,
+                   1.0
+                  ]
+                 }
+                ],
+                "radius": [
+                 8,
+                 8,
+                 8,
+                 8
+                ],
+                "children": [
+                 {
+                  "id": "C:10a",
+                  "name": "$Label",
+                  "type": "text",
+                  "box": {
+                   "x": 14,
+                   "y": 11,
+                   "w": 200,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "Move Forward",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 400,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Regular"
+                   },
+                   "color": [
+                    0.92,
+                    0.94,
+                    0.97,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Label"
+                 },
+                 {
+                  "id": "C:10b",
+                  "name": "$Value",
+                  "type": "text",
+                  "box": {
+                   "x": 440,
+                   "y": 11,
+                   "w": 60,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "W",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 700,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Bold"
+                   },
+                   "color": [
+                    0.36,
+                    0.62,
+                    1.0,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Value"
+                 }
+                ],
+                "variable": false,
+                "widgetName": "Row_MoveForward"
+               },
+               {
+                "id": "C:11",
+                "name": "Row_MoveBack",
+                "type": "instance",
+                "box": {
+                 "x": 0,
+                 "y": 48,
+                 "w": 520,
+                 "h": 40
+                },
+                "sizing": {
+                 "h": "fill",
+                 "v": "fixed"
+                },
+                "component": {
+                 "ref": "K:1",
+                 "name": "SettingRow",
+                 "overridden": true
+                },
+                "layout": {
+                 "mode": "horizontal",
+                 "gap": 12,
+                 "padding": [
+                  14,
+                  0,
+                  14,
+                  0
+                 ],
+                 "mainAlign": "space-between",
+                 "crossAlign": "center"
+                },
+                "fills": [
+                 {
+                  "type": "solid",
+                  "color": [
+                   0.13,
+                   0.15,
+                   0.2,
+                   1.0
+                  ]
+                 }
+                ],
+                "radius": [
+                 8,
+                 8,
+                 8,
+                 8
+                ],
+                "children": [
+                 {
+                  "id": "C:11a",
+                  "name": "$Label",
+                  "type": "text",
+                  "box": {
+                   "x": 14,
+                   "y": 11,
+                   "w": 200,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "Move Back",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 400,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Regular"
+                   },
+                   "color": [
+                    0.92,
+                    0.94,
+                    0.97,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Label"
+                 },
+                 {
+                  "id": "C:11b",
+                  "name": "$Value",
+                  "type": "text",
+                  "box": {
+                   "x": 440,
+                   "y": 11,
+                   "w": 60,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "S",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 700,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Bold"
+                   },
+                   "color": [
+                    0.36,
+                    0.62,
+                    1.0,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Value"
+                 }
+                ],
+                "variable": false,
+                "widgetName": "Row_MoveBack"
+               },
+               {
+                "id": "C:12",
+                "name": "Row_StrafeLeft",
+                "type": "instance",
+                "box": {
+                 "x": 0,
+                 "y": 96,
+                 "w": 520,
+                 "h": 40
+                },
+                "sizing": {
+                 "h": "fill",
+                 "v": "fixed"
+                },
+                "component": {
+                 "ref": "K:1",
+                 "name": "SettingRow",
+                 "overridden": true
+                },
+                "layout": {
+                 "mode": "horizontal",
+                 "gap": 12,
+                 "padding": [
+                  14,
+                  0,
+                  14,
+                  0
+                 ],
+                 "mainAlign": "space-between",
+                 "crossAlign": "center"
+                },
+                "fills": [
+                 {
+                  "type": "solid",
+                  "color": [
+                   0.13,
+                   0.15,
+                   0.2,
+                   1.0
+                  ]
+                 }
+                ],
+                "radius": [
+                 8,
+                 8,
+                 8,
+                 8
+                ],
+                "children": [
+                 {
+                  "id": "C:12a",
+                  "name": "$Label",
+                  "type": "text",
+                  "box": {
+                   "x": 14,
+                   "y": 11,
+                   "w": 200,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "Strafe Left",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 400,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Regular"
+                   },
+                   "color": [
+                    0.92,
+                    0.94,
+                    0.97,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Label"
+                 },
+                 {
+                  "id": "C:12b",
+                  "name": "$Value",
+                  "type": "text",
+                  "box": {
+                   "x": 440,
+                   "y": 11,
+                   "w": 60,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "A",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 700,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Bold"
+                   },
+                   "color": [
+                    0.36,
+                    0.62,
+                    1.0,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Value"
+                 }
+                ],
+                "variable": false,
+                "widgetName": "Row_StrafeLeft"
+               },
+               {
+                "id": "C:13",
+                "name": "Row_StrafeRight",
+                "type": "instance",
+                "box": {
+                 "x": 0,
+                 "y": 144,
+                 "w": 520,
+                 "h": 40
+                },
+                "sizing": {
+                 "h": "fill",
+                 "v": "fixed"
+                },
+                "component": {
+                 "ref": "K:1",
+                 "name": "SettingRow",
+                 "overridden": true
+                },
+                "layout": {
+                 "mode": "horizontal",
+                 "gap": 12,
+                 "padding": [
+                  14,
+                  0,
+                  14,
+                  0
+                 ],
+                 "mainAlign": "space-between",
+                 "crossAlign": "center"
+                },
+                "fills": [
+                 {
+                  "type": "solid",
+                  "color": [
+                   0.13,
+                   0.15,
+                   0.2,
+                   1.0
+                  ]
+                 }
+                ],
+                "radius": [
+                 8,
+                 8,
+                 8,
+                 8
+                ],
+                "children": [
+                 {
+                  "id": "C:13a",
+                  "name": "$Label",
+                  "type": "text",
+                  "box": {
+                   "x": 14,
+                   "y": 11,
+                   "w": 200,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "Strafe Right",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 400,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Regular"
+                   },
+                   "color": [
+                    0.92,
+                    0.94,
+                    0.97,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Label"
+                 },
+                 {
+                  "id": "C:13b",
+                  "name": "$Value",
+                  "type": "text",
+                  "box": {
+                   "x": 440,
+                   "y": 11,
+                   "w": 60,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "D",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 700,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Bold"
+                   },
+                   "color": [
+                    0.36,
+                    0.62,
+                    1.0,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Value"
+                 }
+                ],
+                "variable": false,
+                "widgetName": "Row_StrafeRight"
+               },
+               {
+                "id": "C:14",
+                "name": "Row_Jump",
+                "type": "instance",
+                "box": {
+                 "x": 0,
+                 "y": 192,
+                 "w": 520,
+                 "h": 40
+                },
+                "sizing": {
+                 "h": "fill",
+                 "v": "fixed"
+                },
+                "component": {
+                 "ref": "K:1",
+                 "name": "SettingRow",
+                 "overridden": true
+                },
+                "layout": {
+                 "mode": "horizontal",
+                 "gap": 12,
+                 "padding": [
+                  14,
+                  0,
+                  14,
+                  0
+                 ],
+                 "mainAlign": "space-between",
+                 "crossAlign": "center"
+                },
+                "fills": [
+                 {
+                  "type": "solid",
+                  "color": [
+                   0.13,
+                   0.15,
+                   0.2,
+                   1.0
+                  ]
+                 }
+                ],
+                "radius": [
+                 8,
+                 8,
+                 8,
+                 8
+                ],
+                "children": [
+                 {
+                  "id": "C:14a",
+                  "name": "$Label",
+                  "type": "text",
+                  "box": {
+                   "x": 14,
+                   "y": 11,
+                   "w": 200,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "Jump",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 400,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Regular"
+                   },
+                   "color": [
+                    0.92,
+                    0.94,
+                    0.97,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Label"
+                 },
+                 {
+                  "id": "C:14b",
+                  "name": "$Value",
+                  "type": "text",
+                  "box": {
+                   "x": 440,
+                   "y": 11,
+                   "w": 60,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "Space",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 700,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Bold"
+                   },
+                   "color": [
+                    0.36,
+                    0.62,
+                    1.0,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Value"
+                 }
+                ],
+                "variable": false,
+                "widgetName": "Row_Jump"
+               },
+               {
+                "id": "C:15",
+                "name": "Row_Crouch",
+                "type": "instance",
+                "box": {
+                 "x": 0,
+                 "y": 240,
+                 "w": 520,
+                 "h": 40
+                },
+                "sizing": {
+                 "h": "fill",
+                 "v": "fixed"
+                },
+                "component": {
+                 "ref": "K:1",
+                 "name": "SettingRow",
+                 "overridden": true
+                },
+                "layout": {
+                 "mode": "horizontal",
+                 "gap": 12,
+                 "padding": [
+                  14,
+                  0,
+                  14,
+                  0
+                 ],
+                 "mainAlign": "space-between",
+                 "crossAlign": "center"
+                },
+                "fills": [
+                 {
+                  "type": "solid",
+                  "color": [
+                   0.13,
+                   0.15,
+                   0.2,
+                   1.0
+                  ]
+                 }
+                ],
+                "radius": [
+                 8,
+                 8,
+                 8,
+                 8
+                ],
+                "children": [
+                 {
+                  "id": "C:15a",
+                  "name": "$Label",
+                  "type": "text",
+                  "box": {
+                   "x": 14,
+                   "y": 11,
+                   "w": 200,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "Crouch",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 400,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Regular"
+                   },
+                   "color": [
+                    0.92,
+                    0.94,
+                    0.97,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Label"
+                 },
+                 {
+                  "id": "C:15b",
+                  "name": "$Value",
+                  "type": "text",
+                  "box": {
+                   "x": 440,
+                   "y": 11,
+                   "w": 60,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "Ctrl",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 700,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Bold"
+                   },
+                   "color": [
+                    0.36,
+                    0.62,
+                    1.0,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Value"
+                 }
+                ],
+                "variable": false,
+                "widgetName": "Row_Crouch"
+               },
+               {
+                "id": "C:16",
+                "name": "Row_Interact",
+                "type": "instance",
+                "box": {
+                 "x": 0,
+                 "y": 288,
+                 "w": 520,
+                 "h": 40
+                },
+                "sizing": {
+                 "h": "fill",
+                 "v": "fixed"
+                },
+                "component": {
+                 "ref": "K:1",
+                 "name": "SettingRow",
+                 "overridden": true
+                },
+                "layout": {
+                 "mode": "horizontal",
+                 "gap": 12,
+                 "padding": [
+                  14,
+                  0,
+                  14,
+                  0
+                 ],
+                 "mainAlign": "space-between",
+                 "crossAlign": "center"
+                },
+                "fills": [
+                 {
+                  "type": "solid",
+                  "color": [
+                   0.13,
+                   0.15,
+                   0.2,
+                   1.0
+                  ]
+                 }
+                ],
+                "radius": [
+                 8,
+                 8,
+                 8,
+                 8
+                ],
+                "children": [
+                 {
+                  "id": "C:16a",
+                  "name": "$Label",
+                  "type": "text",
+                  "box": {
+                   "x": 14,
+                   "y": 11,
+                   "w": 200,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "Interact",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 400,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Regular"
+                   },
+                   "color": [
+                    0.92,
+                    0.94,
+                    0.97,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Label"
+                 },
+                 {
+                  "id": "C:16b",
+                  "name": "$Value",
+                  "type": "text",
+                  "box": {
+                   "x": 440,
+                   "y": 11,
+                   "w": 60,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "E",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 700,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Bold"
+                   },
+                   "color": [
+                    0.36,
+                    0.62,
+                    1.0,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Value"
+                 }
+                ],
+                "variable": false,
+                "widgetName": "Row_Interact"
+               },
+               {
+                "id": "C:17",
+                "name": "Row_Inventory",
+                "type": "instance",
+                "box": {
+                 "x": 0,
+                 "y": 336,
+                 "w": 520,
+                 "h": 40
+                },
+                "sizing": {
+                 "h": "fill",
+                 "v": "fixed"
+                },
+                "component": {
+                 "ref": "K:1",
+                 "name": "SettingRow",
+                 "overridden": true
+                },
+                "layout": {
+                 "mode": "horizontal",
+                 "gap": 12,
+                 "padding": [
+                  14,
+                  0,
+                  14,
+                  0
+                 ],
+                 "mainAlign": "space-between",
+                 "crossAlign": "center"
+                },
+                "fills": [
+                 {
+                  "type": "solid",
+                  "color": [
+                   0.13,
+                   0.15,
+                   0.2,
+                   1.0
+                  ]
+                 }
+                ],
+                "radius": [
+                 8,
+                 8,
+                 8,
+                 8
+                ],
+                "children": [
+                 {
+                  "id": "C:17a",
+                  "name": "$Label",
+                  "type": "text",
+                  "box": {
+                   "x": 14,
+                   "y": 11,
+                   "w": 200,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "Inventory",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 400,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Regular"
+                   },
+                   "color": [
+                    0.92,
+                    0.94,
+                    0.97,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Label"
+                 },
+                 {
+                  "id": "C:17b",
+                  "name": "$Value",
+                  "type": "text",
+                  "box": {
+                   "x": 440,
+                   "y": 11,
+                   "w": 60,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "Tab",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 700,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Bold"
+                   },
+                   "color": [
+                    0.36,
+                    0.62,
+                    1.0,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Value"
+                 }
+                ],
+                "variable": false,
+                "widgetName": "Row_Inventory"
+               },
+               {
+                "id": "C:18",
+                "name": "Row_Map",
+                "type": "instance",
+                "box": {
+                 "x": 0,
+                 "y": 384,
+                 "w": 520,
+                 "h": 40
+                },
+                "sizing": {
+                 "h": "fill",
+                 "v": "fixed"
+                },
+                "component": {
+                 "ref": "K:1",
+                 "name": "SettingRow",
+                 "overridden": true
+                },
+                "layout": {
+                 "mode": "horizontal",
+                 "gap": 12,
+                 "padding": [
+                  14,
+                  0,
+                  14,
+                  0
+                 ],
+                 "mainAlign": "space-between",
+                 "crossAlign": "center"
+                },
+                "fills": [
+                 {
+                  "type": "solid",
+                  "color": [
+                   0.13,
+                   0.15,
+                   0.2,
+                   1.0
+                  ]
+                 }
+                ],
+                "radius": [
+                 8,
+                 8,
+                 8,
+                 8
+                ],
+                "children": [
+                 {
+                  "id": "C:18a",
+                  "name": "$Label",
+                  "type": "text",
+                  "box": {
+                   "x": 14,
+                   "y": 11,
+                   "w": 200,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "Map",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 400,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Regular"
+                   },
+                   "color": [
+                    0.92,
+                    0.94,
+                    0.97,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Label"
+                 },
+                 {
+                  "id": "C:18b",
+                  "name": "$Value",
+                  "type": "text",
+                  "box": {
+                   "x": 440,
+                   "y": 11,
+                   "w": 60,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "M",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 700,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Bold"
+                   },
+                   "color": [
+                    0.36,
+                    0.62,
+                    1.0,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Value"
+                 }
+                ],
+                "variable": false,
+                "widgetName": "Row_Map"
+               },
+               {
+                "id": "C:19",
+                "name": "Row_Pause",
+                "type": "instance",
+                "box": {
+                 "x": 0,
+                 "y": 432,
+                 "w": 520,
+                 "h": 40
+                },
+                "sizing": {
+                 "h": "fill",
+                 "v": "fixed"
+                },
+                "component": {
+                 "ref": "K:1",
+                 "name": "SettingRow",
+                 "overridden": true
+                },
+                "layout": {
+                 "mode": "horizontal",
+                 "gap": 12,
+                 "padding": [
+                  14,
+                  0,
+                  14,
+                  0
+                 ],
+                 "mainAlign": "space-between",
+                 "crossAlign": "center"
+                },
+                "fills": [
+                 {
+                  "type": "solid",
+                  "color": [
+                   0.13,
+                   0.15,
+                   0.2,
+                   1.0
+                  ]
+                 }
+                ],
+                "radius": [
+                 8,
+                 8,
+                 8,
+                 8
+                ],
+                "children": [
+                 {
+                  "id": "C:19a",
+                  "name": "$Label",
+                  "type": "text",
+                  "box": {
+                   "x": 14,
+                   "y": 11,
+                   "w": 200,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "Pause",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 400,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Regular"
+                   },
+                   "color": [
+                    0.92,
+                    0.94,
+                    0.97,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Label"
+                 },
+                 {
+                  "id": "C:19b",
+                  "name": "$Value",
+                  "type": "text",
+                  "box": {
+                   "x": 440,
+                   "y": 11,
+                   "w": 60,
+                   "h": 18
+                  },
+                  "text": {
+                   "content": "Esc",
+                   "font": {
+                    "family": "Roboto",
+                    "weight": 700,
+                    "italic": false,
+                    "size": 14,
+                    "style": "Bold"
+                   },
+                   "color": [
+                    0.36,
+                    0.62,
+                    1.0,
+                    1
+                   ],
+                   "autoResize": "width"
+                  },
+                  "variable": true,
+                  "widgetName": "Value"
+                 }
+                ],
+                "variable": false,
+                "widgetName": "Row_Pause"
+               }
+              ],
+              "role": "scroll",
+              "variable": true,
+              "widgetName": "KeyBindings"
+             }
+            ],
+            "variable": false,
+            "widgetName": "ControlsPage"
+           }
+          ],
+          "role": "switcher",
+          "variable": true,
+          "widgetName": "Pages"
+         },
+         {
+          "id": "S:22",
+          "name": "Footer",
+          "type": "frame",
+          "box": {
+           "x": 0,
+           "y": 496,
+           "w": 728,
+           "h": 56
+          },
+          "sizing": {
+           "h": "fill",
+           "v": "fixed"
+          },
+          "layout": {
+           "mode": "horizontal",
+           "gap": 10,
+           "crossAlign": "center"
+          },
+          "children": [
+           {
+            "id": "S:23",
+            "name": "$Version",
+            "type": "text",
+            "box": {
+             "x": 0,
+             "y": 18,
+             "w": 260,
+             "h": 20
+            },
+            "text": {
+             "content": "Build 0.9.4-beta (2026-11-11) - very long build string that gets truncated",
+             "font": {
+              "family": "Roboto",
+              "weight": 400,
+              "italic": false,
+              "size": 12,
+              "style": "Regular"
+             },
+             "color": [
+              0.55,
+              0.6,
+              0.7,
+              1
+             ],
+             "autoResize": "truncate"
+            },
+            "sizing": {
+             "h": "fill",
+             "v": "hug"
+            },
+            "variable": true,
+            "widgetName": "Version"
+           },
+           {
+            "id": "S:24",
+            "name": "slot_Extra",
+            "type": "frame",
+            "box": {
+             "x": 280,
+             "y": 10,
+             "w": 120,
+             "h": 36
+            },
+            "role": "namedSlot",
+            "variable": true,
+            "widgetName": "Extra"
+           },
+           {
+            "id": "S:25",
+            "name": "btn_Cancel",
+            "type": "frame",
+            "box": {
+             "x": 420,
+             "y": 6,
+             "w": 140,
+             "h": 44
+            },
+            "layout": {
+             "mode": "horizontal",
+             "mainAlign": "center",
+             "crossAlign": "center"
+            },
+            "fills": [
+             {
+              "type": "solid",
+              "color": [
+               1,
+               1,
+               1,
+               0.08
+              ]
+             }
+            ],
+            "radius": [
+             10,
+             10,
+             10,
+             10
+            ],
+            "states": {
+             "hovered": {
+              "fills": [
+               {
+                "type": "solid",
+                "color": [
+                 1,
+                 1,
+                 1,
+                 0.14
+                ]
+               }
+              ],
+              "radius": [
+               10,
+               10,
+               10,
+               10
+              ]
+             },
+             "pressed": {
+              "fills": [
+               {
+                "type": "solid",
+                "color": [
+                 1,
+                 1,
+                 1,
+                 0.04
+                ]
+               }
+              ],
+              "radius": [
+               10,
+               10,
+               10,
+               10
+              ]
+             }
+            },
+            "children": [
+             {
+              "id": "S:26",
+              "name": "Label",
+              "type": "text",
+              "box": {
+               "x": 40,
+               "y": 12,
+               "w": 60,
+               "h": 20
+              },
+              "text": {
+               "content": "Cancel",
+               "font": {
+                "family": "Roboto",
+                "weight": 400,
+                "italic": false,
+                "size": 15,
+                "style": "Regular"
+               },
+               "color": [
+                0.92,
+                0.94,
+                0.97,
+                1
+               ],
+               "autoResize": "width"
+              },
+              "variable": false,
+              "widgetName": "Label"
+             }
+            ],
+            "role": "button",
+            "variable": true,
+            "widgetName": "Cancel"
+           },
+           {
+            "id": "S:27",
+            "name": "btn_Apply",
+            "type": "frame",
+            "box": {
+             "x": 570,
+             "y": 6,
+             "w": 158,
+             "h": 44
+            },
+            "layout": {
+             "mode": "horizontal",
+             "mainAlign": "center",
+             "crossAlign": "center"
+            },
+            "fills": [
+             {
+              "type": "solid",
+              "color": [
+               0.36,
+               0.62,
+               1.0,
+               1.0
+              ],
+              "colorToken": "color.accent"
+             }
+            ],
+            "radius": [
+             10,
+             10,
+             10,
+             10
+            ],
+            "states": {
+             "hovered": {
+              "fills": [
+               {
+                "type": "solid",
+                "color": [
+                 0.46,
+                 0.7,
+                 1.0,
+                 1.0
+                ]
+               }
+              ],
+              "radius": [
+               10,
+               10,
+               10,
+               10
+              ]
+             },
+             "pressed": {
+              "fills": [
+               {
+                "type": "solid",
+                "color": [
+                 0.28,
+                 0.52,
+                 0.9,
+                 1.0
+                ]
+               }
+              ],
+              "radius": [
+               10,
+               10,
+               10,
+               10
+              ]
+             },
+             "disabled": {
+              "fills": [
+               {
+                "type": "solid",
+                "color": [
+                 0.25,
+                 0.27,
+                 0.32,
+                 1.0
+                ]
+               }
+              ],
+              "radius": [
+               10,
+               10,
+               10,
+               10
+              ]
+             }
+            },
+            "children": [
+             {
+              "id": "S:28",
+              "name": "Label",
+              "type": "text",
+              "box": {
+               "x": 50,
+               "y": 12,
+               "w": 60,
+               "h": 20
+              },
+              "text": {
+               "content": "Apply",
+               "font": {
+                "family": "Roboto",
+                "weight": 700,
+                "italic": false,
+                "size": 15,
+                "style": "Bold"
+               },
+               "color": [
+                0.92,
+                0.94,
+                0.97,
+                1
+               ],
+               "autoResize": "width",
+               "loc": {
+                "table": "ST_Settings",
+                "key": "Apply"
+               }
+              },
+              "variable": false,
+              "widgetName": "Label"
+             }
+            ],
+            "role": "button",
+            "variable": true,
+            "widgetName": "Apply"
+           }
+          ],
+          "variable": false,
+          "widgetName": "Footer"
+         }
+        ],
+        "variable": false,
+        "widgetName": "Content"
+       },
+       {
+        "id": "S:30",
+        "name": "BetaBadge",
+        "type": "frame",
+        "box": {
+         "x": 930,
+         "y": -12,
+         "w": 84,
+         "h": 28
+        },
+        "positioning": "absolute",
+        "rotation": 8,
+        "layout": {
+         "mode": "horizontal",
+         "mainAlign": "center",
+         "crossAlign": "center"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           1,
+           0.42,
+           0.3,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         14,
+         14,
+         14,
+         14
+        ],
+        "children": [
+         {
+          "id": "S:31",
+          "name": "Text",
+          "type": "text",
+          "box": {
+           "x": 22,
+           "y": 6,
+           "w": 40,
+           "h": 16
+          },
+          "text": {
+           "content": "BETA",
+           "font": {
+            "family": "Roboto",
+            "weight": 700,
+            "italic": false,
+            "size": 12,
+            "style": "Bold"
+           },
+           "color": [
+            0.92,
+            0.94,
+            0.97,
+            1
+           ],
+           "autoResize": "width"
+          },
+          "variable": false,
+          "widgetName": "Text"
+         }
+        ],
+        "variable": false,
+        "widgetName": "BetaBadge"
+       }
+      ],
+      "variable": false,
+      "widgetName": "Dialog"
+     },
+     {
+      "id": "S:40",
+      "name": "Backdrop",
+      "type": "rectangle",
+      "box": {
+       "x": 0,
+       "y": 680,
+       "w": 1280,
+       "h": 40
+      },
+      "constraints": {
+       "h": "scale",
+       "v": "max"
+      },
+      "fills": [
+       {
+        "type": "linear",
+        "stops": [
+         {
+          "position": 0,
+          "color": [
+           0.36,
+           0.62,
+           1,
+           0
+          ]
+         },
+         {
+          "position": 0.5,
+          "color": [
+           0.36,
+           0.62,
+           1,
+           0.35
+          ]
+         },
+         {
+          "position": 1,
+          "color": [
+           0.36,
+           0.62,
+           1,
+           0
+          ]
+         }
+        ],
+        "handles": [
+         0,
+         0.5,
+         1,
+         0.5,
+         0,
+         1
+        ]
+       }
+      ],
+      "variable": false,
+      "widgetName": "Backdrop"
+     }
+    ],
+    "variable": false,
+    "widgetName": "Settings"
+   }
+  }
+ ],
+ "components": [
+  {
+   "id": "K:1",
+   "name": "SettingRow",
+   "root": {
+    "id": "K:1",
+    "name": "SettingRow",
+    "type": "component",
+    "box": {
+     "x": 0,
+     "y": 0,
+     "w": 520,
+     "h": 40
+    },
+    "layout": {
+     "mode": "horizontal",
+     "gap": 12,
+     "padding": [
+      14,
+      0,
+      14,
+      0
+     ],
+     "mainAlign": "space-between",
+     "crossAlign": "center"
+    },
+    "fills": [
+     {
+      "type": "solid",
+      "color": [
+       0.13,
+       0.15,
+       0.2,
+       1.0
+      ]
+     }
+    ],
+    "radius": [
+     8,
+     8,
+     8,
+     8
+    ],
+    "children": [
+     {
+      "id": "K:2",
+      "name": "$Label",
+      "type": "text",
+      "box": {
+       "x": 14,
+       "y": 11,
+       "w": 200,
+       "h": 18
+      },
+      "text": {
+       "content": "Setting",
+       "font": {
+        "family": "Roboto",
+        "weight": 400,
+        "italic": false,
+        "size": 14,
+        "style": "Regular"
+       },
+       "color": [
+        0.92,
+        0.94,
+        0.97,
+        1
+       ],
+       "autoResize": "width"
+      },
+      "variable": true,
+      "widgetName": "Label"
+     },
+     {
+      "id": "K:3",
+      "name": "$Value",
+      "type": "text",
+      "box": {
+       "x": 440,
+       "y": 11,
+       "w": 60,
+       "h": 18
+      },
+      "text": {
+       "content": "Value",
+       "font": {
+        "family": "Roboto",
+        "weight": 700,
+        "italic": false,
+        "size": 14,
+        "style": "Bold"
+       },
+       "color": [
+        0.36,
+        0.62,
+        1.0,
+        1
+       ],
+       "autoResize": "width"
+      },
+      "variable": true,
+      "widgetName": "Value"
+     }
+    ],
+    "variable": false,
+    "widgetName": "SettingRow"
+   }
+  }
+ ],
+ "lint": [
+  {
+   "level": "info",
+   "node": "G:17",
+   "name": "Off",
+   "message": "Blend mode left unbaked on purpose (sample)",
+   "rule": "sample"
+  }
+ ]
+}

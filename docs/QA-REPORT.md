@@ -1,4 +1,6 @@
-# dwo-Lens QA 보고서
+# dwo-Forge QA 보고서
+
+> dwo-Forge 2.0은 dwo-Lens의 새 이름입니다. 1~7절은 dwo-Lens 1.x 시절의 기록이라 그때의 이름(`__dwo-lens`, `StateMonitor` 등)을 그대로 둡니다. 2.0 검증은 [8절](#8-v20-dwo-forge-검증-2026-11-11)에 있습니다.
 
 - 일자: 2026-10-28
 - 엔진: UE 5.7.4 (Launcher)
@@ -137,3 +139,21 @@ GitHub zip으로 받은 폴더에서 부착이 실패한 문제(설치 폴더에
 - 명령줄 `uninstall`에서 선택을 묻는 대화형 입력 (자동 실행은 비대화형이라 `--keep-data`/`--delete-data`로만 확인)
 - 실제 성능 캡처가 남긴 CSV의 제거 (기록 파일에 경로를 넣어 시뮬레이션)
 - 창으로 끌어다 놓기와 실패 알림의 로그 파일 열기 (빌드와 코드 경로만 확인)
+
+## 8. v2.0 dwo-Forge 검증 (2026-11-11)
+
+dwo-Lens를 dwo-Forge로 바꾸고 세 도구(Lens · DwoStateMonitor · DwoCanvas)로 재구성한 뒤의 검증입니다. 엔진 실행은 모두 격리된 프로젝트 복사본과 별도 `LOCALAPPDATA`에서 했습니다.
+
+| 구분 | 결과 |
+|---|---|
+| 단위 테스트 | 52/52 통과 (Python 도구 42 + `tests/test_forge_cli.py` 10: dwo-Lens 1.x 프로젝트 이전, 실행 중인 옛 실행 파일 넘겨주기, exclude 블록 교체, `%LOCALAPPDATA%` 이전, 새·옛 이름 모두 제거, DwoCanvas 제거 거부·강제, 프로젝트 소유 DwoCanvas 보호, uninstall이 DwoCanvas 유지, 검사기 실행) |
+| CoreRedirects | 설치한 DwoStateMonitor에서 `unreal.load_class`로 `/Script/StateMonitor.StateMonitorLibrary`·`StateMonitorWidget`·`StateMonitorSubsystem`이 `/Script/DwoStateMonitor.*`로 연결됨 (플러그인 `Config/Engine.ini`가 Engine 설정에 합쳐져 UObject 초기화 전에 읽힘, 코드 등록 불필요) |
+| 발견·수정 | BuildPlugin 패키지에 `Config/*.ini`(CoreRedirects)와 DwoCanvas `Schema/`가 빠짐 → 설치 때 소스에서 보충. 커맨드릿 리포트 경로가 엔진 폴더 기준 상대 경로 → 절대 경로로 변환. 엔진 자식 프로세스가 잡은 로그 → 공유 읽기 |
+| DwoCanvas 종단 | 부착 → `canvas-install`(git에 보임) → `canvas-validate` → `canvas-import --doc Settings` (종료 코드 0, 위젯 162개, 리포트 경로 출력) → `canvas-remove` 거부(WBP_Settings가 DwoCanvasRuntime 사용) → `uninstall`이 DwoCanvas를 남김. 이때 플러그인 바이너리는 아래 빌드 문제로 에디터 대상만 빌드한 것을 캐시에 넣어 사용 |
+| GUI | 빌드 경고 0, `--screenshot`으로 DwoCanvas·도구 화면 캡처(`.qa/forge/`) |
+
+### 검증하지 않은 것 (v2.0)
+
+- DwoCanvas의 `BuildPlugin`(게임 대상)은 `SDwoCanvasShape.h`의 `TStrongObjectPtr<UMaterialInstanceDynamic>`가 불완전 형식이라 실패합니다(DwoCanvas 소스 문제). 그래서 selftest의 `canvas-install` 단계는 실패합니다.
+- OWTStateMonitor → DwoStateMonitor 클래스 리다이렉트는 `load_class`로 확인되지 않았습니다(패키지 리다이렉트만 확인). 1.x와 같은 항목입니다.
+- 실제 Figma 내보내기 파일, 에디터 안에서의 가져오기·시각 비교, Shipping 패키징(`package_check.ps1`)은 이번에 다시 돌리지 않았습니다.

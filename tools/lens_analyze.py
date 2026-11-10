@@ -1,4 +1,4 @@
-"""dwo-Lens analyzer: raw extractor JSON -> unified graph, SQLite index, diagrams, gate findings, HTML report.
+"""dwo-Forge Lens analyzer: raw extractor JSON -> unified graph, SQLite index, diagrams, gate findings, HTML report.
 
 Standard library only. Deterministic: the same raw input always produces the same output.
 
@@ -639,7 +639,7 @@ def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, dia
                        f"<td>{esc(short_name(bp['parent']))}</td><td>{len(bp['graphs'])}</td><td>{esc(targets)}</td></tr>")
 
     doc = f"""<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>dwo-Lens 리포트 · {esc(Path(meta['project']).stem)}</title><style>{REPORT_CSS}</style></head><body><main>
+<title>dwo-Forge Lens 리포트 · {esc(Path(meta['project']).stem)}</title><style>{REPORT_CSS}</style></head><body><main>
 <section><div class="meta">{esc(run_id)} · UE {esc(meta['engineVersion'].split('-')[0])} · {esc(meta['extractedAtUtc'])}</div>
 <h1>{esc(Path(meta['project']).stem)} 아키텍처 리포트 <span class="badge {result['verdict']}">{result['verdict']}</span></h1>
 <div class="kpis">
@@ -716,7 +716,7 @@ def main() -> int:
     write_sqlite(g, args.out / "index.db", ctx["meta"])
     render_report(args.out, args.run_id, g, ctx, result, diagrams, lens_quality.render_html(quality))
 
-    print(f"[dwo-lens] symbols={len(g.symbols)} relations={len(g.relations)} verdict={result['verdict']} "
+    print(f"[dwo-forge] symbols={len(g.symbols)} relations={len(g.relations)} verdict={result['verdict']} "
           f"findings={len(result['findings'])}")
     return 0
 

@@ -1,6 +1,6 @@
-// State Monitor live link: a localhost TCP server that games connect to, and the store that keeps
+// DwoStateMonitor live link: a localhost TCP server that games connect to, and the store that keeps
 // per-session sources, value history, change events and per-field state machines.
-// Protocol: UTF-8 JSON Lines. See plugin/StateMonitor/README.md.
+// Protocol: UTF-8 JSON Lines. See plugin/DwoStateMonitor/README.md.
 #pragma once
 
 #include "util.h"
@@ -42,7 +42,7 @@ public:
 		inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
 		if (bind(listener, (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR || listen(listener, 8) == SOCKET_ERROR)
 		{
-			error = "포트 " + std::to_string(port) + "을(를) 사용할 수 없습니다 (다른 dwo-Lens 창이 열려 있을 수 있습니다)";
+			error = "포트 " + std::to_string(port) + "을(를) 사용할 수 없습니다 (다른 dwo-Forge 창이 열려 있을 수 있습니다)";
 			closesocket(listener);
 			listener = INVALID_SOCKET;
 			return false;

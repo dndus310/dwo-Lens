@@ -1,9 +1,9 @@
-"""dwo-Lens quality checks on top of the extracted graph (ST-2).
+"""dwo-Forge Lens quality checks on top of the extracted graph (ST-2).
 
 - naming:      asset prefix / folder rules (UE5 style guide defaults, overridable in config)
 - unused:      assets unreachable from maps and Config/*.ini, plus leftover redirectors
 - complexity:  Blueprint graph size, branching and exec chain length
-- stateMonitor: optional adapter, detects StateMonitor usage (plugin, BP nodes, C++ calls)
+- stateMonitor: optional adapter, detects DwoStateMonitor (formerly StateMonitor) usage (plugin, BP nodes, C++ calls)
 
 Each check returns findings in the analyzer's shape plus a data block for the report.
 """
@@ -185,15 +185,19 @@ def check_complexity(ctx: dict, cfg: dict) -> tuple[list, dict]:
 
 def check_state_monitor(ctx: dict, cfg: dict) -> tuple[list, dict]:
     sm = cfg.get("stateMonitor", {})
-    plugin_name = sm.get("pluginName", "StateMonitor")
+    names = sm.get("pluginName", ["DwoStateMonitor", "StateMonitor"])
+    plugin_names = [names] if isinstance(names, str) else list(names)
     root = ctx["project_file"].parent
     uproject = json.loads(ctx["project_file"].read_text(encoding="utf-8"))
     plugin_file = None
     plugins_dir = root / "Plugins"
     if plugins_dir.exists():
-        plugin_file = next((p for p in plugins_dir.rglob(f"{plugin_name}.uplugin")
-                            if not any(part.startswith("__Dwo") for part in p.parts)), None)
-    listed = next((p for p in uproject.get("Plugins", []) if p.get("Name") == plugin_name), None)
+        # DwoStateMonitor installed by dwo-Forge sits in Plugins/__DwoStateMonitor (dwo-Lens 1.x: __StateMonitor);
+        # only the Lens inspector is never counted.
+        plugin_file = next((p for name in plugin_names for p in sorted(plugins_dir.rglob(f"{name}.uplugin"))
+                            if "__DwoLensInspector" not in p.parts), None)
+    plugin_name = plugin_file.stem if plugin_file else plugin_names[0]
+    listed = next((p for p in uproject.get("Plugins", []) if p.get("Name") in plugin_names), None)
     enabled = bool(listed and listed.get("Enabled", True)) or bool(plugin_file and not listed)
 
     bp_submits = []
@@ -201,7 +205,7 @@ def check_state_monitor(ctx: dict, cfg: dict) -> tuple[list, dict]:
         for graph in bp["graphs"]:
             for node in graph["nodes"]:
                 owner = node.get("memberOwner") or ""
-                if node.get("role") == "call" and f"/Script/{plugin_name}." in owner:
+                if node.get("role") == "call" and any(f"/Script/{n}." in owner for n in plugin_names):
                     bp_submits.append({"blueprint": bp["asset"].rsplit(".", 1)[-1], "graph": graph["name"],
                                        "node": node["id"], "function": node.get("member")})
 
@@ -232,7 +236,7 @@ def check_state_monitor(ctx: dict, cfg: dict) -> tuple[list, dict]:
     if present:
         submits = sum(1 for r in cpp_refs if r["submit"]) + len(bp_submits)
         findings.append({"severity": "info", "rule": "state-monitor",
-                         "message": f"StateMonitor 사용 중: 제출 지점 {submits}곳 (C++ {sum(1 for r in cpp_refs if r['submit'])}, BP {len(bp_submits)}), "
+                         "message": f"DwoStateMonitor 사용 중: 제출 지점 {submits}곳 (C++ {sum(1 for r in cpp_refs if r['submit'])}, BP {len(bp_submits)}), "
                                     f"Source ID {len(source_ids)}개. 검증 라인에서 '{data['testFilter']}' 테스트를 함께 실행합니다.",
                          "items": [f"{r['file']}:{r['line']}  {r['code']}" for r in cpp_refs if r["submit"]]
                                   + [f"BP {b['blueprint']}.{b['graph']}  {b['function']}" for b in bp_submits]})
@@ -277,7 +281,7 @@ def render_html(data: dict) -> str:
         refs = "".join(f"<tr><td><code>{esc(r['file'])}:{r['line']}</code></td><td>{'제출' if r['submit'] else '참조'}</td>"
                        f"<td><code>{esc(r['code'])}</code></td></tr>" for r in sm["cppRefs"])
         refs += "".join(f"<tr><td>BP {esc(b['blueprint'])}.{esc(b['graph'])}</td><td>호출</td><td><code>{esc(b['function'] or '')}</code></td></tr>" for b in sm["bpCalls"])
-        out.append(f"<section><h2>StateMonitor 연계</h2><p class='meta'>플러그인 {esc(sm['plugin'] or '')} · 활성 {sm['enabled']} · "
+        out.append(f"<section><h2>DwoStateMonitor 연계</h2><p class='meta'>플러그인 {esc(sm['plugin'] or '')} · 활성 {sm['enabled']} · "
                    f"Source ID: {esc(', '.join(sm['sourceIds']) or '없음')} · 검증 필터 <code>{esc(sm['testFilter'] or '-')}</code></p>"
                    f"<div class='scroll'><table><thead><tr><th>위치</th><th>종류</th><th>코드</th></tr></thead><tbody>{refs}</tbody></table></div></section>")
     return "".join(out)

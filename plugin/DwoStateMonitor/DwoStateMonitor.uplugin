@@ -1,0 +1,12 @@
+{
+  "FileVersion": 3,
+  "Version": 2,
+  "VersionName": "2.0",
+  "FriendlyName": "Dwo State Monitor",
+  "Description": "dwo-Forge tool: runtime reflection snapshots, change history, Slate state viewer and live link to the dwo-Forge GUI. Formerly StateMonitor.",
+  "Category": "Runtime",
+  "CanContainContent": false,
+  "Modules": [
+    { "Name": "DwoStateMonitor", "Type": "Runtime", "LoadingPhase": "Default" }
+  ]
+}

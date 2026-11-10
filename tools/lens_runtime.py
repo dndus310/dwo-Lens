@@ -1,4 +1,4 @@
-"""dwo-Lens runtime lines: map boot smoke test, CSV performance capture, content sizes, Insights trace.
+"""dwo-Forge Lens runtime lines: map boot smoke test, CSV performance capture, content sizes, Insights trace.
 
 The engine runs are driven by lens.ps1; this module only enumerates maps, parses what the runs left behind
 and writes out/<line>.json plus out/report.html. Standard library only.
@@ -449,23 +449,23 @@ def main() -> int:
     if args.cmd == "smoke":
         result = smoke(args.run, args.project, cfg)
         write_outputs(args.run, "smoke", result, render_smoke(result, run_id))
-        print("[dwo-lens] smoke: " + ", ".join(f"{m['map']}={m['verdict']}" for m in result["maps"]) + f" -> {result['verdict']}")
+        print("[dwo-forge] smoke: " + ", ".join(f"{m['map']}={m['verdict']}" for m in result["maps"]) + f" -> {result['verdict']}")
     elif args.cmd == "perf":
         result = perf(args.csv, args.map, cfg, args.exit_code)
         write_outputs(args.run, "perf", result, render_perf(result, run_id))
         ft = result["stats"].get("FrameTime", {})
-        print(f"[dwo-lens] perf: frames={result['frames']} FrameTime avg={ft.get('avg')} p95={ft.get('p95')} "
+        print(f"[dwo-forge] perf: frames={result['frames']} FrameTime avg={ft.get('avg')} p95={ft.get('p95')} "
               f"hitches={len(result['hitches'])} -> {result['verdict']}")
     elif args.cmd == "sizes":
         graph_doc = json.loads(args.graph.read_text(encoding="utf-8")) if args.graph and args.graph.exists() else None
         result = sizes(args.project, cfg, graph_doc, str(args.graph) if graph_doc else None)
         write_outputs(args.run, "sizes", result, render_sizes(result, run_id))
-        print(f"[dwo-lens] sizes: {result['assetCount']} assets, {mb(result['totalBytes'])}, "
+        print(f"[dwo-forge] sizes: {result['assetCount']} assets, {mb(result['totalBytes'])}, "
               f"over limit {len(result['overLimit'])}, closures {len(result['heaviestClosures'])} -> {result['verdict']}")
     else:
         result = trace(args.file, args.seconds, args.insights, args.exit_code, killed=not args.exited)
         write_outputs(args.run, "trace", result, render_trace(result, run_id, section(cfg, "trace")["channels"]))
-        print(f"[dwo-lens] trace: {mb(result['bytes'])} in {result['seconds']} s -> {result['verdict']}")
+        print(f"[dwo-forge] trace: {mb(result['bytes'])} in {result['seconds']} s -> {result['verdict']}")
     return 0
 
 

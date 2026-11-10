@@ -1,0 +1,705 @@
+{
+ "schema": "dwocanvas/2",
+ "source": {
+  "tool": "html",
+  "adapter": "dwocanvas-html/0.1.0",
+  "mode": "extract",
+  "file": "html_absolute.html",
+  "x-html": {
+   "browser": "chrome",
+   "viewport": [
+    400,
+    300
+   ]
+  }
+ },
+ "capabilities": [
+  "layout.flow",
+  "paint.gradient",
+  "paint.image",
+  "effects",
+  "preview",
+  "stable-ids"
+ ],
+ "assets": {
+  "preview": {
+   "data": "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",
+   "sha256": "3da60e6c69ca1bf1fc401a33cfddb35f7effc20628677956958c4f5f17e7b62b",
+   "scale": 1
+  }
+ },
+ "documents": [
+  {
+   "id": "HtmlAbsolute",
+   "name": "HtmlAbsolute",
+   "kind": "screen",
+   "root": {
+    "id": "root",
+    "name": "HtmlAbsolute",
+    "type": "frame",
+    "box": {
+     "x": 0,
+     "y": 0,
+     "w": 400,
+     "h": 300
+    },
+    "sizing": {
+     "h": "fixed",
+     "v": "fixed"
+    },
+    "clip": true,
+    "fills": [
+     {
+      "type": "solid",
+      "color": [
+       0.1333,
+       0.1569,
+       0.2,
+       1.0
+      ]
+     }
+    ],
+    "children": [
+     {
+      "id": "stage",
+      "name": "Stage",
+      "type": "frame",
+      "box": {
+       "x": 16.0,
+       "y": 16.0,
+       "w": 200.0,
+       "h": 268.0
+      },
+      "sizing": {
+       "h": "fixed",
+       "v": "fixed"
+      },
+      "fills": [
+       {
+        "type": "solid",
+        "color": [
+         0.1804,
+         0.2118,
+         0.2745,
+         1.0
+        ]
+       }
+      ],
+      "radius": [
+       8.0,
+       8.0,
+       8.0,
+       8.0
+      ],
+      "layout": {
+       "mode": "none"
+      },
+      "children": [
+       {
+        "id": "tl",
+        "name": "tl",
+        "type": "rectangle",
+        "box": {
+         "x": 8.0,
+         "y": 8.0,
+         "w": 36.0,
+         "h": 36.0
+        },
+        "sizing": {
+         "h": "fixed",
+         "v": "fixed"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.3529,
+           0.7686,
+           1.0,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         6.0,
+         6.0,
+         6.0,
+         6.0
+        ],
+        "variable": false,
+        "widgetName": "tl"
+       },
+       {
+        "id": "tr",
+        "name": "tr",
+        "type": "rectangle",
+        "box": {
+         "x": 156.0,
+         "y": 8.0,
+         "w": 36.0,
+         "h": 36.0
+        },
+        "sizing": {
+         "h": "fixed",
+         "v": "fixed"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           1.0,
+           0.7059,
+           0.2902,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         6.0,
+         6.0,
+         6.0,
+         6.0
+        ],
+        "variable": false,
+        "widgetName": "tr"
+       },
+       {
+        "id": "bl",
+        "name": "bl",
+        "type": "rectangle",
+        "box": {
+         "x": 8.0,
+         "y": 224.0,
+         "w": 36.0,
+         "h": 36.0
+        },
+        "sizing": {
+         "h": "fixed",
+         "v": "fixed"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.5451,
+           0.8784,
+           0.5412,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         6.0,
+         6.0,
+         6.0,
+         6.0
+        ],
+        "variable": false,
+        "widgetName": "bl"
+       },
+       {
+        "id": "br",
+        "name": "br",
+        "type": "rectangle",
+        "box": {
+         "x": 156.0,
+         "y": 224.0,
+         "w": 36.0,
+         "h": 36.0
+        },
+        "sizing": {
+         "h": "fixed",
+         "v": "fixed"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           1.0,
+           0.4196,
+           0.5059,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         6.0,
+         6.0,
+         6.0,
+         6.0
+        ],
+        "variable": false,
+        "widgetName": "br"
+       },
+       {
+        "id": "mid",
+        "name": "mid",
+        "type": "rectangle",
+        "box": {
+         "x": 60.0,
+         "y": 104.0,
+         "w": 80.0,
+         "h": 60.0
+        },
+        "sizing": {
+         "h": "fixed",
+         "v": "fixed"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.7647,
+           0.549,
+           1.0,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         10.0,
+         10.0,
+         10.0,
+         10.0
+        ],
+        "variable": false,
+        "widgetName": "mid"
+       },
+       {
+        "id": "tilt",
+        "name": "tilt",
+        "type": "rectangle",
+        "box": {
+         "x": 70.0,
+         "y": 190.0,
+         "w": 60.0,
+         "h": 24.0
+        },
+        "rotation": -15.0,
+        "sizing": {
+         "h": "fixed",
+         "v": "fixed"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.9608,
+           0.9608,
+           0.9686,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         3.0,
+         3.0,
+         3.0,
+         3.0
+        ],
+        "variable": false,
+        "widgetName": "tilt"
+       },
+       {
+        "id": "stage-label",
+        "name": "stage-label",
+        "type": "text",
+        "box": {
+         "x": 60.0,
+         "y": 60.0,
+         "w": 39.53,
+         "h": 14.0
+        },
+        "sizing": {
+         "h": "fixed",
+         "v": "fixed"
+        },
+        "text": {
+         "content": "Canvas",
+         "font": {
+          "family": "Roboto",
+          "weight": 700,
+          "italic": false,
+          "size": 12.0,
+          "style": "Bold"
+         },
+         "color": [
+          0.949,
+          0.9529,
+          0.9608,
+          1.0
+         ],
+         "lineHeight": {
+          "unit": "px",
+          "value": 14.0
+         },
+         "align": "left",
+         "valign": "top",
+         "autoResize": "width"
+        },
+        "variable": false,
+        "widgetName": "stage_label"
+       }
+      ],
+      "variable": false,
+      "widgetName": "Stage"
+     },
+     {
+      "id": "card",
+      "name": "Card",
+      "type": "frame",
+      "box": {
+       "x": 232.0,
+       "y": 16.0,
+       "w": 152.0,
+       "h": 172.0
+      },
+      "sizing": {
+       "h": "fixed",
+       "v": "fixed"
+      },
+      "fills": [
+       {
+        "type": "solid",
+        "color": [
+         0.1804,
+         0.2118,
+         0.2745,
+         1.0
+        ]
+       }
+      ],
+      "radius": [
+       8.0,
+       8.0,
+       8.0,
+       8.0
+      ],
+      "layout": {
+       "mode": "vertical",
+       "gap": 8.0,
+       "padding": [
+        12.0,
+        12.0,
+        12.0,
+        12.0
+       ],
+       "mainAlign": "start",
+       "crossAlign": "stretch"
+      },
+      "children": [
+       {
+        "id": "l1",
+        "name": "l1",
+        "type": "rectangle",
+        "box": {
+         "x": 12.0,
+         "y": 12.0,
+         "w": 128.0,
+         "h": 24.0
+        },
+        "sizing": {
+         "h": "fill",
+         "v": "fixed"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.2745,
+           0.3216,
+           0.4157,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         4.0,
+         4.0,
+         4.0,
+         4.0
+        ],
+        "variable": false,
+        "widgetName": "l1"
+       },
+       {
+        "id": "l2",
+        "name": "l2",
+        "type": "rectangle",
+        "box": {
+         "x": 12.0,
+         "y": 44.0,
+         "w": 128.0,
+         "h": 24.0
+        },
+        "sizing": {
+         "h": "fill",
+         "v": "fixed"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.2745,
+           0.3216,
+           0.4157,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         4.0,
+         4.0,
+         4.0,
+         4.0
+        ],
+        "variable": false,
+        "widgetName": "l2"
+       },
+       {
+        "id": "l3",
+        "name": "l3",
+        "type": "rectangle",
+        "box": {
+         "x": 12.0,
+         "y": 76.0,
+         "w": 128.0,
+         "h": 24.0
+        },
+        "sizing": {
+         "h": "fill",
+         "v": "fixed"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.2745,
+           0.3216,
+           0.4157,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         4.0,
+         4.0,
+         4.0,
+         4.0
+        ],
+        "variable": false,
+        "widgetName": "l3"
+       },
+       {
+        "id": "l4",
+        "name": "l4",
+        "type": "rectangle",
+        "box": {
+         "x": 12.0,
+         "y": 108.0,
+         "w": 128.0,
+         "h": 24.0
+        },
+        "sizing": {
+         "h": "fill",
+         "v": "fixed"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.2745,
+           0.3216,
+           0.4157,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         4.0,
+         4.0,
+         4.0,
+         4.0
+        ],
+        "variable": false,
+        "widgetName": "l4"
+       },
+       {
+        "id": "badge",
+        "name": "badge",
+        "type": "frame",
+        "box": {
+         "x": 130.0,
+         "y": -6.0,
+         "w": 28.0,
+         "h": 28.0
+        },
+        "positioning": "absolute",
+        "sizing": {
+         "h": "fixed",
+         "v": "fixed"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           1.0,
+           0.4196,
+           0.5059,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         14.0,
+         14.0,
+         14.0,
+         14.0
+        ],
+        "layout": {
+         "mode": "horizontal",
+         "gap": 0.0,
+         "padding": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+         ],
+         "mainAlign": "center",
+         "crossAlign": "center"
+        },
+        "children": [
+         {
+          "id": "badge#t0",
+          "name": "Text",
+          "type": "text",
+          "box": {
+           "x": 10.55,
+           "y": 7.0,
+           "w": 6.89,
+           "h": 14.0
+          },
+          "sizing": {
+           "h": "hug",
+           "v": "hug"
+          },
+          "text": {
+           "content": "3",
+           "font": {
+            "family": "Roboto",
+            "weight": 700,
+            "italic": false,
+            "size": 12.0,
+            "style": "Bold"
+           },
+           "color": [
+            0.949,
+            0.9529,
+            0.9608,
+            1.0
+           ],
+           "lineHeight": {
+            "unit": "px",
+            "value": 14.0
+           },
+           "align": "left",
+           "valign": "top",
+           "autoResize": "width"
+          },
+          "variable": false,
+          "widgetName": "Text"
+         }
+        ],
+        "variable": false,
+        "widgetName": "badge"
+       }
+      ],
+      "variable": false,
+      "widgetName": "Card"
+     },
+     {
+      "id": "footer",
+      "name": "footer",
+      "type": "frame",
+      "box": {
+       "x": 232.0,
+       "y": 204.0,
+       "w": 152.0,
+       "h": 80.0
+      },
+      "sizing": {
+       "h": "fixed",
+       "v": "fixed"
+      },
+      "fills": [
+       {
+        "type": "solid",
+        "color": [
+         0.2235,
+         0.2627,
+         0.3412,
+         1.0
+        ]
+       }
+      ],
+      "radius": [
+       8.0,
+       8.0,
+       8.0,
+       8.0
+      ],
+      "layout": {
+       "mode": "none"
+      },
+      "children": [
+       {
+        "id": "footer-dot",
+        "name": "footer-dot",
+        "type": "rectangle",
+        "box": {
+         "x": 64.0,
+         "y": 28.0,
+         "w": 24.0,
+         "h": 24.0
+        },
+        "sizing": {
+         "h": "fixed",
+         "v": "fixed"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.3529,
+           0.7686,
+           1.0,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         12.0,
+         12.0,
+         12.0,
+         12.0
+        ],
+        "variable": false,
+        "widgetName": "footer_dot"
+       }
+      ],
+      "variable": false,
+      "widgetName": "footer"
+     }
+    ],
+    "variable": false,
+    "widgetName": "HtmlAbsolute"
+   },
+   "preview": "preview"
+  }
+ ],
+ "lint": [],
+ "x-conformance": {
+  "maxDiff": 0.01,
+  "notes": "Measured 0.19%: canvas-placed boxes, an absolute badge over a flex column (positioning absolute) and a 15 deg rotated box. Remaining pixels are the rotated box edges and text."
+ }
+}

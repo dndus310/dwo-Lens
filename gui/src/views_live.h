@@ -1,4 +1,4 @@
-// State Monitor: live state from running games as an object graph, per-field state machines,
+// DwoStateMonitor: live state from running games as an object graph, per-field state machines,
 // a property inspector, a scrubbable timeline and an event list.
 #pragma once
 
@@ -314,7 +314,7 @@ static void LiveGuide(App& app)
 	float width = ImMin(avail.x - S(40), S(620));
 	ImGui::SetCursorPosX((avail.x - width) * 0.5f);
 	ImGui::BeginChild("guide", ImVec2(width, 0), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders);
-	Title(ICON_EYE "  State Monitor 시작하기");
+	Title(ICON_EYE "  DwoStateMonitor 시작하기");
 	TextDim("실행 중인 게임의 상태를 이 창에서 실시간으로 봅니다. 프로젝트 코드는 필요 없습니다.");
 	ImGui::Spacing();
 	auto step = [&](int n, bool done, const char* title, const char* body) {
@@ -328,7 +328,7 @@ static void LiveGuide(App& app)
 		ImGui::PopTextWrapPos();
 		ImGui::PopID();
 	};
-	step(1, app.stateMonitor != 0, "StateMonitor 설치", "도구 화면이나 아래 버튼으로 설치합니다. 기본 설치는 에디터·PIE 전용이라 패키지 빌드에 영향이 없습니다.");
+	step(1, app.stateMonitor != 0, "DwoStateMonitor 설치", "도구 화면이나 아래 버튼으로 설치합니다. 기본 설치는 에디터·PIE 전용이라 패키지 빌드에 영향이 없습니다.");
 	ImGui::BeginDisabled(!app.attached || app.stateMonitor != 0 || app.runner.running);
 	if (ImGui::Button("설치 (에디터·PIE 전용)")) app.Run("sm-install");
 	ImGui::EndDisabled();
@@ -352,7 +352,7 @@ static void LiveGuide(App& app)
 	if (ImGui::Button((std::string(ICON_OPEN) + "  녹화 파일 열기...").c_str()))
 	{
 		fs::path p;
-		if (PickOpen(g_hwnd, false, L"State Monitor 녹화 열기", p, L"JSON Lines", L"*.jsonl"))
+		if (PickOpen(g_hwnd, false, L"DwoStateMonitor 녹화 열기", p, L"JSON Lines", L"*.jsonl"))
 			PushToast("녹화를 열었습니다", Fmt("메시지 %d개", app.store.Import(p)), col::Info);
 	}
 	ImGui::EndChild();
@@ -361,7 +361,7 @@ static void LiveGuide(App& app)
 static void DrawLiveMain(App& app)
 {
 	LiveSession* s = LiveCurrentSession(app);
-	ViewHeader(ICON_EYE, "State Monitor", s ? s->name : "연결 대기");
+	ViewHeader(ICON_EYE, "DwoStateMonitor", s ? s->name : "연결 대기");
 	// toolbar
 	ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - S(380));
 	bool live = ui.playhead < 0;
@@ -375,7 +375,7 @@ static void DrawLiveMain(App& app)
 	ImGui::BeginDisabled(!app.attached || app.stateMonitor == 0);
 	if (ImGui::Button((std::string(ICON_GAME) + " 게임 실행").c_str())) app.Run("play");
 	ImGui::EndDisabled();
-	Tooltip("프로젝트를 -game 모드로 띄웁니다. StateMonitor가 설치되어 있어야 합니다.");
+	Tooltip("프로젝트를 -game 모드로 띄웁니다. DwoStateMonitor가 설치되어 있어야 합니다.");
 	ImGui::SameLine();
 	if (ToolButton(ICON_SAVE, "녹화 저장 (JSON Lines)", false, !app.store.recording.empty()))
 	{
@@ -387,7 +387,7 @@ static void DrawLiveMain(App& app)
 	if (ToolButton(ICON_OPEN, "녹화 열기"))
 	{
 		fs::path p;
-		if (PickOpen(g_hwnd, false, L"State Monitor 녹화 열기", p, L"JSON Lines", L"*.jsonl")) app.store.Import(p);
+		if (PickOpen(g_hwnd, false, L"DwoStateMonitor 녹화 열기", p, L"JSON Lines", L"*.jsonl")) app.store.Import(p);
 	}
 	ImGui::SameLine();
 	if (ToolButton(ICON_DELETE, "지우기 (연결은 유지)")) { app.store.Clear(); ui.liveSource.clear(); ui.playhead = -1; ui.liveGraph.Clear(); ui.machineGraph.Clear(); }

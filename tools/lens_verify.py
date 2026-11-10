@@ -1,4 +1,4 @@
-"""dwo-Lens verify (ST-3) and logs (ST-4) lines: turn wrapped tool outputs into one verdict and report.
+"""dwo-Forge Lens verify (ST-3) and logs (ST-4) lines: turn wrapped tool outputs into one verdict and report.
 
     python lens_verify.py verify --run <run dir> [--baseline <previous logs.json>]
     python lens_verify.py logs   --run <run dir> --files <log files...> [--crashes <dir>] [--baseline <json>]
@@ -143,7 +143,7 @@ def main() -> int:
         result = verify(args.run, baseline)
         (out / "verify.json").write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
         (out / "report.html").write_text(render_verify(result, run_id), encoding="utf-8")
-        print(f"[dwo-lens] verify: " + ", ".join(f"{s['id']}={s['verdict']}" for s in result["steps"]) + f" -> {result['verdict']}")
+        print(f"[dwo-forge] verify: " + ", ".join(f"{s['id']}={s['verdict']}" for s in result["steps"]) + f" -> {result['verdict']}")
     else:
         summary = lens_logs.run(args.files, args.crashes, set(args.ignore), baseline)
         summary["verdict"] = lens_logs.verdict_of(summary)
@@ -154,7 +154,7 @@ def main() -> int:
                 f"<code>{'<br>'.join(html.escape(f) for f in summary['files'])}</code></section>"
                 f"<section><h2>오류 · 경고 그룹</h2>{log_groups_html(summary, 80)}</section>")
         (out / "report.html").write_text(page("로그 라인", summary["verdict"], run_id, body), encoding="utf-8")
-        print(f"[dwo-lens] logs: {c} groups={len(summary['groups'])} new={summary['newGroups']} "
+        print(f"[dwo-forge] logs: {c} groups={len(summary['groups'])} new={summary['newGroups']} "
               f"crashes={len(summary['crashes'])} verdict={summary['verdict']}")
     return 0
 

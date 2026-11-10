@@ -1,9 +1,10 @@
 {
-  "schema": "lens.catalog/0.1",
-  "_comment": "Tool registry. kind: build = implemented by dwo-Lens, wrap = Epic/engine tool driven headless, ai = interpretation. status: ready | planned.",
+  "schema": "forge.catalog/0.2",
+  "_comment": "Tool registry of dwo-Forge. tool: lens (analysis lines), statemonitor (DwoStateMonitor), canvas (DwoCanvas), forge (shared operations). kind: build = implemented by dwo-Forge, wrap = Epic/engine tool driven headless, ai = interpretation. status: ready | planned.",
   "tools": [
     {
       "id": "reflection-dump",
+      "tool": "lens",
       "station": "ST-1",
       "kind": "build",
       "status": "ready",
@@ -13,6 +14,7 @@
     },
     {
       "id": "blueprint-graph-dump",
+      "tool": "lens",
       "station": "ST-1",
       "kind": "build",
       "status": "ready",
@@ -22,6 +24,7 @@
     },
     {
       "id": "asset-reference-scan",
+      "tool": "lens",
       "station": "ST-1",
       "kind": "wrap",
       "status": "ready",
@@ -31,6 +34,7 @@
     },
     {
       "id": "module-plugin-scan",
+      "tool": "lens",
       "station": "ST-1",
       "kind": "build",
       "status": "ready",
@@ -40,6 +44,7 @@
     },
     {
       "id": "architecture-graph",
+      "tool": "lens",
       "station": "ST-2",
       "kind": "build",
       "status": "ready",
@@ -49,6 +54,7 @@
     },
     {
       "id": "cycle-check",
+      "tool": "lens",
       "station": "ST-2",
       "kind": "build",
       "status": "ready",
@@ -58,6 +64,7 @@
     },
     {
       "id": "hard-ref-chain",
+      "tool": "lens",
       "station": "ST-2",
       "kind": "build",
       "status": "ready",
@@ -67,6 +74,7 @@
     },
     {
       "id": "unused-assets",
+      "tool": "lens",
       "station": "ST-2",
       "kind": "build",
       "status": "ready",
@@ -76,6 +84,7 @@
     },
     {
       "id": "redirector-scan",
+      "tool": "lens",
       "station": "ST-2",
       "kind": "build",
       "status": "ready",
@@ -85,6 +94,7 @@
     },
     {
       "id": "bp-complexity",
+      "tool": "lens",
       "station": "ST-2",
       "kind": "build",
       "status": "ready",
@@ -94,6 +104,7 @@
     },
     {
       "id": "naming-lint",
+      "tool": "lens",
       "station": "ST-3",
       "kind": "build",
       "status": "ready",
@@ -103,15 +114,17 @@
     },
     {
       "id": "state-monitor-adapter",
+      "tool": "statemonitor",
       "station": "ST-4",
       "kind": "build",
       "status": "ready",
       "command": "analyze, verify",
-      "invocation": "detects the project's own StateMonitor plugin, BP and C++ submit points; adds StateMonitor.* tests to verify",
+      "invocation": "detects the project's DwoStateMonitor (or 1.x StateMonitor) plugin, BP and C++ submit points; adds StateMonitor.* tests to verify",
       "output": "statemonitor.json"
     },
     {
       "id": "compile-all-blueprints",
+      "tool": "lens",
       "station": "ST-3",
       "kind": "wrap",
       "status": "ready",
@@ -121,6 +134,7 @@
     },
     {
       "id": "data-validation",
+      "tool": "lens",
       "station": "ST-3",
       "kind": "wrap",
       "status": "ready",
@@ -130,6 +144,7 @@
     },
     {
       "id": "automation-tests",
+      "tool": "lens",
       "station": "ST-3",
       "kind": "wrap",
       "status": "ready",
@@ -139,6 +154,7 @@
     },
     {
       "id": "log-parser",
+      "tool": "lens",
       "station": "ST-4",
       "kind": "build",
       "status": "ready",
@@ -148,6 +164,7 @@
     },
     {
       "id": "crash-collector",
+      "tool": "lens",
       "station": "ST-4",
       "kind": "build",
       "status": "ready",
@@ -157,6 +174,7 @@
     },
     {
       "id": "map-boot-smoke",
+      "tool": "lens",
       "station": "ST-3",
       "kind": "wrap",
       "status": "ready",
@@ -168,6 +186,7 @@
     },
     {
       "id": "csv-perf-capture",
+      "tool": "lens",
       "station": "ST-4",
       "kind": "wrap",
       "status": "ready",
@@ -179,6 +198,7 @@
     },
     {
       "id": "content-sizes",
+      "tool": "lens",
       "station": "ST-2",
       "kind": "build",
       "status": "ready",
@@ -190,6 +210,7 @@
     },
     {
       "id": "insights-trace",
+      "tool": "lens",
       "station": "ST-4",
       "kind": "wrap",
       "status": "ready",
@@ -201,6 +222,7 @@
     },
     {
       "id": "play-launcher",
+      "tool": "forge",
       "station": "OPS",
       "kind": "wrap",
       "status": "ready",
@@ -212,6 +234,7 @@
     },
     {
       "id": "insights-export",
+      "tool": "lens",
       "station": "ST-4",
       "kind": "wrap",
       "status": "planned",
@@ -221,6 +244,7 @@
     },
     {
       "id": "summarize-trace",
+      "tool": "lens",
       "station": "ST-4",
       "kind": "wrap",
       "status": "planned",
@@ -230,6 +254,7 @@
     },
     {
       "id": "csv-perf-report",
+      "tool": "lens",
       "station": "ST-4",
       "kind": "wrap",
       "status": "planned",
@@ -239,6 +264,7 @@
     },
     {
       "id": "static-analyzer",
+      "tool": "lens",
       "station": "ST-3",
       "kind": "wrap",
       "status": "planned",
@@ -248,6 +274,7 @@
     },
     {
       "id": "iwyu-report",
+      "tool": "lens",
       "station": "ST-2",
       "kind": "wrap",
       "status": "planned",
@@ -257,17 +284,19 @@
     },
     {
       "id": "state-monitor-history",
+      "tool": "statemonitor",
       "station": "ST-4",
       "kind": "build",
       "status": "ready",
       "command": "gui (State Monitor)",
-      "invocation": "dwo-Lens GUI > State Monitor > 녹화 저장 / 녹화 열기 (or --open-recording <file.jsonl>)",
+      "invocation": "dwo-Forge GUI > DwoStateMonitor > 녹화 저장 / 녹화 열기 (or --open-recording <file.jsonl>)",
       "output": "<name>_state.jsonl",
       "category": "runtime",
       "description": "Records every live snapshot the viewer receives and saves or reopens it as JSON Lines; the timeline replays it."
     },
     {
       "id": "ai-interpretation",
+      "tool": "lens",
       "station": "ST-5",
       "kind": "ai",
       "status": "planned",
@@ -277,26 +306,29 @@
     },
     {
       "id": "control-panel",
+      "tool": "forge",
       "station": "OPS",
       "kind": "build",
       "status": "ready",
       "command": "gui",
-      "invocation": "gui.bat (repository) or __dwo-lens.bat gui; Dear ImGui docking + DirectX 11, built once with MSVC",
-      "output": "dashboard, problems, tests, logs, performance, State Monitor, history, tools"
+      "invocation": "dwo-Forge.bat (repository) or __dwo-forge.bat gui; Dear ImGui docking + DirectX 11, built once with MSVC",
+      "output": "Lens (dashboard, architecture, problems, verify, logs, performance), DwoStateMonitor live view, DwoCanvas, history, tools"
     },
     {
       "id": "state-monitor-live",
+      "tool": "statemonitor",
       "station": "ST-4",
       "kind": "build",
       "status": "ready",
       "category": "runtime",
       "command": "gui (State Monitor), play",
       "description": "Live viewer for running games: object graph with ownership and references, per-field state machines with transition counts, property inspector, scrubbable timeline and event list.",
-      "invocation": "StateMonitor plugin connects to 127.0.0.1:47731 (JSON Lines protocol v1); zero-code auto-observe of GameMode, GameState, players, pawns and components",
+      "invocation": "DwoStateMonitor plugin connects to 127.0.0.1:47731 (JSON Lines protocol v1); zero-code auto-observe of GameMode, GameState, players, pawns and components",
       "output": "interactive"
     },
     {
       "id": "run-compare",
+      "tool": "lens",
       "station": "OPS",
       "kind": "build",
       "status": "ready",
@@ -308,6 +340,7 @@
     },
     {
       "id": "test-trend",
+      "tool": "lens",
       "station": "ST-3",
       "kind": "build",
       "status": "ready",
@@ -319,6 +352,7 @@
     },
     {
       "id": "problems-baseline",
+      "tool": "lens",
       "station": "OPS",
       "kind": "build",
       "status": "ready",
@@ -326,19 +360,21 @@
       "command": "gui (문제)",
       "description": "Merges findings, quality, test failures, log groups, smoke, perf and size issues from every line's latest run; marks NEW against the previous run and lets you mute items into a per-project baseline.",
       "invocation": "GUI > 문제",
-      "output": "%LOCALAPPDATA%/dwo-Lens/projects/<hash>.json (mutes)"
+      "output": "%LOCALAPPDATA%/dwo-Forge/projects/<hash>.json (mutes)"
     },
     {
       "id": "state-monitor-provided",
+      "tool": "statemonitor",
       "station": "ST-4",
       "kind": "build",
       "status": "ready",
       "command": "sm-install [--runtime], sm-remove",
-      "invocation": "installs the bundled StateMonitor (prebuilt editor binaries + source) into Plugins/__StateMonitor; editor/PIE only by default so packages are unaffected, --runtime keeps it in game targets; refuses removal while project code references it",
+      "invocation": "installs the bundled DwoStateMonitor (prebuilt editor binaries + source) into Plugins/__DwoStateMonitor; editor/PIE only by default so packages are unaffected, --runtime keeps it in game targets; refuses removal while project code references it; migrates a dwo-Lens 1.x Plugins/__StateMonitor install",
       "output": "runtime USTRUCT snapshots, change history, viewer; StateMonitor.* tests in verify"
     },
     {
       "id": "selftest",
+      "tool": "forge",
       "station": "OPS",
       "kind": "build",
       "status": "ready",
@@ -348,12 +384,61 @@
     },
     {
       "id": "package-check",
+      "tool": "forge",
       "station": "ST-3",
       "kind": "wrap",
       "status": "ready",
       "command": "tests/package_check.ps1",
-      "invocation": "BuildCookRun (Shipping) with dwo-Lens attached, package inspection, smoke run, detach",
+      "invocation": "BuildCookRun (Shipping) with dwo-Forge attached, package inspection, smoke run, detach",
       "output": ".qa/<name>/package-result.json"
+    },
+    {
+      "id": "canvas-provided",
+      "tool": "canvas",
+      "station": "UI",
+      "kind": "build",
+      "status": "ready",
+      "category": "canvas",
+      "command": "canvas-install, canvas-remove [--force]",
+      "description": "Installs the bundled DwoCanvas plugin (prebuilt editor binaries + source) into Plugins/DwoCanvas. Visible to git on purpose: generated widgets use DwoCanvasRuntime. Removal is refused while any asset still references DwoCanvasRuntime.",
+      "invocation": "plugin/DwoCanvas -> <Project>/Plugins/DwoCanvas",
+      "output": "DwoCanvasEditor, DwoCanvasRuntime modules"
+    },
+    {
+      "id": "canvas-validate",
+      "tool": "canvas",
+      "station": "UI",
+      "kind": "build",
+      "status": "ready",
+      "category": "canvas",
+      "command": "canvas-validate <file>",
+      "description": "Checks a *.dwocanvas.json (dwocanvas/2) or legacy designbridge/1 file against the schema before importing.",
+      "invocation": "python -m dwocanvas validate <file> [--json]  (PYTHONPATH=canvas/python)",
+      "output": "validation messages, exit code"
+    },
+    {
+      "id": "canvas-import",
+      "tool": "canvas",
+      "station": "UI",
+      "kind": "build",
+      "status": "ready",
+      "category": "canvas",
+      "command": "canvas-import <file> [--reset] [--doc Name]",
+      "description": "Builds or incrementally updates Widget Blueprint designer trees from a design file; edits made in UE are kept unless --reset.",
+      "invocation": "UnrealEditor-Cmd <uproject> -run=DwoCanvasImport -File=<json> [-ResetOverrides] [-Doc=<name>]",
+      "output": "Saved/DwoCanvas/Reports/*.txt, WBP assets"
+    },
+    {
+      "id": "canvas-view",
+      "tool": "canvas",
+      "station": "UI",
+      "kind": "build",
+      "status": "ready",
+      "category": "canvas",
+      "command": "gui (DwoCanvas)",
+      "description": "Install state, design file picker (drag and drop), validate / import / import with reset, and a summary of the latest import report.",
+      "invocation": "dwo-Forge GUI > DwoCanvas (Ctrl+0)",
+      "output": "interactive"
     }
   ]
 }

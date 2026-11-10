@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="dwocanvas:viewport" content="400x300">
+<meta name="dwocanvas:name" content="HtmlColumn">
+<title>Column: space-between, fill, stretch</title>
+<style>
+@font-face { font-family: "Roboto"; font-weight: 400; font-style: normal; src: url("file:///C:/Program%20Files/Epic%20Games/UE_5.7/Engine/Content/Slate/Fonts/Roboto-Regular.ttf"); }
+@font-face { font-family: "Roboto"; font-weight: 700; font-style: normal; src: url("file:///C:/Program%20Files/Epic%20Games/UE_5.7/Engine/Content/Slate/Fonts/Roboto-Bold.ttf"); }
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+/* The body is the screen: a row of three columns */
+body { width: 400px; height: 300px; background: #20262f; font-family: "Roboto"; color: #eef0f3; font-size: 12px; line-height: 14px;
+       display: flex; flex-direction: row; gap: 12px; padding: 16px; align-items: stretch; }
+.col { width: 112px; display: flex; flex-direction: column; border-radius: 6px; background: #2d3542; padding: 10px; flex: none; }
+
+/* 1: space-between (header / middle / footer pushed apart), children stretched across */
+#between { justify-content: space-between; }
+#between .bar { height: 28px; border-radius: 4px; }
+#between .top { background: #5ac4ff; }
+#between .mid { background: #c38cff; height: 40px; }
+#between .bottom { background: #ffb44a; }
+
+/* 2: a growing child fills the remaining height */
+#fill { gap: 8px; }
+#fill .title { font-weight: 700; font-size: 14px; line-height: 17px; }
+#fill .grow { flex: 1 1 0; background: #3e4a5c; border-radius: 4px; }
+#fill .foot { height: 24px; background: #8be08a; border-radius: 4px; }
+
+/* 3: centred items that hug their width, end-aligned main axis */
+#center { gap: 6px; align-items: center; justify-content: flex-end; }
+#center .chip { height: 22px; border-radius: 11px; background: #ff6b81; }
+#center .w40 { width: 40px; }
+#center .w64 { width: 64px; }
+#center .w88 { width: 88px; }
+#center .caption { color: #b8c0cc; font-size: 11px; line-height: 13px; }
+</style>
+</head>
+<body data-db-id="screen">
+  <div class="col" id="between" data-name="Between">
+    <div class="bar top" id="b_top"></div>
+    <div class="bar mid" id="b_mid"></div>
+    <div class="bar bottom" id="b_bottom"></div>
+  </div>
+  <div class="col" id="fill" data-name="Fill">
+    <div class="title" id="f_title">Inventory</div>
+    <div class="grow" id="f_grow"></div>
+    <div class="foot" id="f_foot"></div>
+  </div>
+  <div class="col" id="center" data-name="Center">
+    <div class="chip w40" id="c_1"></div>
+    <div class="chip w64" id="c_2"></div>
+    <div class="chip w88" id="c_3"></div>
+    <div class="caption" id="c_caption">bottom up</div>
+  </div>
+</body>
+</html>

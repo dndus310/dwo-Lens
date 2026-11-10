@@ -1,6 +1,6 @@
-# Packaging check: copies a UE project into an isolated QA folder, attaches dwo-Lens (optionally installs
-# StateMonitor), packages it with BuildCookRun, smoke-runs the packaged game, and verifies that nothing from
-# the editor-only inspector reaches the package. Writes <QaRoot>\<Name>\package-result.json.
+# Packaging check: copies a UE project into an isolated QA folder, attaches dwo-Forge (optionally installs
+# DwoStateMonitor), packages it with BuildCookRun, smoke-runs the packaged game, and verifies that nothing from
+# the editor-only Lens inspector reaches the package. Writes <QaRoot>\<Name>\package-result.json.
 #
 #   powershell -File tests\package_check.ps1 -Source <project folder> -Name pkg_bp -Config Shipping [-InstallStateMonitor]
 param(
@@ -28,7 +28,7 @@ function Save { Write-Output ($result | ConvertTo-Json -Depth 6) | Set-Content -
 # ---- isolated copy
 if (Test-Path $work) { Remove-Item -Recurse -Force $work }
 New-Item -ItemType Directory -Force $project | Out-Null
-Get-ChildItem $Source | Where-Object { $_.Name -notin @('Intermediate', 'Saved', 'DerivedDataCache', '.git', '.vs', '__dwo-lens', '__dwo-lens.bat') -and $_.Extension -ne '.sln' -and $_.Name -notlike '*.html' } |
+Get-ChildItem $Source | Where-Object { $_.Name -notin @('Intermediate', 'Saved', 'DerivedDataCache', '.git', '.vs', '__dwo-forge', '__dwo-forge.bat', '__dwo-lens', '__dwo-lens.bat') -and $_.Extension -ne '.sln' -and $_.Name -notlike '*.html' } |
     ForEach-Object { Copy-Item -Recurse $_.FullName $project }
 Get-ChildItem -Recurse -Directory -Path (Join-Path $project 'Plugins') -Filter '__*' -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
 & git -C $project init -q
@@ -36,19 +36,19 @@ $uproject = (Get-ChildItem $project -Filter *.uproject | Select-Object -First 1)
 Step 'copy' $true "isolated copy at $project"
 
 # ---- attach (+ StateMonitor)
-$env:DWO_LENS_HOME = $repo
-Copy-Item (Join-Path $repo '__dwo-lens.bat') $project
+$env:DWO_FORGE_HOME = $repo
+Copy-Item (Join-Path $repo '__dwo-forge.bat') $project
 $sw = [Diagnostics.Stopwatch]::StartNew()
-& cmd /c "`"$project\__dwo-lens.bat`" attach" | Out-Null
-Step 'attach' ($LASTEXITCODE -eq 0 -and (Test-Path "$project\Plugins\__DwoLensInspector")) 'dwo-Lens attached' $sw.Elapsed.TotalSeconds
+& cmd /c "`"$project\__dwo-forge.bat`" attach" | Out-Null
+Step 'attach' ($LASTEXITCODE -eq 0 -and (Test-Path "$project\Plugins\__DwoLensInspector")) 'dwo-Forge attached' $sw.Elapsed.TotalSeconds
 if ($InstallStateMonitor) {
     $sw.Restart()
-    & cmd /c "`"$project\__dwo-lens.bat`" sm-install" | Out-Null
-    Step 'sm-install' ($LASTEXITCODE -eq 0 -and (Test-Path "$project\Plugins\__StateMonitor")) 'StateMonitor installed' $sw.Elapsed.TotalSeconds
+    & cmd /c "`"$project\__dwo-forge.bat`" sm-install" | Out-Null
+    Step 'sm-install' ($LASTEXITCODE -eq 0 -and (Test-Path "$project\Plugins\__DwoStateMonitor")) 'DwoStateMonitor installed' $sw.Elapsed.TotalSeconds
 }
 
 # ---- package
-$engineRoot = (Get-Content -Raw "$project\__dwo-lens\state.json" | ConvertFrom-Json).engineRoot
+$engineRoot = (Get-Content -Raw "$project\__dwo-forge\state.json" | ConvertFrom-Json).engineRoot
 $uat = Join-Path $engineRoot 'Engine\Build\BatchFiles\RunUAT.bat'
 $log = Join-Path $work "buildcookrun-$Config.log"
 $sw.Restart()
@@ -98,9 +98,9 @@ $crashDirs = @(Get-ChildItem -Recurse -Directory -Path $archive -Filter 'Crashes
 Step 'smoke-run' ($alive -and $crashDirs.Count -eq 0) "ran $SmokeSeconds s: alive=$alive exit=$exitCode crash folders=$($crashDirs.Count)" $sw.Elapsed.TotalSeconds
 
 # ---- detach leaves the copy clean
-& cmd /c "`"$project\__dwo-lens.bat`" detach --force" | Out-Null
+& cmd /c "`"$project\__dwo-forge.bat`" detach --force" | Out-Null
 $left = @(Get-ChildItem -Force $project | Where-Object { $_.Name -like '__*' }) + @(Get-ChildItem -Force (Join-Path $project 'Plugins') -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '__*' })
-Step 'detach' ($left.Count -eq 0) "leftover dwo-Lens items after detach: $($left.Count)"
+Step 'detach' ($left.Count -eq 0) "leftover dwo-Forge items after detach: $($left.Count)"
 
 $result.ok = -not ($result.steps | Where-Object { -not $_.ok })
 Save

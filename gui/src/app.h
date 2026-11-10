@@ -361,7 +361,7 @@ struct App
 	int stateMonitor = 0;        // 0 none, 1 installed by dwo-Forge, 2 part of the project
 	bool stateMonitorLegacy = false;   // installed by dwo-Lens 1.x as Plugins/__StateMonitor (update migrates it)
 	std::string stateMonitorMode;
-	int canvas = 0;              // DwoCanvas: 0 none, 1 installed by dwo-Forge (Plugins/DwoCanvas), 2 part of the project
+	int canvas = 0;              // DwoCanvas: 0 none, 1 installed by dwo-Forge (Plugins/__DwoCanvas), 2 part of the project
 	std::string canvasVersion;
 	fs::path canvasFile;         // design file picked in the DwoCanvas view
 	std::vector<std::string> canvasRecent;
@@ -502,12 +502,22 @@ struct App
 			std::string text = ReadText(installed);
 			stateMonitorMode = text.find("TargetAllowList") != std::string::npos ? "editor" : "runtime";
 		}
-		fs::path canvasPlugin = project / "Plugins" / "DwoCanvas" / "DwoCanvas.uplugin";
-		if (fs::exists(canvasPlugin, ec))
+		// Managed install: Plugins/__DwoCanvas (2.0.0 put it in Plugins/DwoCanvas with .dwo-forge-installed).
+		fs::path canvasManaged = project / "Plugins" / "__DwoCanvas";
+		fs::path canvasOld = project / "Plugins" / "DwoCanvas";
+		fs::path canvasPlugin;
+		if (fs::exists(canvasManaged / "DwoCanvas.uplugin", ec))
 		{
-			canvas = fs::exists(project / "Plugins" / "DwoCanvas" / ".dwo-forge-installed", ec) ? 1 : 2;
-			if (auto u = ReadJson(canvasPlugin)) canvasVersion = Str(*u, "VersionName");
+			canvasPlugin = canvasManaged / "DwoCanvas.uplugin";
+			canvas = fs::exists(canvasManaged / ".dwo-forge-managed", ec) ? 1 : 2;
 		}
+		else if (fs::exists(canvasOld / ".dwo-forge-installed", ec) && fs::exists(canvasOld / "DwoCanvas.uplugin", ec))
+		{
+			canvasPlugin = canvasOld / "DwoCanvas.uplugin";
+			canvas = 1;
+		}
+		if (!canvasPlugin.empty())
+			if (auto u = ReadJson(canvasPlugin)) canvasVersion = Str(*u, "VersionName");
 		if (fs::is_directory(project / "Plugins", ec))
 			for (auto it = fs::recursive_directory_iterator(project / "Plugins", ec); it != fs::recursive_directory_iterator(); it.increment(ec))
 			{

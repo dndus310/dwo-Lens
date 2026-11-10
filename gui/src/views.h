@@ -2285,7 +2285,7 @@ static void CanvasCard(App& app, float width, float height)
 	else Pill("설치 안 됨", col::Muted);
 	ImGui::PushTextWrapPos(0);
 	TextDim("Figma·HTML 등에서 내보낸 *.dwocanvas.json을 위젯 블루프린트 디자이너 트리로 가져옵니다. 다시 가져와도 UE에서 고친 내용은 유지됩니다. "
-	        "생성된 위젯이 DwoCanvasRuntime을 쓰므로 Plugins/DwoCanvas는 숨기지 않고 프로젝트와 함께 커밋합니다.");
+	        "Plugins/__DwoCanvas에 숨겨 설치되고 제거나 uninstall 때 지워집니다.");
 	ImGui::PopTextWrapPos();
 	ImGui::SetCursorPosY(ImGui::GetWindowHeight() - ImGui::GetFrameHeight() - S(10));
 	if (app.canvas == 0)
@@ -2293,7 +2293,7 @@ static void CanvasCard(App& app, float width, float height)
 		ImGui::BeginDisabled(app.runner.running || !app.attached);
 		if (PrimaryButton("설치")) app.Run("canvas-install");
 		ImGui::EndDisabled();
-		Tooltip(app.attached ? "Plugins/DwoCanvas에 설치합니다 (git에서 숨기지 않음)." : "먼저 프로젝트에 부착하세요.");
+		Tooltip(app.attached ? "Plugins/__DwoCanvas에 설치합니다 (git에서 숨김)." : "먼저 프로젝트에 부착하세요.");
 		ImGui::SameLine();
 	}
 	if (ImGui::Button("열기##canvas")) app.requestActivity = Activity::Canvas;

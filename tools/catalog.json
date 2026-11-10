@@ -400,8 +400,8 @@
       "status": "ready",
       "category": "canvas",
       "command": "canvas-install, canvas-remove [--force]",
-      "description": "Installs the bundled DwoCanvas plugin (prebuilt editor binaries + source) into Plugins/DwoCanvas. Visible to git on purpose: generated widgets use DwoCanvasRuntime. Removal is refused while any asset still references DwoCanvasRuntime.",
-      "invocation": "plugin/DwoCanvas -> <Project>/Plugins/DwoCanvas",
+      "description": "Installs the bundled DwoCanvas plugin (prebuilt editor binaries + source) into Plugins/__DwoCanvas (git-excluded, like DwoStateMonitor); canvas-remove and uninstall delete it. Removal is refused while any asset still references DwoCanvasRuntime (--force overrides). A 2.0.0 install in Plugins/DwoCanvas is moved there automatically.",
+      "invocation": "plugin/DwoCanvas -> <Project>/Plugins/__DwoCanvas",
       "output": "DwoCanvasEditor, DwoCanvasRuntime modules"
     },
     {

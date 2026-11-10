@@ -143,17 +143,34 @@ class ForgeCliTests(unittest.TestCase):
     # ------------------------------------------------------------------ DwoCanvas
 
     def make_canvas(self, managed=True):
-        plugin = self.project / "Plugins" / "DwoCanvas"
+        # Managed: Plugins/__DwoCanvas with the dwo-Forge marker. Otherwise the project's own Plugins/DwoCanvas.
+        plugin = self.project / "Plugins" / ("__DwoCanvas" if managed else "DwoCanvas")
         write(plugin / "DwoCanvas.uplugin", json.dumps({"FileVersion": 3, "VersionName": "0.2.0"}))
         if managed:
-            write(plugin / ".dwo-forge-installed", "installed by dwo-Forge")
+            write(plugin / ".dwo-forge-managed", "installed by dwo-Forge")
         return plugin
+
+    def make_widget_user(self):
+        asset = self.project / "Content" / "UI" / "WBP_Shop.uasset"
+        asset.parent.mkdir(parents=True, exist_ok=True)
+        asset.write_bytes(b"\xc1\x83\x2a\x9e" + b"\x00" * 64 + b"/Script/DwoCanvasRuntime\x00DwoCanvasFrame\x00" + b"\x00" * 64)
+        return asset
+
+    def test_canvas_2_0_0_install_moves_to_managed_folder(self):
+        old = self.project / "Plugins" / "DwoCanvas"
+        write(old / "DwoCanvas.uplugin", json.dumps({"FileVersion": 3, "VersionName": "0.2.0"}))
+        write(old / ".dwo-forge-installed", "DwoCanvas 0.2.0 installed by dwo-Forge")
+        code, out = self.forge("status")
+        self.assertEqual(code, 0, out)
+        new = self.project / "Plugins" / "__DwoCanvas"
+        self.assertFalse(old.exists(), out)
+        self.assertTrue((new / ".dwo-forge-managed").exists())
+        self.assertFalse((new / ".dwo-forge-installed").exists())
+        self.assertIn("__DwoCanvas", out)
 
     def test_canvas_remove_refuses_while_widgets_use_the_runtime(self):
         plugin = self.make_canvas()
-        asset = self.project / "Content" / "UI" / "WBP_Shop.uasset"
-        asset.parent.mkdir(parents=True)
-        asset.write_bytes(b"\xc1\x83\x2a\x9e" + b"\x00" * 64 + b"/Script/DwoCanvasRuntime\x00DwoCanvasFrame\x00" + b"\x00" * 64)
+        self.make_widget_user()
         code, out = self.forge("canvas-remove")
         self.assertNotEqual(code, 0, out)
         self.assertIn("WBP_Shop.uasset", out)
@@ -175,14 +192,30 @@ class ForgeCliTests(unittest.TestCase):
         self.assertNotEqual(code, 0, out)
         self.assertTrue(plugin.exists())
 
-    def test_uninstall_keeps_dwo_canvas(self):
+    def test_uninstall_removes_dwo_canvas(self):
         self.make_legacy_project()
         plugin = self.make_canvas()
         code, out = self.forge("uninstall", "--delete-data")
         self.assertIn(code, (0, 3), out)
-        self.assertTrue(plugin.exists())
-        self.assertIn("DwoCanvas", out)
+        self.assertFalse(plugin.exists(), out)
         self.assertFalse((self.project / "__dwo-forge").exists())
+
+    def test_uninstall_refuses_while_widgets_use_dwo_canvas(self):
+        self.make_legacy_project()
+        plugin = self.make_canvas()
+        self.make_widget_user()
+        code, out = self.forge("uninstall", "--delete-data")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("WBP_Shop.uasset", out)
+        self.assertTrue(plugin.exists())
+        self.assertTrue((self.project / "__dwo-forge").exists(), "a refusal leaves the attach intact")
+
+    def test_uninstall_keeps_the_projects_own_dwo_canvas(self):
+        self.make_legacy_project()
+        plugin = self.make_canvas(managed=False)
+        code, out = self.forge("uninstall", "--delete-data")
+        self.assertIn(code, (0, 3), out)
+        self.assertTrue(plugin.exists())
 
     def test_canvas_import_needs_the_plugin_and_a_file(self):
         code, out = self.forge("canvas-import")

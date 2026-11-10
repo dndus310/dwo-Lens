@@ -115,11 +115,11 @@ if (-not $SkipIntegration -and $Project) {
     $smFailed = @($smTests | Where-Object { $_.state -ne 'Success' })
     Check 'cycle' 'DwoStateMonitor tests' ($smTests.Count -ge 6 -and $smFailed.Count -eq 0) "$($smTests.Count) run, $($smFailed.Count) failed" $r.Seconds
 
-    # DwoCanvas: visible plugin, validator, commandlet import, removal guard.
+    # DwoCanvas: managed like DwoStateMonitor (hidden install, validator, commandlet import, removal guards).
     $r = Run 'canvas-install'
-    $canvasDir = Join-Path $copy 'Plugins\DwoCanvas'
-    $visible = (& git -C $copy status --porcelain --untracked-files=normal -- Plugins/DwoCanvas) -join "`n"
-    Check 'canvas' 'canvas-install' ($r.Code -eq 0 -and (Test-Path "$canvasDir\Binaries\Win64\UnrealEditor-DwoCanvasEditor.dll") -and $visible) 'prebuilt, visible to git' $r.Seconds
+    $canvasDir = Join-Path $copy 'Plugins\__DwoCanvas'
+    $visible = (& git -C $copy status --porcelain --untracked-files=normal -- Plugins/__DwoCanvas) -join "`n"
+    Check 'canvas' 'canvas-install' ($r.Code -eq 0 -and (Test-Path "$canvasDir\Binaries\Win64\UnrealEditor-DwoCanvasEditor.dll") -and -not $visible) 'prebuilt, hidden from git' $r.Seconds
     $sample = Join-Path $repo 'plugin\DwoCanvas\Samples\sample_settings.dwocanvas.json'
     $r = Run "canvas-validate `"$sample`""
     Check 'canvas' 'canvas-validate sample' ($r.Code -eq 0) '' $r.Seconds
@@ -128,8 +128,20 @@ if (-not $SkipIntegration -and $Project) {
     Check 'canvas' 'canvas-import sample' ($r.Code -eq 0 -and $reportLine) "$reportLine" $r.Seconds
     $r = Run 'canvas-remove'
     Check 'canvas' 'canvas-remove refuses while widgets use it' ($r.Code -ne 0 -and (Test-Path $canvasDir)) ''
+    $r = Run 'uninstall --delete-data'
+    Check 'canvas' 'uninstall refuses while widgets use it' ($r.Code -ne 0 -and (Test-Path $canvasDir) -and (Test-Path "$copy\__dwo-forge")) ''
     # Drop what the import generated (widgets, textures, import records) so the rest of the cycle compares clean.
     & git -C $copy clean -fdq -- Content DwoCanvas 2>$null
+    $r = Run 'canvas-remove'
+    Check 'canvas' 'canvas-remove once no widget uses it' ($r.Code -eq 0 -and -not (Test-Path $canvasDir)) ''
+    # A 2.0.0 install (visible Plugins\DwoCanvas with .dwo-forge-installed) moves to Plugins\__DwoCanvas.
+    $r = Run 'canvas-install'
+    $oldCanvas = Join-Path $copy 'Plugins\DwoCanvas'
+    Move-Item $canvasDir $oldCanvas
+    Remove-Item -Force (Join-Path $oldCanvas '.dwo-forge-managed')
+    Set-Content -Encoding UTF8 (Join-Path $oldCanvas '.dwo-forge-installed') 'DwoCanvas 0.2.0 installed by dwo-Forge'
+    $r = Run 'status'
+    Check 'canvas' 'status moves a 2.0.0 install' ($r.Code -eq 0 -and -not (Test-Path $oldCanvas) -and (Test-Path "$canvasDir\.dwo-forge-managed")) '' $r.Seconds
 
     if ($guiExe) {
         $out = Join-Path $qa 'combined-report.html'
@@ -164,15 +176,10 @@ if (-not $SkipIntegration -and $Project) {
 
     $r = Run 'uninstall --delete-data'
     $leftovers = @(Get-ChildItem -Force $copy | Where-Object { $_.Name -like '__*' }) + @(Get-ChildItem -Force (Join-Path $copy 'Plugins') -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '__*' })
-    # Plugins/DwoCanvas stays on purpose (generated widgets use it) and is checked separately.
     $after = (@(& git -C $copy status --porcelain) | Where-Object { $_ -notmatch 'Plugins/' }) -join "`n"
     $exclude = Get-Content -Raw (Join-Path $copy '.git\info\exclude')
     Check 'cycle' 'uninstall leaves no trace' ($r.Code -eq 0 -and $leftovers.Count -eq 0 -and $after -eq $before -and $exclude -notmatch 'dwo-(forge|lens) managed') "leftovers $($leftovers.Count)" $r.Seconds
-    Check 'canvas' 'uninstall keeps DwoCanvas' ((Test-Path $canvasDir) -and $r.Out -match 'DwoCanvas') ''
-    $r = Run 'attach'
-    $r = Run 'canvas-remove'
-    Check 'canvas' 'canvas-remove once no widget uses it' ($r.Code -eq 0 -and -not (Test-Path $canvasDir)) ''
-    $r = Run 'uninstall --delete-data'
+    Check 'canvas' 'uninstall removes DwoCanvas' (-not (Test-Path $canvasDir)) ''
 }
 
 # ---------------------------------------------------------------- 5. projects without their own repository

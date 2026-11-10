@@ -26,8 +26,9 @@ dwo-Forge가 제공하는 도구 중 하나입니다. **정해진 시안 규격(
 | `Conformance/` | 적합성 케이스: 원본 도구의 렌더 이미지와 UE 렌더를 비교 |
 
 ## 설치와 사용
-- dwo-Forge로 설치합니다: `dwo-Forge.bat canvas-install <프로젝트>`. 플러그인은 `Plugins/DwoCanvas`에 복사됩니다.
-  - 숨김 폴더가 아니고 git에서 제외되지도 않습니다. 생성된 위젯이 런타임 모듈을 쓰기 때문에 프로젝트와 함께 커밋해야 합니다.
+- dwo-Forge로 설치합니다: `dwo-Forge.bat canvas-install <프로젝트>`. 원본은 dwo-Forge에 있고, 플러그인은 `Plugins/__DwoCanvas`에 복사됩니다(git에서 숨김).
+  - `canvas-remove`나 `uninstall` 때 지워집니다. 생성된 위젯이 런타임 모듈을 쓰고 있으면 제거를 멈추고 알려 줍니다.
+  - 생성된 위젯을 여는 다른 PC에도 DwoCanvas가 설치되어 있어야 합니다.
 - **가져오기 방법**
   - 에디터: **Tools > DwoCanvas > Import Design File...** (`*.dwocanvas.json`)
   - 명령줄: `UnrealEditor-Cmd.exe <프로젝트> -run=DwoCanvasImport -File=<json> [-ResetOverrides] [-Doc=이름]` (오류가 없으면 종료 코드 0)

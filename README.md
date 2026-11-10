@@ -6,7 +6,7 @@
 |---|---|---|
 | **Lens** | 분석·검증·로그 라인: 아키텍처 리포트(`analyze`), 검증(`verify`), 로그(`logs`), 맵 스모크(`smoke`), 성능(`perf`), 콘텐츠 용량(`sizes`), Insights 트레이스(`trace`) | `Plugins/__DwoLensInspector` (숨김, 미리 빌드, 기본 비활성) |
 | **DwoStateMonitor** | 실행 중인 게임의 상태를 실시간으로 보는 런타임 플러그인 (예전 이름 StateMonitor) | `Plugins/__DwoStateMonitor` (숨김, 선택 설치) |
-| **DwoCanvas** | 디자인 파일(`*.dwocanvas.json`)을 UMG 위젯 블루프린트로 가져오는 플러그인 | `Plugins/DwoCanvas` (**숨기지 않음**, 선택 설치) |
+| **DwoCanvas** | 디자인 파일(`*.dwocanvas.json`)을 UMG 위젯 블루프린트로 가져오는 플러그인 | `Plugins/__DwoCanvas` (숨김, 선택 설치) |
 
 Lens와 DwoStateMonitor는 프로젝트를 읽기만 하며, 언제 떼어 내도 프로젝트는 그대로 동작합니다. DwoCanvas는 위젯 에셋을 만드는 도구라서 프로젝트의 일부로 커밋합니다(아래 [DwoCanvas](#제공-도구-dwocanvas)).
 
@@ -26,7 +26,7 @@ Lens와 DwoStateMonitor는 프로젝트를 읽기만 하며, 언제 떼어 내�
 
 | 지우는 것 | 내용 |
 |---|---|
-| 플러그인 | `Plugins/__DwoLensInspector`, dwo-Forge가 설치한 `Plugins/__DwoStateMonitor` (dwo-Lens 1.x의 `Plugins/__StateMonitor` 포함. 프로젝트 코드가 쓰고 있으면 제거를 멈추고 알려 줌) |
+| 플러그인 | `Plugins/__DwoLensInspector`, dwo-Forge가 설치한 `Plugins/__DwoStateMonitor` (dwo-Lens 1.x의 `Plugins/__StateMonitor` 포함. 프로젝트 코드가 쓰고 있으면 제거를 멈추고 알려 줌), `Plugins/__DwoCanvas` (생성된 위젯이 쓰고 있으면 제거를 멈추고 알려 줌) |
 | 실행 파일·설정 | `__dwo-forge.bat`, `__dwo-forge/` (부착 정보, 화면 설정, 문제 음소거), 남아 있으면 dwo-Lens 1.x의 `__dwo-lens.bat`, `__dwo-lens/` |
 | git exclude | 부착 때 넣은 dwo-Forge 블록(과 dwo-Lens 1.x 블록)만 제거. 다른 내용은 그대로 |
 | 실행 기록 | `__dwo-forge/data`와 dwo-Forge 실행이 프로젝트에 남긴 파일(성능 캡처 CSV). **보존**을 고르면 `%LOCALAPPDATA%\dwo-Forge\uninstalled\<프로젝트>-<시각>`으로 옮기고, **삭제**를 고르면 지움 |
@@ -58,7 +58,7 @@ __dwo-forge.bat sm-install [--runtime]   :: 설치 (아래 '제공 도구: DwoSt
 __dwo-forge.bat sm-remove [--force]
 
 :: DwoCanvas
-__dwo-forge.bat canvas-install                         :: Plugins/DwoCanvas에 설치 (git에서 숨기지 않음)
+__dwo-forge.bat canvas-install                         :: Plugins/__DwoCanvas에 설치 (git에서 숨김)
 __dwo-forge.bat canvas-validate <파일>                  :: 디자인 파일 검사
 __dwo-forge.bat canvas-import <파일> [--reset] [--doc 이름]  :: 위젯 블루프린트로 가져오기
 __dwo-forge.bat canvas-remove [--force]                :: 제거 (생성된 위젯이 쓰고 있으면 거부)
@@ -150,14 +150,16 @@ __dwo-forge.bat play [맵]              :: 게임 창을 띄움 (DwoStateMonitor
 Figma·HTML 변환기·직접 작성 등 어디서 왔든 같은 형식(`dwocanvas/2`)의 디자인 파일 `*.dwocanvas.json`을 UMG **위젯 블루프린트 디자이너 트리**로 만듭니다. 다시 가져오면 디자인이 바뀐 곳만 갱신하고, UE에서 고친 위젯은 유지합니다. 예전 `designbridge/1` JSON도 읽습니다.
 
 ```bat
-__dwo-forge.bat canvas-install                          :: Plugins/DwoCanvas에 설치 (미리 빌드한 에디터 바이너리 포함)
+__dwo-forge.bat canvas-install                          :: Plugins/__DwoCanvas에 설치 (미리 빌드한 에디터 바이너리 포함, git에서 숨김)
 __dwo-forge.bat canvas-validate Shop.dwocanvas.json      :: 스키마·규칙 검사 (엔진 불필요, 몇 초)
 __dwo-forge.bat canvas-import Shop.dwocanvas.json        :: 가져오기. 리포트 경로를 출력
 __dwo-forge.bat canvas-import Shop.dwocanvas.json --reset --doc Shop   :: UE 수정분까지 덮어쓰기, 문서 하나만
 __dwo-forge.bat canvas-remove                           :: 제거 (Content의 .uasset이 DwoCanvasRuntime을 쓰면 거부, --force로 강제)
 ```
 
-- **설치 위치가 다릅니다.** 다른 도구와 달리 `Plugins/DwoCanvas`에 **숨기지 않고** 설치하며 git exclude에도 넣지 않습니다. 생성된 위젯이 런타임 모듈 `DwoCanvasRuntime`(`UDwoCanvasShape`, `UDwoCanvasFrame`)을 쓰므로 플러그인을 위젯과 함께 커밋해야 합니다. `uninstall`도 지우지 않습니다.
+- **설치 방식은 DwoStateMonitor와 같습니다.** 원본은 dwo-Forge의 `plugin/DwoCanvas`에 있고, `canvas-install`이 `Plugins/__DwoCanvas`에 복사합니다(git에서 숨김). `canvas-remove`와 `uninstall`이 지웁니다.
+- 생성된 위젯은 런타임 모듈 `DwoCanvasRuntime`(`UDwoCanvasShape`, `UDwoCanvasFrame`)을 씁니다. 그런 에셋이 남아 있으면 제거를 멈추고 목록을 보여 줍니다(`--force`로 강제). 그 위젯을 여는 다른 PC에도 DwoCanvas를 설치해야 합니다.
+- 2.0.0이 `Plugins/DwoCanvas`에 설치한 것은 다음 명령 때 `Plugins/__DwoCanvas`로 옮겨집니다.
 - Blueprint 전용 프로젝트도 미리 빌드한 에디터 바이너리가 들어가서 에디터가 컴파일 없이 열립니다.
 - `canvas-import`는 `UnrealEditor-Cmd <uproject> -run=DwoCanvasImport -File=<json> [-ResetOverrides] [-Doc=<이름>]`를 실행합니다. 오류가 없으면 종료 코드 0이고, 리포트는 `<프로젝트>/Saved/DwoCanvas/Reports/*.txt`에 저장됩니다. 에디터를 닫고 실행하세요.
 - `canvas-validate`는 `python -m dwocanvas validate <파일> [--json]`(`PYTHONPATH=canvas/python`)를 실행합니다.
@@ -213,7 +215,7 @@ A/
 │  └─ state.json                  # 부착 정보 (버전, 형상관리 방식, 부착 전 git 상태)
 ├─ Plugins/__DwoLensInspector/    # Lens: 미리 빌드된 에디터 전용 플러그인 (Source 없음, 기본 비활성)
 ├─ Plugins/__DwoStateMonitor/     # (sm-install 했을 때) 숨김
-└─ Plugins/DwoCanvas/             # (canvas-install 했을 때) 숨기지 않음 · 커밋 대상
+└─ Plugins/__DwoCanvas/           # (canvas-install 했을 때) 숨김
 ```
 
 도구 자체는 프로젝트에 복사하지 않고 dwo-Forge 설치 폴더에서 실행합니다. `.uproject`, `Build.cs`, 기존 파일은 건드리지 않습니다. 이전 버전처럼 `__dwo-forge/system` 복사본이 있으면 `update`나 부착 때 지웁니다.

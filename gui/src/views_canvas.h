@@ -61,7 +61,9 @@ static void DrawCanvasNav(App& app)
 	TextBold(std::string(ICON_CANVAS) + "  DwoCanvas");
 	ImGui::SameLine();
 	Pill(app.canvas == 0 ? "설치 안 됨" : app.canvas == 1 ? "설치됨" : "프로젝트 소유", app.canvas == 0 ? col::Muted : app.canvas == 1 ? col::Pass : col::Info);
-	TextDim(app.canvas ? "Plugins/DwoCanvas" + (app.canvasVersion.empty() ? std::string() : "  ·  " + app.canvasVersion) : "Plugins/DwoCanvas에 설치합니다");
+	TextDim(app.canvas == 1 ? "Plugins/__DwoCanvas" + (app.canvasVersion.empty() ? std::string() : "  ·  " + app.canvasVersion)
+	        : app.canvas == 2 ? "프로젝트의 DwoCanvas" + (app.canvasVersion.empty() ? std::string() : "  ·  " + app.canvasVersion)
+	        : std::string("Plugins/__DwoCanvas에 설치합니다"));
 	ImGui::Spacing();
 	bool idle = !app.runner.running;
 	if (app.canvas == 0)
@@ -69,7 +71,7 @@ static void DrawCanvasNav(App& app)
 		ImGui::BeginDisabled(!idle || !app.attached);
 		if (PrimaryButton((std::string(ICON_DOWNLOAD) + "  설치").c_str(), ImVec2(-FLT_MIN, 0))) app.Run("canvas-install");
 		ImGui::EndDisabled();
-		Tooltip(app.attached ? "미리 빌드한 에디터 바이너리와 소스를 Plugins/DwoCanvas에 복사합니다. 숨기지 않으며 git에 커밋하는 플러그인입니다."
+		Tooltip(app.attached ? "미리 빌드한 에디터 바이너리와 소스를 Plugins/__DwoCanvas에 복사합니다. git에서 숨겨지고, 제거나 uninstall 때 지워집니다."
 		                     : "먼저 프로젝트에 부착하세요.");
 	}
 	else
@@ -341,7 +343,8 @@ static void DrawCanvasInspector(App& app)
 	KeyValue("런타임 모듈", "DwoCanvasRuntime", 80);
 	KeyValue("에디터 모듈", "DwoCanvasEditor", 80);
 	ImGui::PushTextWrapPos(0);
-	TextDim("생성된 위젯 블루프린트가 DwoCanvasRuntime을 쓰므로 Plugins/DwoCanvas는 git에서 숨기지 않고 uninstall도 지우지 않습니다.");
+	TextDim("원본은 dwo-Forge에 있고 Plugins/__DwoCanvas에 설치됩니다(git에서 숨김). 생성된 위젯 블루프린트가 DwoCanvasRuntime을 쓰므로, "
+	        "그런 위젯이 남아 있으면 제거와 uninstall을 멈추고 알려 줍니다. 위젯을 여는 다른 PC에도 DwoCanvas가 설치되어 있어야 합니다.");
 	ImGui::PopTextWrapPos();
 
 	if (CanvasReport* r = app.CanvasReportAt((size_t)ImMax(0, ui.canvasReport)))

@@ -195,7 +195,7 @@ footer { color: var(--ink-3); font-size: 12.5px; font-family: var(--f-mono); tex
       <div class="eyebrow"><b>●</b> Unreal Engine 분석 · 로그 · 검증 팩토리</div>
       <h1 id="t-hero">dwo-Forge 가이드</h1>
       <p class="lead">언리얼 프로젝트에 붙여 쓰는 도구 모음입니다. 세 도구를 제공합니다: <b>Lens</b>(분석·검증·로그 라인, 이 가이드의 대부분), <b>DwoStateMonitor</b>(실행 중인 게임의 실시간 상태, 예전 StateMonitor), <b>DwoCanvas</b>(디자인 파일 <code>*.dwocanvas.json</code> → UMG 위젯 블루프린트). dwo-Lens 1.x에서 이름이 바뀌었고, 부착된 프로젝트는 첫 명령 때 자동으로 옮겨집니다.</p>
-      <p class="lead">Lens는 언리얼 프로젝트에 흔적 없이 붙었다가 언제든 떨어지는 분석 공장입니다. 결정적 공정이 프로젝트를 읽고 검증하며, AI는 공정의 양 끝에서 계획과 판단만 맡습니다. DwoCanvas는 위젯 에셋을 만드는 도구라서 <code>Plugins/DwoCanvas</code>를 숨기지 않고 프로젝트와 함께 커밋합니다(<code>canvas-install</code> · <code>canvas-validate</code> · <code>canvas-import</code> · <code>canvas-remove</code>, 자세한 내용은 <code>plugin/DwoCanvas/README.md</code>).</p>
+      <p class="lead">Lens는 언리얼 프로젝트에 흔적 없이 붙었다가 언제든 떨어지는 분석 공장입니다. 결정적 공정이 프로젝트를 읽고 검증하며, AI는 공정의 양 끝에서 계획과 판단만 맡습니다. DwoCanvas도 DwoStateMonitor처럼 원본은 dwo-Forge에 두고 <code>Plugins/__DwoCanvas</code>에 숨겨 설치하며, 제거나 uninstall 때 지웁니다(<code>canvas-install</code> · <code>canvas-validate</code> · <code>canvas-import</code> · <code>canvas-remove</code>, 자세한 내용은 <code>plugin/DwoCanvas/README.md</code>).</p>
       <div class="titleblock" role="group" aria-label="문서 정보">
         <div><span>검증 엔진</span><strong>UE 5.7.4</strong></div>
         <div><span>형상관리</span><strong>Git</strong></div>

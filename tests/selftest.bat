@@ -1,10 +1,9 @@
 @echo off
 rem dwo-Forge self verification: unit tests, static checks, GUI build and a full command cycle
 rem on an isolated copy of the given Unreal project (the project itself is never modified).
-rem   selftest.bat "C:\path\to\SomeProject"
+rem   tests\selftest.bat "C:\path\to\SomeProject"
 setlocal
-set "HOME_DIR=%~dp0"
-set "HOME_DIR=%HOME_DIR:~0,-1%"
+for %%I in ("%~dp0..") do set "HOME_DIR=%%~fI"
 powershell -NoProfile -ExecutionPolicy Bypass -File "%HOME_DIR%\tests\selftest.ps1" -Project "%~1"
 set "RC=%ERRORLEVEL%"
 echo.

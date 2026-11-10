@@ -5,7 +5,7 @@
 - 일자: 2026-10-28
 - 엔진: UE 5.7.4 (Launcher)
 - 시스템 커밋: 829a161 이후
-- 재현: `selftest.bat "<UE 프로젝트 폴더>"`, `python tests\stress.py`, `powershell -File tests\package_check.ps1 -Source <폴더> -Name <이름> -Config Shipping`
+- 재현: `tests\selftest.bat "<UE 프로젝트 폴더>"`, `python tests\stress.py`, `powershell -File tests\package_check.ps1 -Source <폴더> -Name <이름> -Config Shipping`
 
 ## 요약
 

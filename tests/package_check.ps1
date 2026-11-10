@@ -37,7 +37,7 @@ Step 'copy' $true "isolated copy at $project"
 
 # ---- attach (+ StateMonitor)
 $env:DWO_FORGE_HOME = $repo
-Copy-Item (Join-Path $repo '__dwo-forge.bat') $project
+Copy-Item (Join-Path $repo 'tools\project-launcher.bat') (Join-Path $project '__dwo-forge.bat')
 $sw = [Diagnostics.Stopwatch]::StartNew()
 & cmd /c "`"$project\__dwo-forge.bat`" attach" | Out-Null
 Step 'attach' ($LASTEXITCODE -eq 0 -and (Test-Path "$project\Plugins\__DwoLensInspector")) 'dwo-Forge attached' $sw.Elapsed.TotalSeconds

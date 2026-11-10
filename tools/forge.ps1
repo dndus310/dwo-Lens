@@ -701,7 +701,7 @@ function Add-Created([string]$Path) {
 
 function Install-Launcher {
     # The project's __dwo-forge.bat: a small launcher that finds this install folder (home.txt) and runs forge.ps1.
-    $src = Join-Path $SystemDir '__dwo-forge.bat'
+    $src = Join-Path $SystemDir 'tools\project-launcher.bat'
     $existing = if (Test-Path $LauncherPath) { [IO.File]::ReadAllBytes($LauncherPath) } else { $null }
     $new = [IO.File]::ReadAllBytes($src)
     if (-not $existing -or [Convert]::ToBase64String($existing) -ne [Convert]::ToBase64String($new)) {
@@ -777,7 +777,7 @@ function Invoke-Migration {
         } else {
             Remove-Item -Force $LegacyLauncher -ErrorAction SilentlyContinue
         }
-        if ($attached -and -not (Test-Path $LauncherPath)) { Copy-Item (Join-Path $SystemDir '__dwo-forge.bat') $LauncherPath -Force }
+        if ($attached -and -not (Test-Path $LauncherPath)) { Copy-Item (Join-Path $SystemDir 'tools\project-launcher.bat') $LauncherPath -Force }
         Say 'Project launcher renamed: __dwo-lens.bat -> __dwo-forge.bat.'
     }
     if (Test-Path $SmLegacyDest) { Say 'Plugins\__StateMonitor (dwo-Lens 1.x) is still installed. Run __dwo-forge.bat update to migrate it to DwoStateMonitor.' }

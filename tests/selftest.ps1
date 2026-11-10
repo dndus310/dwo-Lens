@@ -36,7 +36,7 @@ foreach ($ps in (Get-ChildItem -Recurse (Join-Path $repo 'tools'), (Join-Path $r
     [System.Management.Automation.Language.Parser]::ParseFile($ps.FullName, [ref]$null, [ref]$errors) | Out-Null
     Check 'static' "parse $($ps.Name)" ($errors.Count -eq 0) "$($errors.Count) errors"
 }
-foreach ($bat in (Get-ChildItem $repo -Filter *.bat)) {
+foreach ($bat in (Get-ChildItem $repo, (Join-Path $repo 'tools'), (Join-Path $repo 'tests') -Filter *.bat)) {
     $bytes = [IO.File]::ReadAllBytes($bat.FullName)
     $lf = 0; $crlf = 0
     for ($i = 0; $i -lt $bytes.Length; $i++) { if ($bytes[$i] -eq 10) { if ($i -gt 0 -and $bytes[$i - 1] -eq 13) { $crlf++ } else { $lf++ } } }

@@ -8,17 +8,19 @@
 | **DwoStateMonitor** | 실행 중인 게임의 상태를 실시간으로 보는 런타임 플러그인 (예전 이름 StateMonitor) | `Plugins/__DwoStateMonitor` (숨김, 선택 설치) |
 | **DwoCanvas** | 디자인 파일(`*.dwocanvas.json`)을 UMG 위젯 블루프린트로 가져오는 플러그인 | `Plugins/__DwoCanvas` (숨김, 선택 설치) |
 
-Lens와 DwoStateMonitor는 프로젝트를 읽기만 하며, 언제 떼어 내도 프로젝트는 그대로 동작합니다. DwoCanvas는 위젯 에셋을 만드는 도구라서 프로젝트의 일부로 커밋합니다(아래 [DwoCanvas](#제공-도구-dwocanvas)).
+Lens와 DwoStateMonitor는 프로젝트를 읽기만 하며, 언제 떼어 내도 프로젝트는 그대로 동작합니다. DwoCanvas도 같은 방식으로 숨겨 설치하고 떼어 낼 수 있습니다. 다만 DwoCanvas로 만든 위젯이 남아 있는 동안에는 제거를 막습니다(아래 [DwoCanvas](#제공-도구-dwocanvas)).
 
 > dwo-Lens에서 이름이 바뀌었습니다. dwo-Lens 1.x로 부착한 프로젝트는 dwo-Forge 명령을 처음 실행할 때(창에서 열 때 포함) 자동으로 옮겨집니다. 아래 [dwo-Lens에서 옮기기](#dwo-lens-1x에서-옮기기)를 보세요.
 
 ## 시작하기 (3단계)
 
+> **실행할 파일은 `dwo-Forge.bat` 하나입니다.** 부착한 프로젝트에는 같은 일을 하는 `__dwo-forge.bat`이 생깁니다. `tools/`, `tests/` 안의 .bat은 직접 실행하지 않습니다(`tests/selftest.bat`은 개발용 검증).
+
 1. dwo-Forge를 받습니다. GitHub의 **Download ZIP**을 풀어도 되고 `git clone`해도 됩니다. 어느 폴더든 상관없습니다.
 2. 받은 폴더의 **`dwo-Forge.bat`을 더블클릭**합니다. 처음 한 번만 폴더를 등록하고 창을 빌드합니다(약 1분). 별도 설치 단계는 없습니다.
 3. 창에서 프로젝트를 엽니다(`파일 > 프로젝트 열기`, 또는 프로젝트 폴더나 `.uproject`를 창에 **끌어다 놓기**). 대시보드의 **부착** 버튼을 누르면 끝입니다.
 
-`dwo-Forge.bat`에 프로젝트 폴더나 `.uproject`를 끌어다 놓아도 그 프로젝트로 바로 열립니다. 이미 부착된 프로젝트는 프로젝트 안의 `__dwo-forge.bat`을 더블클릭해도 창이 열립니다. 예전 바로가기용 `dwo-Lens.bat`, `gui.bat`은 `dwo-Forge.bat`으로 넘겨 줍니다.
+`dwo-Forge.bat`에 프로젝트 폴더나 `.uproject`를 끌어다 놓아도 그 프로젝트로 바로 열립니다. 이미 부착된 프로젝트는 프로젝트 안의 `__dwo-forge.bat`을 더블클릭해도 창이 열립니다.
 
 ### 제거 (Uninstall)
 
@@ -184,7 +186,7 @@ dwo-Forge 2.0은 dwo-Lens 1.x가 남긴 것을 스스로 옮깁니다. 프로젝
 ## 검증 (QA)
 
 ```bat
-selftest.bat "C:\Projects\MyGame"                      :: 단위·정적·GUI·전체 명령 왕복 (격리 복사본에서, DwoCanvas 포함)
+tests\selftest.bat "C:\Projects\MyGame"                :: 단위·정적·GUI·전체 명령 왕복 (격리 복사본에서, DwoCanvas 포함)
 python -m unittest discover -s tests                   :: 엔진 없이 도는 테스트 (Python 도구, 이전·DwoCanvas 명령 규칙)
 python tests\stress.py                                    :: 대형 분석·100만 줄 로그·깊은 그래프
 powershell -File tests\package_check.ps1 -Source <폴더> -Name pkg -Config Shipping [-InstallStateMonitor]
@@ -258,8 +260,8 @@ A/
 | 경로 | 역할 |
 |---|---|
 | `dwo-Forge.bat` | 시작점: 폴더 등록(`DWO_FORGE_HOME`), 창 열기, 끌어다 놓은 프로젝트 열기, 명령줄 실행 |
-| `dwo-Lens.bat`, `gui.bat` | 예전 바로가기용. `dwo-Forge.bat`으로 넘김 |
-| `__dwo-forge.bat` | 프로젝트 실행 파일: `home.txt`의 설치 폴더에서 `forge.ps1` 실행, 제거되면 스스로 삭제 |
+| `tools/project-launcher.bat` | 부착할 때 프로젝트에 `__dwo-forge.bat`으로 복사되는 원본. `home.txt`의 설치 폴더에서 `forge.ps1` 실행, 제거되면 스스로 삭제 |
+| `tests/selftest.bat` | 개발용 전체 검증 |
 | `tools/forge.ps1` | 명령 실행, 엔진 호출, 실행 기록 (`run.json`), dwo-Lens 1.x 이전 |
 | `tools/lens.ps1`, `tools/legacy-project-launcher.bat` | dwo-Lens 1.x 실행 파일 호환 (forge.ps1로 넘김) |
 | `tools/lens_analyze.py` | Lens: raw JSON → 통합 그래프, SQLite, 다이어그램, 게이트, HTML 리포트 |

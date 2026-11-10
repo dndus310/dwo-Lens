@@ -378,7 +378,7 @@
       "station": "OPS",
       "kind": "build",
       "status": "ready",
-      "command": "selftest.bat",
+      "command": "tests/selftest.bat",
       "invocation": "unit tests, static checks, GUI build, full command cycle on an isolated project copy",
       "output": ".qa/selftest/selftest-result.json"
     },

@@ -321,7 +321,7 @@ footer { color: var(--ink-3); font-size: 12.5px; font-family: var(--f-mono); tex
       <div class="sec-head">
         <div class="eyebrow">04 · Attach</div>
         <h2 id="t-attach">프로젝트 부착</h2>
-        <p class="lead">PC마다 <code>setup.bat</code>을 한 번 실행해 <code>DWO_FORGE_HOME</code>을 등록합니다. 그다음 <code>__dwo-forge.bat</code> 하나를 대상 프로젝트 루트에 복사해 실행합니다. 시스템 본체는 git clone으로 들어가므로 버전 확인, 업데이트, 제거를 git이 맡습니다.</p>
+        <p class="lead">받은 폴더의 <code>dwo-Forge.bat</code>을 더블클릭하면 폴더가 등록되고 창이 열립니다. 창에서 프로젝트를 부착하면 프로젝트 루트에 <code>__dwo-forge.bat</code>이 생깁니다. 시스템 본체는 설치 폴더에서 실행되고 프로젝트에는 복사되지 않습니다.</p>
       </div>
       <div class="stack">
         <div class="steps">
@@ -411,7 +411,7 @@ footer { color: var(--ink-3); font-size: 12.5px; font-family: var(--f-mono); tex
                 <tr><td>대기열·알림</td><td>실행 중에 누른 라인은 차례로 실행, 끝나면 알림에서 결과로 이동</td></tr>
                 <tr><td>상태 표시줄</td><td>실행 중 명령과 취소, 오류·경고 수, State Monitor 연결</td></tr>
                 <tr><td>레이아웃</td><td>패널을 끌어 재배치, <b>보기 &gt; 레이아웃 초기화</b></td></tr>
-                <tr><td>여는 방법</td><td><code>gui.bat</code> 더블클릭, 또는 <code>__dwo-forge.bat gui</code></td></tr>
+                <tr><td>여는 방법</td><td><code>dwo-Forge.bat</code> 또는 프로젝트의 <code>__dwo-forge.bat</code> 더블클릭</td></tr>
                 <tr><td>자동화</td><td><code>dwo-forge-gui.exe --export-report a.html</code> 창 없이 종합 리포트</td></tr>
               </tbody>
             </table></div>
@@ -464,7 +464,7 @@ footer { color: var(--ink-3); font-size: 12.5px; font-family: var(--f-mono); tex
           <li><div>부착 · 제거 · 업데이트<small>__dwo-forge.bat · forge.ps1</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-ready">ready</span></span></li>
           <li><div>실행 기록<small>run.json · 공정별 판정 · 시간</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-ready">ready</span></span></li>
           <li><div>플러그인 캐시<small>엔진 버전 × 소스 해시</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-ready">ready</span></span></li>
-          <li><div>제어판 GUI<small>gui.bat · Dear ImGui · DX11</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-ready">ready</span></span></li>
+          <li><div>제어판 GUI<small>dwo-Forge.bat · Dear ImGui · DX11</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-ready">ready</span></span></li>
           <li><div>오케스트레이터 · 예산<small>라인 선택 · 토큰 상한</small></div><span class="tags"><span class="badge b-build">BUILD</span><span class="badge b-plan">planned</span></span></li>
         </ul></article>
       </div>
@@ -644,7 +644,7 @@ footer { color: var(--ink-3); font-size: 12.5px; font-family: var(--f-mono); tex
             <tr><td>새 라인 (temp_proj 복사본)</td><td>smoke 통과(17초), perf 통과(p95 7.6ms, 600프레임), sizes 통과(31 MB), trace 통과(154 MB utrace), play 창 확인</td></tr>
           </tbody>
         </table></div>
-        <pre>selftest.bat "C:\Projects\MyGame"     <span style="color:var(--ink-3)"># 단위 · 정적 · GUI · 전체 명령 왕복</span>
+        <pre>tests\selftest.bat "C:\Projects\MyGame"     <span style="color:var(--ink-3)"># 단위 · 정적 · GUI · 전체 명령 왕복</span>
 python tests\stress.py                  <span style="color:var(--ink-3)"># 대형 분석 · 100만 줄 로그 · 깊은 그래프</span>
 powershell -File tests\package_check.ps1 -Source &lt;폴더&gt; -Name pkg -Config Shipping</pre>
       </div>

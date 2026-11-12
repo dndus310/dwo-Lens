@@ -510,106 +510,219 @@ static void DrawConsole(App& app)
 	ImGui::EndChild();
 }
 
-// What uninstall will remove, shown before the user confirms.
-struct UninstallInventory
+// What uninstall will remove, from 'forge.ps1 uninstall --plan-json' (the same scan the command uses).
+struct UninstallPlan
 {
-	int runs = 0;
-	double dataBytes = 0;
-	std::vector<std::string> created;   // files dwo-Forge caused outside __dwo-forge (perf CSVs)
-	bool inspector = false, stateMonitor = false, stateMonitorLegacy = false, launcher = false, canvas = false;
-	std::string vcs, exclude;
+	std::atomic<int> state{ 0 };   // 0 idle, 1 scanning, 2 ready, 3 failed
+	json scan;
+	std::string error;
+	std::thread worker;
+	~UninstallPlan() { if (worker.joinable()) worker.join(); }
 };
+static UninstallPlan g_plan;
 
-static UninstallInventory TakeInventory(const App& app)
+// Runs a command without a window and returns its standard output.
+static bool CaptureOutput(std::wstring commandLine, const fs::path& workDir, std::string& out, DWORD& exitCode)
 {
-	UninstallInventory inv;
-	std::error_code ec;
-	fs::path data = app.ForgeDir() / "data";
-	if (fs::is_directory(data / "runs", ec))
-		for (auto& e : fs::directory_iterator(data / "runs", ec)) inv.runs += e.is_directory() ? 1 : 0;
-	if (fs::is_directory(data, ec))
-		for (auto it = fs::recursive_directory_iterator(data, ec); it != fs::recursive_directory_iterator(); it.increment(ec))
-			if (!ec && it->is_regular_file(ec)) inv.dataBytes += (double)it->file_size(ec);
-	std::ifstream ledger(app.ForgeDir() / "created-files.txt");
-	std::set<std::string> seen;
-	for (std::string line; std::getline(ledger, line);)
+	SECURITY_ATTRIBUTES sa{ sizeof(sa), nullptr, TRUE };
+	HANDLE readPipe = nullptr, writePipe = nullptr;
+	if (!CreatePipe(&readPipe, &writePipe, &sa, 0)) return false;
+	SetHandleInformation(readPipe, HANDLE_FLAG_INHERIT, 0);
+	STARTUPINFOW si{ sizeof(si) };
+	si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+	si.wShowWindow = SW_HIDE;
+	si.hStdOutput = writePipe;
+	si.hStdError = writePipe;
+	PROCESS_INFORMATION pi{};
+	BOOL ok = CreateProcessW(nullptr, commandLine.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW, nullptr, workDir.wstring().c_str(), &si, &pi);
+	CloseHandle(writePipe);
+	if (!ok) { CloseHandle(readPipe); return false; }
+	char buffer[8192];
+	DWORD read = 0;
+	while (ReadFile(readPipe, buffer, sizeof(buffer), &read, nullptr) && read > 0) out.append(buffer, read);
+	CloseHandle(readPipe);
+	WaitForSingleObject(pi.hProcess, INFINITE);
+	GetExitCodeProcess(pi.hProcess, &exitCode);
+	CloseHandle(pi.hProcess);
+	CloseHandle(pi.hThread);
+	return true;
+}
+
+static void StartUninstallScan(App& app)
+{
+	if (g_plan.worker.joinable()) g_plan.worker.join();
+	g_plan.state = 1;
+	g_plan.scan = json();
+	g_plan.error.clear();
+	std::wstring cmd = L"powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"" + (app.home / "tools" / "forge.ps1").wstring() +
+	                   L"\" -Command uninstall -Project \"" + app.project.wstring() + L"\" --plan-json";
+	fs::path dir = app.project;
+	g_plan.worker = std::thread([cmd, dir] {
+		std::string out;
+		DWORD code = 1;
+		if (!CaptureOutput(cmd, dir, out, code)) { g_plan.error = "검사를 시작할 수 없습니다."; g_plan.state = 3; return; }
+		size_t at = out.find('{');
+		try { g_plan.scan = json::parse(out.substr(at == std::string::npos ? 0 : at)); g_plan.state = 2; }
+		catch (...) { g_plan.error = ConsoleToUtf8(out); g_plan.state = 3; }
+	});
+}
+
+static std::vector<std::string> PlanList(const char* key)
+{
+	std::vector<std::string> list;
+	for (auto& v : Arr(g_plan.scan, key))
 	{
-		if (!line.empty() && line.back() == '\r') line.pop_back();
-		if (!line.empty() && seen.insert(line).second && fs::exists(app.project / fs::u8path(line), ec)) inv.created.push_back(line);
+		if (v.is_string()) list.push_back(v.get<std::string>());
+		else if (v.is_object() && v.contains("Module")) list.push_back(Str(v, "Module") + " · " + Str(v, "File"));
+		else if (v.is_object() && v.contains("Lines")) list.push_back(Str(v, "File") + Fmt(" (%lld줄)", Num(v, "Lines")));
 	}
-	inv.inspector = fs::exists(app.project / "Plugins" / "__DwoLensInspector", ec);
-	inv.stateMonitor = app.stateMonitor == 1;
-	inv.stateMonitorLegacy = app.stateMonitorLegacy;
-	inv.launcher = fs::exists(app.project / "__dwo-forge.bat", ec);
-	inv.canvas = app.canvas == 1;
-	inv.vcs = Str(app.state, "vcs", "own");
-	inv.exclude = Str(app.state, "excludeFile");
-	return inv;
+	return list;
 }
 
 static void DrawDetachModal(App& app)
 {
-	static UninstallInventory inv;
-	static int dataChoice = 1;          // 0 keep, 1 delete
+	static int dataChoice = 0;          // 0 keep, 1 delete
+	static int generatedChoice = 1;     // 0 keep, 1 delete
+	static bool cleanRefs = true;
+	static bool acceptCode = false;
 	static bool forget = true;
 	if (app.confirmDetach)
 	{
-		inv = TakeInventory(app);
-		dataChoice = inv.runs > 0 ? 0 : 1;
+		StartUninstallScan(app);
+		dataChoice = 0;
+		generatedChoice = 1;
+		cleanRefs = true;
+		acceptCode = false;
 		ImGui::OpenPopup("dwo-Forge 제거");
 		app.confirmDetach = false;
 	}
-	ImGui::SetNextWindowSize(ImVec2(S(560), 0));
-	if (ImGui::BeginPopupModal("dwo-Forge 제거", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	ImGui::SetNextWindowSize(ImVec2(S(640), 0));
+	// Re-centre every frame: the dialog grows when the scan finishes.
+	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+	if (!ImGui::BeginPopupModal("dwo-Forge 제거", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) return;
+	Title("이 프로젝트에서 dwo-Forge를 완전히 제거합니다");
+	ImGui::PushTextWrapPos(S(630));
+	TextDim("플러그인을 따로 지울 필요 없이 한 번에 지웁니다. 부착할 때 넣은 것, 도구가 만든 것, 프로젝트 파일에 등록된 항목까지 정리합니다.");
+	ImGui::PopTextWrapPos();
+	if (g_plan.state == 1)
 	{
-		Title("이 프로젝트에서 dwo-Forge를 제거합니다");
-		TextDim("부착할 때 넣은 것과 dwo-Forge가 만든 것을 모두 지웁니다. .uproject와 프로젝트 파일은 건드리지 않습니다.");
-		SectionHeader("지울 항목");
-		auto row = [](bool on, const char* what, const std::string& detail) {
-			TextColored(on ? col::Text : col::Muted, on ? ICON_DELETE : ICON_CHECK);
-			ImGui::SameLine();
-			ImGui::TextUnformatted(what);
-			ImGui::SameLine();
-			TextDim(detail);
-		};
-		row(inv.inspector, "Lens 검사 플러그인", "Plugins\\__DwoLensInspector");
-		row(inv.stateMonitor, "DwoStateMonitor", !inv.stateMonitor ? "dwo-Forge가 설치하지 않음" : inv.stateMonitorLegacy ? "Plugins\\__StateMonitor (dwo-Lens 1.x)" : "Plugins\\__DwoStateMonitor");
-		row(inv.launcher, "실행 파일", "__dwo-forge.bat");
-		row(true, "설정", "__dwo-forge 폴더 (부착 정보, 화면 설정, 문제 음소거)");
-		if (inv.vcs == "none") row(false, "git exclude", "형상관리 없음: 추가한 항목 없음");
-		else row(true, "git exclude", inv.exclude.empty() ? "dwo-Forge 블록만 제거" : "dwo-Forge 블록만 제거 · " + inv.exclude);
-		if (inv.canvas)
-		{
-			TextColored(col::Info, ICON_PIN);
-			ImGui::SameLine();
-			ImGui::TextUnformatted("DwoCanvas 유지");
-			ImGui::SameLine();
-			TextDim("생성된 위젯이 DwoCanvasRuntime을 씁니다. 필요 없으면 DwoCanvas 화면에서 제거하세요.");
-		}
-
-		SectionHeader("실행 기록과 로그");
-		ImGui::Text("실행 기록 %d개 · %s", inv.runs, Bytes(inv.dataBytes).c_str());
-		TextDim("분석·검증·로그·스모크·성능 결과, 리포트, 엔진 로그 (__dwo-forge\\data)");
-		if (!inv.created.empty())
-		{
-			ImGui::Text("프로젝트에 남은 실행 파일 %d개", (int)inv.created.size());
-			Tooltip(JoinStrings(json(inv.created), "\n").c_str());
-			TextDim("성능 캡처가 Saved\\Profiling\\CSV에 만든 CSV");
-		}
-		ImGui::RadioButton("보존: 프로젝트 밖(%LOCALAPPDATA%\\dwo-Forge\\uninstalled)으로 옮김", &dataChoice, 0);
-		ImGui::RadioButton("삭제: 기록과 파일을 모두 지움", &dataChoice, 1);
-		ImGui::Checkbox("dwo-Forge의 최근 프로젝트 목록에서도 빼기", &forget);
 		ImGui::Spacing();
-		if (DangerButton("제거", ImVec2(S(120), 0)))
-		{
-			app.forgetAfterUninstall = forget;
-			app.Run(dataChoice == 0 ? "uninstall --keep-data" : "uninstall --delete-data");
-			ImGui::CloseCurrentPopup();
-		}
+		Spinner(6, col::Info);
 		ImGui::SameLine();
-		if (ImGui::Button("취소", ImVec2(S(120), 0)) || ImGui::IsKeyPressed(ImGuiKey_Escape)) ImGui::CloseCurrentPopup();
+		TextDim("프로젝트를 검사하는 중 (생성된 위젯·코드·설정 파일)...");
+		ImGui::Spacing();
+		if (ImGui::Button("취소", ImVec2(S(120), 0))) ImGui::CloseCurrentPopup();
 		ImGui::EndPopup();
+		return;
 	}
+	if (g_plan.state == 3)
+	{
+		TextColored(col::Fail, "검사에 실패했습니다.");
+		ImGui::PushTextWrapPos(S(620));
+		TextDim(g_plan.error.substr(0, 1500));
+		ImGui::PopTextWrapPos();
+		if (ImGui::Button("다시 검사")) StartUninstallScan(app);
+		ImGui::SameLine();
+		if (ImGui::Button("닫기", ImVec2(S(120), 0))) ImGui::CloseCurrentPopup();
+		ImGui::EndPopup();
+		return;
+	}
+	auto bullet = [](ImU32 color, const char* icon, const char* what, const std::string& detail, const std::vector<std::string>& items = {}) {
+		TextColored(color, icon);
+		ImGui::SameLine();
+		ImGui::TextUnformatted(what);
+		ImGui::SameLine();
+		TextDim(detail);
+		if (!items.empty()) Tooltip(JoinStrings(json(items), "\n").c_str());
+	};
+	auto plugins = PlanList("Plugins");
+	auto launchers = PlanList("Launchers");
+	auto artifacts = PlanList("Artifacts");
+	auto records = PlanList("Records");
+	auto generated = PlanList("Generated");
+	auto uproject = PlanList("Uproject");
+	auto buildcs = PlanList("BuildCs");
+	auto configs = PlanList("Configs");
+	auto editorIni = PlanList("EditorIni");
+	auto code = PlanList("CodeUses");
+	auto created = PlanList("Created");
+	std::string exclude = Str(g_plan.scan, "Exclude");
+
+	// The list can be long; it scrolls so the buttons below always stay on screen.
+	float maxList = ImGui::GetMainViewport()->WorkSize.y * 0.55f;
+	ImGui::SetNextWindowSizeConstraints(ImVec2(S(630), 0), ImVec2(S(630), maxList));
+	ImGui::BeginChild("plan", ImVec2(S(630), 0), ImGuiChildFlags_AutoResizeY);
+	SectionHeader("항상 지우는 것");
+	bullet(plugins.empty() ? col::Muted : col::Text, ICON_DELETE, "플러그인", plugins.empty() ? "없음" : JoinStrings(json(plugins)));
+	bullet(col::Text, ICON_DELETE, "실행 파일·부착 정보", JoinStrings(json(launchers)) + (launchers.empty() ? "" : ", ") + "__dwo-forge\\");
+	bullet(exclude.empty() ? col::Muted : col::Text, ICON_DELETE, "git exclude", exclude.empty() ? "추가한 항목 없음" : "dwo-Forge 블록만 · " + exclude);
+	std::vector<std::string> tests;
+	for (auto& a : artifacts) if (a.find("Tests") != std::string::npos) tests.push_back(a);
+	if (!tests.empty()) bullet(col::Text, ICON_DELETE, "테스트 잔여물", JoinStrings(json(tests)));
+
+	size_t refCount = uproject.size() + buildcs.size() + configs.size() + editorIni.size();
+	if (refCount)
+	{
+		SectionHeader("프로젝트 파일에 등록된 항목");
+		if (!uproject.empty()) bullet(col::Warn, ICON_PAGE, ".uproject Plugins", JoinStrings(json(uproject)), uproject);
+		if (!buildcs.empty()) bullet(col::Warn, ICON_CODE, "Build.cs 의존성", Fmt("%d곳", (int)buildcs.size()), buildcs);
+		if (!configs.empty()) bullet(col::Warn, ICON_SETTINGS, "플러그인 설정 파일", JoinStrings(json(configs)), configs);
+		if (!editorIni.empty()) bullet(col::Muted, ICON_SETTINGS, "에디터 개인 설정", "모듈 기록 줄", editorIni);
+		ImGui::Checkbox("이 항목들도 정리 (원본은 백업)", &cleanRefs);
+		Tooltip("백업 위치: %LOCALAPPDATA%\\dwo-Forge\\uninstalled\\<프로젝트>-<시각>\\backup");
+	}
+	if (!code.empty())
+	{
+		SectionHeader("프로젝트 코드가 플러그인을 사용 중");
+		ImGui::PushTextWrapPos(S(620));
+		TextColored(col::Warn, Fmt("%d곳이 플러그인 헤더나 클래스를 씁니다. 코드는 자동으로 고치지 않으므로, 제거 후 이 줄들을 지워야 빌드됩니다.", (int)code.size()).c_str());
+		ImGui::PopTextWrapPos();
+		ImGui::BeginChild("codeuses", ImVec2(0, ImMin(S(110), (float)code.size() * ImGui::GetTextLineHeightWithSpacing() + S(8))), ImGuiChildFlags_Borders);
+		ImGui::PushFont(g_fonts.mono);
+		for (auto& c : code) ImGui::TextUnformatted(c.c_str());
+		ImGui::PopFont();
+		ImGui::EndChild();
+		if (ImGui::SmallButton("목록 복사")) CopyToClipboard(JoinStrings(json(code), "\n"));
+		ImGui::Checkbox("알고 있음: 제거 후 코드를 직접 고치겠습니다", &acceptCode);
+	}
+	if (!generated.empty() || !records.empty())
+	{
+		SectionHeader("DwoCanvas로 만든 위젯");
+		ImGui::Text("위젯 %d개%s", (int)generated.size(), records.empty() ? "" : " · 가져오기 기록");
+		Tooltip(JoinStrings(json(generated), "\n").c_str());
+		TextDim("DwoCanvas 없이 열면 깨지는 에셋입니다.");
+		ImGui::RadioButton("위젯과 기록 삭제##gen", &generatedChoice, 1);
+		ImGui::SameLine();
+		ImGui::RadioButton("프로젝트에 남김##gen", &generatedChoice, 0);
+	}
+	SectionHeader("실행 기록·로그·리포트");
+	ImGui::Text("실행 기록 %lld개 · %s%s", Num(g_plan.scan, "Runs"), Bytes(Real(g_plan.scan, "DataBytes")).c_str(),
+	            created.empty() ? "" : Fmt(" · 프로젝트에 남은 파일 %d개", (int)created.size()).c_str());
+	TextDim("__dwo-forge\\data, Saved\\DwoCanvas 리포트, 성능 캡처 CSV");
+	ImGui::RadioButton("보존: 프로젝트 밖(%LOCALAPPDATA%\\dwo-Forge\\uninstalled)으로 옮김", &dataChoice, 0);
+	ImGui::RadioButton("삭제", &dataChoice, 1);
+	ImGui::EndChild();
+	ImGui::Separator();
+	ImGui::Checkbox("dwo-Forge의 최근 프로젝트 목록에서도 빼기", &forget);
+	ImGui::Spacing();
+	bool blocked = !code.empty() && !acceptCode;
+	ImGui::BeginDisabled(blocked);
+	if (DangerButton("제거", ImVec2(S(120), 0)))
+	{
+		std::string args = "uninstall";
+		args += dataChoice == 0 ? " --keep-data" : " --delete-data";
+		args += generatedChoice == 0 ? " --keep-generated" : " --delete-generated";
+		if (!cleanRefs) args += " --keep-references";
+		if (!code.empty()) args += " --force";
+		app.forgetAfterUninstall = forget;
+		app.Run(args);
+		ImGui::CloseCurrentPopup();
+	}
+	ImGui::EndDisabled();
+	if (blocked) Tooltip("코드 사용 목록을 확인하고 체크하세요.");
+	ImGui::SameLine();
+	if (ImGui::Button("취소", ImVec2(S(120), 0)) || ImGui::IsKeyPressed(ImGuiKey_Escape)) ImGui::CloseCurrentPopup();
+	ImGui::EndPopup();
 }
 
 // Fixed dock layout: navigator | main | inspector, with a bottom panel under main.

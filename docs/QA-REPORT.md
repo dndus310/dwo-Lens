@@ -157,3 +157,26 @@ dwo-Lens를 dwo-Forge로 바꾸고 세 도구(Lens · DwoStateMonitor · DwoCanv
 - DwoCanvas의 `BuildPlugin`(게임 대상)은 `SDwoCanvasShape.h`의 `TStrongObjectPtr<UMaterialInstanceDynamic>`가 불완전 형식이라 실패합니다(DwoCanvas 소스 문제). 그래서 selftest의 `canvas-install` 단계는 실패합니다.
 - OWTStateMonitor → DwoStateMonitor 클래스 리다이렉트는 `load_class`로 확인되지 않았습니다(패키지 리다이렉트만 확인). 1.x와 같은 항목입니다.
 - 실제 Figma 내보내기 파일, 에디터 안에서의 가져오기·시각 비교, Shipping 패키징(`package_check.ps1`)은 이번에 다시 돌리지 않았습니다.
+
+
+## 9. v2.0.1 한 번에 완전 제거 (2026-11-13)
+
+문제: 언인스톨 전에 `sm-remove`·`canvas-remove`를 따로 해야 했고(플러그인을 쓰는 코드·위젯이 있으면 언인스톨이 거부), 언인스톨 뒤에도 `.uproject`·`Build.cs`에 등록한 항목, DwoCanvas가 만든 위젯·기록·리포트, 테스트 잔여물(`Content/DwoCanvasTests`, `Saved/DwoCanvasTests`), 에디터 개인 설정의 모듈 기록이 남았습니다.
+
+| 변경 | 내용 |
+|---|---|
+| 한 번에 제거 | 언인스톨이 먼저 프로젝트 전체를 검사해 모든 흔적을 보여 주고, 사용자가 정할 것(실행 기록, 생성 위젯, 코드 사용 확인)만 물은 뒤 플러그인까지 한 번에 지움. 답을 받기 전에는 아무것도 바꾸지 않음 |
+| 프로젝트 파일 정리 | `.uproject` Plugins 항목, `Build.cs` 의존성, `Config/DefaultDwoCanvas.ini`, 에디터 개인 설정의 모듈 기록 줄을 백업 후 해당 항목만 제거 (서식 유지) |
+| 생성 위젯 | `DwoCanvasRuntime`을 쓰는 에셋, 가져오기 이미지(`T_DB_…`), 가져오기 기록에 적힌 위젯을 찾아 삭제/보존 선택 |
+| 잔여물 | `Saved/DwoCanvas`, `Saved/DwoCanvasTests`, `Content/DwoCanvasTests` (옛 이름 DesignBridge 포함) |
+| 코드 사용 | 자동 수정하지 않고 위치를 보여 준 뒤 확인(`--force`)을 받아 진행 |
+| 검사 결과 | `uninstall --plan-json`. 창의 제거 대화상자가 이 결과로 항목과 선택지를 보여 줌 |
+
+| 검증 | 결과 |
+|---|---|
+| 실사용 재현 (temp_proj 복사본) | 부착 → DwoStateMonitor 런타임 설치 → DwoCanvas 설치 → 위젯 가져오기 → DwoCanvas 자동화 테스트 → `.uproject`·`Build.cs`·코드·설정 파일 편집 → `uninstall --delete-data --delete-generated --force` 한 번. 부착 전 스냅숏과 비교해 남은 것은 사용자 코드(`Source/Probe`)와 에디터가 실행 때마다 만드는 빈 `Content/Collections`뿐. `.uproject`는 부착 전과 바이트 단위로 같음 |
+| 보존 경로 | `--keep-data --keep-generated`: 위젯·기록은 프로젝트에 남고, 실행 기록·리포트는 `%LOCALAPPDATA%\dwo-Forge\uninstalled\…`로 이동, 편집 원본은 `backup`에 저장 |
+| 확인 없이 실행 | 코드 사용이 있거나 위젯 처리 방법이 없으면 아무것도 바꾸지 않고 멈춤 |
+| 단위 테스트 | 60/60 (forge CLI 18개 중 새 테스트 7개) |
+| 자체 검증 | 43/43 (한 번에 제거하는 순환, 위젯 처리 선택 없이 멈춤, 부모 저장소 보존 경로 포함) |
+| 제거 대화상자 | 검사 중 표시 → 항목·선택지·코드 사용 목록, 스크롤, 확인 체크 전 제거 버튼 비활성을 화면 캡처로 확인 |

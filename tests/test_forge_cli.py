@@ -200,15 +200,100 @@ class ForgeCliTests(unittest.TestCase):
         self.assertFalse(plugin.exists(), out)
         self.assertFalse((self.project / "__dwo-forge").exists())
 
-    def test_uninstall_refuses_while_widgets_use_dwo_canvas(self):
+    def test_uninstall_asks_about_generated_widgets(self):
+        # Without a choice (and no console to ask on) nothing is changed.
         self.make_legacy_project()
         plugin = self.make_canvas()
         self.make_widget_user()
         code, out = self.forge("uninstall", "--delete-data")
         self.assertNotEqual(code, 0, out)
         self.assertIn("WBP_Shop.uasset", out)
+        self.assertIn("--delete-generated", out)
         self.assertTrue(plugin.exists())
         self.assertTrue((self.project / "__dwo-forge").exists(), "a refusal leaves the attach intact")
+
+    def test_uninstall_in_one_step_deletes_generated_widgets_and_records(self):
+        self.make_legacy_project()
+        plugin = self.make_canvas()
+        widget = self.make_widget_user()
+        texture = write(self.project / "Content" / "UI" / "Textures" / "T_DB_0123456789ABCDEF.uasset", "image")
+        plain = write(self.project / "Content" / "UI" / "WBP_Row.uasset", "plain umg widget")
+        write(self.project / "DwoCanvas" / "Records" / "Game" / "UI" / "WBP_Row.json", json.dumps({"asset": "/Game/UI/WBP_Row"}))
+        keep = write(self.project / "Content" / "Maps" / "Main.umap", "not made by canvas-import")
+        code, out = self.forge("uninstall", "--delete-data", "--delete-generated")
+        self.assertIn(code, (0, 3), out)
+        for p in (plugin, widget, texture, plain, self.project / "DwoCanvas"):
+            self.assertFalse(p.exists(), f"{p} left behind\n{out}")
+        self.assertTrue(keep.exists())
+
+    def test_uninstall_keeps_generated_widgets_on_request(self):
+        self.make_legacy_project()
+        self.make_canvas()
+        widget = self.make_widget_user()
+        code, out = self.forge("uninstall", "--delete-data", "--keep-generated")
+        self.assertIn(code, (0, 3), out)
+        self.assertTrue(widget.exists())
+        self.assertFalse((self.project / "Plugins" / "__DwoCanvas").exists())
+
+    def test_uninstall_cleans_project_files_that_name_the_plugins(self):
+        self.make_legacy_project()
+        self.make_canvas()
+        uproject = self.project / "Game.uproject"
+        uproject.write_text(
+            '{\n\t"FileVersion": 3,\n\t"EngineAssociation": "5.7",\n\t"Plugins": [\n'
+            '\t\t{\n\t\t\t"Name": "DwoStateMonitor",\n\t\t\t"Enabled": true\n\t\t},\n'
+            '\t\t{\n\t\t\t"Name": "ModelingToolsEditorMode",\n\t\t\t"Enabled": true,\n\t\t\t"TargetAllowList": [\n\t\t\t\t"Editor"\n\t\t\t]\n\t\t},\n'
+            '\t\t{\n\t\t\t"Name": "DwoCanvas",\n\t\t\t"Enabled": true\n\t\t}\n\t]\n}\n', encoding="utf-8")
+        build = write(self.project / "Source" / "Game" / "Game.Build.cs",
+                      'PublicDependencyModuleNames.AddRange(new string[] { "Core", "DwoStateMonitor", "Engine" });\n'
+                      'PrivateDependencyModuleNames.AddRange(new string[] {\n\t"Slate",\n\t"DwoCanvasRuntime",\n\t"UMG"\n});\n'
+                      'PrivateDependencyModuleNames.Add("DwoCanvasEditor");\n')
+        settings = write(self.project / "Config" / "DefaultDwoCanvas.ini", "[/Script/DwoCanvasEditor.DwoCanvasSettings]\n")
+        ini = write(self.project / "Saved" / "Config" / "WindowsEditor" / "EditorPerProjectUserSettings.ini",
+                    "[ModuleFileTracking]\nDwoCanvasEditor.TimeStamp=1\nDwoCanvasEditor.LastCompileMethod=External\nEngine.TimeStamp=1\n")
+        tests = write(self.project / "Content" / "DwoCanvasTests" / "Contract" / "x.uasset", "test leftover")
+        reports = write(self.project / "Saved" / "DwoCanvas" / "Reports" / "r.txt", "report")
+        code, out = self.forge("uninstall", "--delete-data", "--delete-generated")
+        self.assertIn(code, (0, 3), out)
+        names = [p["Name"] for p in json.loads(uproject.read_text(encoding="utf-8"))["Plugins"]]
+        self.assertEqual(names, ["ModelingToolsEditorMode"])
+        self.assertIn('\t\t\t"TargetAllowList"', uproject.read_text(encoding="utf-8"), "formatting is kept")
+        text = build.read_text(encoding="utf-8")
+        self.assertNotIn("Dwo", text)
+        self.assertIn('"Core", "Engine"', text)
+        self.assertIn('"Slate",\n\t"UMG"', text)
+        self.assertFalse(settings.exists())
+        self.assertNotIn("DwoCanvasEditor", ini.read_text(encoding="utf-8"))
+        self.assertIn("Engine.TimeStamp=1", ini.read_text(encoding="utf-8"))
+        self.assertFalse(tests.exists() or (self.project / "Content" / "DwoCanvasTests").exists())
+        self.assertFalse(reports.exists() or (self.project / "Saved" / "DwoCanvas").exists())
+        backups = list((self.appdata / "dwo-Forge" / "uninstalled").glob("*/backup/Game.uproject"))
+        self.assertEqual(len(backups), 1, "edited project files are backed up")
+        self.assertIn("DwoStateMonitor", backups[0].read_text(encoding="utf-8"))
+
+    def test_uninstall_stops_when_code_uses_the_plugins_unless_forced(self):
+        self.make_legacy_project()
+        plugin = self.make_canvas()
+        write(self.project / "Source" / "Game" / "Probe.cpp", '#include "StateMonitorSubsystem.h"\n')
+        code, out = self.forge("uninstall", "--delete-data")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("Probe.cpp:1", out)
+        self.assertTrue(plugin.exists(), "nothing changes before the user agrees")
+        code, out = self.forge("uninstall", "--delete-data", "--force")
+        self.assertEqual(code, 0, out)
+        self.assertFalse(plugin.exists())
+        self.assertIn("edit them before building", out)
+
+    def test_plan_json_changes_nothing(self):
+        self.make_legacy_project()
+        plugin = self.make_canvas()
+        self.make_widget_user()
+        code, out = self.forge("uninstall", "--plan-json")
+        self.assertEqual(code, 0, out)
+        scan = json.loads(out[out.index("{"):])
+        self.assertIn("Plugins\\__DwoCanvas", scan["Plugins"])
+        self.assertTrue(any(g.endswith("WBP_Shop.uasset") for g in scan["Generated"]))
+        self.assertTrue(plugin.exists())
 
     def test_uninstall_keeps_the_projects_own_dwo_canvas(self):
         self.make_legacy_project()

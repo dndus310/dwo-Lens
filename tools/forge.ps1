@@ -22,7 +22,7 @@ $ErrorActionPreference = 'Stop'
 $Utf8 = New-Object System.Text.UTF8Encoding($false)
 
 $SystemDir   = Split-Path -Parent $PSScriptRoot
-$Project     = (Resolve-Path $Project).Path.TrimEnd('')
+$Project     = (Resolve-Path $Project).Path.TrimEnd('\')
 $ForgeDir    = Join-Path $Project '__dwo-forge'
 $DataDir     = Join-Path $ForgeDir 'data'
 $StatePath   = Join-Path $ForgeDir 'state.json'
@@ -582,7 +582,8 @@ function Remove-Canvas([bool]$Force) {
     }
     foreach ($dir in $dirs) { Remove-Folder $dir (Split-Path -Leaf $dir) }
     Remove-EmptyPluginsFolder
-    Say 'DwoCanvas removed. Import records (DwoCanvas\Records) and reports (Saved\DwoCanvas) were left in place.'
+    Say 'DwoCanvas removed.'
+    if ($Command -ne 'uninstall') { Say 'Generated widgets, import records (DwoCanvas\Records) and reports (Saved\DwoCanvas) stay; uninstall removes them on request.' }
     return $true
 }
 
@@ -1330,35 +1331,272 @@ function Invoke-Analyze {
     if ($verdict -eq 'fail') { exit 2 }
 }
 
-function Get-UninstallInventory {
-    # What attach and the lines left in the project, grouped for the keep/delete question.
+# ---------------------------------------------------------------- uninstall
+# One command removes everything dwo-Forge put into the project or caused there. Nothing has to be removed
+# first (no sm-remove / canvas-remove step). It works in two passes: a scan that lists every trace, grouped by
+# what the user has to decide, then the removal. The scan is also printed as JSON (uninstall --plan-json) for
+# the GUI dialog.
+
+# Plugin and module names dwo-Forge provides now or provided before (dwo-Lens 1.x, DesignBridge).
+$OurPlugins = @('DwoStateMonitor', 'StateMonitor', 'DwoCanvas', 'DesignBridge', 'DwoLensInspector')
+$OurModules = @('DwoStateMonitor', 'StateMonitor', 'DwoCanvasRuntime', 'DwoCanvasEditor', 'DesignBridgeRuntime', 'DesignBridgeEditor', 'DwoLensInspector')
+# Folders only dwo-Forge tools write: reports, logs and test leftovers. Removed with the run history choice.
+$OurArtifacts = @('Saved\DwoCanvas', 'Saved\DwoCanvasTests', 'Saved\DesignBridge', 'Saved\DesignBridgeTests',
+                  'Content\DwoCanvasTests', 'Content\DesignBridgeTests')
+# Import records: committed next to generated widgets, so they follow the generated-widgets choice.
+$OurRecords = @('DwoCanvas\Records', 'DesignBridge\Records')
+# Project settings files the plugins create when their settings page is edited.
+$OurConfigs = @('Config\DefaultDwoCanvas.ini', 'Config\DefaultDesignBridge.ini')
+
+function Get-ForeignNames {
+    # Names that belong to the project itself (its own copy of a plugin) must never be touched.
+    $skip = @()
+    if (Find-OwnStateMonitor) { $skip += @('DwoStateMonitor', 'StateMonitor') }
+    if ((Get-CanvasState) -eq 'own') { $skip += @('DwoCanvas', 'DwoCanvasRuntime', 'DwoCanvasEditor') }
+    return $skip
+}
+
+function Get-ProjectCodeFiles([string[]]$Include) {
+    # The project's own code: Source\ and plugins that are not dwo-Forge installs.
+    $files = @()
+    foreach ($dir in @('Source', 'Plugins')) {
+        $path = Join-Path $Project $dir
+        if (-not (Test-Path $path)) { continue }
+        $files += Get-ChildItem -Path $path -Recurse -File -Include $Include -ErrorAction SilentlyContinue |
+                  Where-Object { $_.FullName -notlike '*\Plugins\__*' -and $_.FullName -notmatch '\\(Intermediate|Binaries)\\' }
+    }
+    return $files
+}
+
+function Find-UprojectEntries([string[]]$Plugins) {
+    $files = @(Get-ChildItem -Path $Project -Filter *.uproject -File)
+    if ($files.Count -ne 1) { return @() }
+    $json = Get-Content -Raw -Encoding UTF8 $files[0].FullName | ConvertFrom-Json
+    return @($json.Plugins | Where-Object { $Plugins -contains $_.Name } | ForEach-Object { $_.Name })
+}
+
+function Find-BuildCsDeps([string[]]$Modules) {
+    # "Module" strings in Build.cs files (dependency lists). One entry per file and module.
+    $hits = @()
+    foreach ($f in (Get-ProjectCodeFiles @('*.Build.cs'))) {
+        $text = [IO.File]::ReadAllText($f.FullName)
+        foreach ($m in $Modules) {
+            if ($f.Name -eq "$m.Build.cs") { continue }
+            if ($text -match ('"' + [regex]::Escape($m) + '"')) {
+                $hits += [pscustomobject]@{ File = $f.FullName.Substring($Project.Length + 1); Module = $m }
+            }
+        }
+    }
+    return $hits
+}
+
+function Find-CodeUses([string[]]$Skip) {
+    # Includes and types of the plugins in project code. These cannot be removed automatically.
+    $patterns = @()
+    if ($Skip -notcontains 'DwoStateMonitor') { $patterns += @('StateMonitor\w*\.h"', '\b[UFS]StateMonitor\w+') }
+    if ($Skip -notcontains 'DwoCanvas') { $patterns += @('DwoCanvas\w*\.h"', '\b[UFIS]DwoCanvas\w+', 'DesignBridge\w*\.h"', '\b[UFIS]DesignBridge\w+') }
+    if ($patterns.Count -eq 0) { return @() }
+    $regex = ($patterns -join '|')
+    $hits = @()
+    foreach ($f in (Get-ProjectCodeFiles @('*.h', '*.hpp', '*.cpp', '*.inl'))) {
+        foreach ($m in (Select-String -Path $f.FullName -Pattern $regex)) {
+            $hits += "$($f.FullName.Substring($Project.Length + 1)):$($m.LineNumber): $($m.Line.Trim())"
+        }
+    }
+    return $hits
+}
+
+function Find-GeneratedWidgets {
+    # Assets made by canvas-import: they reference the DwoCanvasRuntime (or older DesignBridgeRuntime) module.
+    if ((Get-CanvasState) -eq 'own') { return @() }
+    $content = Join-Path $Project 'Content'
+    if (-not (Test-Path $content)) { return @() }
+    $users = New-Object System.Collections.Generic.List[string]
+    $latin1 = [Text.Encoding]::GetEncoding(28591)
+    foreach ($f in (Get-ChildItem -Path $content -Recurse -File -Include *.uasset, *.umap -ErrorAction SilentlyContinue)) {
+        if ($f.FullName -match '\\Content\\(DwoCanvasTests|DesignBridgeTests)\\') { continue }   # test leftovers, removed anyway
+        # Images the importer created: T_DB_<first 16 hex of the content hash> (DwoCanvasImporter.cpp).
+        if ($f.Name -cmatch '^T_DB_[0-9A-F]{16}\.uasset$') { $users.Add($f.FullName.Substring($Project.Length + 1)); continue }
+        $stream = [IO.File]::OpenRead($f.FullName)
+        try {
+            $buffer = New-Object byte[] ([Math]::Min($stream.Length, 8MB))
+            $read = $stream.Read($buffer, 0, $buffer.Length)
+        } finally { $stream.Dispose() }
+        $head = $latin1.GetString($buffer, 0, $read)
+        if ($head.Contains('DwoCanvasRuntime') -or $head.Contains('DesignBridgeRuntime')) { $users.Add($f.FullName.Substring($Project.Length + 1)) }
+    }
+    # Widgets an import made without DwoCanvas widgets inside (plain UMG) are known only from the import records.
+    foreach ($dir in $OurRecords) {
+        $records = Join-Path $Project $dir
+        if (-not (Test-Path $records)) { continue }
+        foreach ($r in (Get-ChildItem $records -Recurse -File -Filter *.json -ErrorAction SilentlyContinue)) {
+            try { $asset = (Get-Content -Raw -Encoding UTF8 $r.FullName | ConvertFrom-Json).asset } catch { continue }
+            if ("$asset" -notlike '/Game/*') { continue }
+            $rel = 'Content\' + ("$asset".Substring(6) -replace '/', '\') + '.uasset'
+            if ((Test-Path (Join-Path $Project $rel)) -and -not $users.Contains($rel)) { $users.Add($rel) }
+        }
+    }
+    return $users.ToArray()
+}
+
+function Find-EditorIniLines {
+    # Per-user editor settings the engine writes for loaded plugin modules (compile time stamps, panel state).
+    $hits = @()
+    $saved = Join-Path $Project 'Saved\Config'
+    if (-not (Test-Path $saved)) { return @() }
+    $regex = '^(' + (($OurModules + @('DwoCanvasSettings', 'DesignBridgeSettings')) -join '|') + ')[.=]'
+    foreach ($f in (Get-ChildItem $saved -Recurse -File -Filter *.ini -ErrorAction SilentlyContinue)) {
+        $n = @([IO.File]::ReadAllLines($f.FullName) | Where-Object { $_ -match $regex }).Count
+        if ($n -gt 0) { $hits += [pscustomobject]@{ File = $f.FullName.Substring($Project.Length + 1); Lines = $n } }
+    }
+    return $hits
+}
+
+function Get-FolderBytes([string]$Path) {
+    if (-not (Test-Path $Path)) { return 0 }
+    return [long](Get-ChildItem $Path -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum
+}
+
+function Get-UninstallScan {
+    $skip = @(Get-ForeignNames)
+    $plugins = @($OurPlugins | Where-Object { $skip -notcontains $_ })
+    $modules = @($OurModules | Where-Object { $skip -notcontains $_ })
     $runs = @()
     $runsDir = Join-Path $DataDir 'runs'
     if (Test-Path $runsDir) { $runs = @(Get-ChildItem $runsDir -Directory) }
-    $dataBytes = 0
-    if (Test-Path $DataDir) { $dataBytes = (Get-ChildItem $DataDir -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum }
     $created = @()
     if (Test-Path $LedgerPath) {
         $created = @(Get-Content -Encoding UTF8 $LedgerPath | Where-Object { $_ } | Select-Object -Unique |
                      Where-Object { Test-Path (Join-Path $Project $_) })
     }
-    return [pscustomobject]@{ Runs = $runs; DataBytes = [long]$dataBytes; Created = $created }
+    $canvas = Get-CanvasState
+    $installed = @(@($PluginDest, $SmDest, $SmLegacyDest) | Where-Object { Test-Path $_ })
+    if ($canvas -eq 'managed') { $installed += @(@($CanvasDest, $CanvasOldDest) | Where-Object { Test-Path $_ }) }
+    return [pscustomobject]@{
+        Plugins     = @($installed | ForEach-Object { $_.Substring($Project.Length + 1) })
+        Launchers   = @(@($LauncherPath, $LegacyLauncher) | Where-Object { Test-Path $_ } | ForEach-Object { Split-Path -Leaf $_ })
+        Exclude     = $(if ((Test-BlockPresent) -or (Test-BlockPresent -Legacy)) { (Get-Vcs).Exclude } else { $null })
+        Runs        = $runs.Count
+        DataBytes   = (Get-FolderBytes $DataDir)
+        Created     = $created
+        Artifacts   = @($OurArtifacts | Where-Object { Test-Path (Join-Path $Project $_) })
+        Records     = @($OurRecords | Where-Object { Test-Path (Join-Path $Project $_) })
+        Generated   = @(Find-GeneratedWidgets)
+        Uproject    = @(Find-UprojectEntries $plugins)
+        BuildCs     = @(Find-BuildCsDeps $modules)
+        Configs     = @($OurConfigs | Where-Object { Test-Path (Join-Path $Project $_) })
+        EditorIni   = @(Find-EditorIniLines)
+        CodeUses    = @(Find-CodeUses $skip)
+        SkipNames   = $skip
+    }
 }
 
-function Read-DataChoice($Inventory) {
-    if ($Rest -contains '--keep-data') { return 'keep' }
-    if ($Rest -contains '--delete-data') { return 'delete' }
-    if ($Inventory.Runs.Count -eq 0 -and $Inventory.Created.Count -eq 0) { return 'delete' }
+function Write-UninstallScan($Scan) {
+    Say 'uninstall: removes everything dwo-Forge added to this project or created in it'
+    Write-Host "  always removed"
+    Write-Host "    plugins          : $(if ($Scan.Plugins.Count) { $Scan.Plugins -join ', ' } else { 'none' })"
+    Write-Host "    launcher, state  : $((@($Scan.Launchers) + @('__dwo-forge\')) -join ', ')"
+    Write-Host "    git exclude      : $(if ($Scan.Exclude) { "dwo-forge block in $($Scan.Exclude)" } else { 'none' })"
+    Write-Host "    test leftovers   : $(@($Scan.Artifacts | Where-Object { $_ -like 'Content\*' -or $_ -like '*Tests' }) -join ', ')"
+    Write-Host "  project files that name dwo-Forge plugins (backed up, then cleaned)"
+    Write-Host "    .uproject        : $(if ($Scan.Uproject.Count) { $Scan.Uproject -join ', ' } else { 'none' })"
+    Write-Host "    Build.cs         : $(if ($Scan.BuildCs.Count) { ($Scan.BuildCs | ForEach-Object { "$($_.Module) in $($_.File)" }) -join '; ' } else { 'none' })"
+    Write-Host "    settings files   : $(if ($Scan.Configs.Count) { $Scan.Configs -join ', ' } else { 'none' })"
+    Write-Host "    editor settings  : $(if ($Scan.EditorIni.Count) { ($Scan.EditorIni | ForEach-Object { "$($_.Lines) line(s) in $($_.File)" }) -join '; ' } else { 'none' })"
+    Write-Host "  your choice"
+    Write-Host ("    run history      : {0} runs, {1:N1} MB, reports in {2}, {3} other file(s)" -f $Scan.Runs, ($Scan.DataBytes / 1MB),
+                $(if ($Scan.Artifacts | Where-Object { $_ -eq 'Saved\DwoCanvas' -or $_ -eq 'Saved\DesignBridge' }) { 'Saved\DwoCanvas' } else { '-' }), $Scan.Created.Count)
+    Write-Host "    generated widgets: $($Scan.Generated.Count) asset(s) made by canvas-import$(if ($Scan.Records.Count) { ", records in $($Scan.Records -join ', ')" })"
+    $Scan.Generated | Select-Object -First 10 | ForEach-Object { Write-Host "        $_" }
+    if ($Scan.CodeUses.Count) {
+        Write-Host "  project code that uses the plugins (cannot be removed automatically; the build fails until you edit it)" -ForegroundColor Yellow
+        $Scan.CodeUses | Select-Object -First 15 | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }
+    }
+}
+
+function Read-Choice([string]$Flag1, [string]$Flag2, [string]$Question, [string]$Default) {
+    # $Flag1 / $Flag2 answer the question on the command line. Returns 1 or 2.
+    if ($Rest -contains $Flag1) { return 1 }
+    if ($Rest -contains $Flag2) { return 2 }
     $interactive = [Environment]::UserInteractive -and -not [Console]::IsInputRedirected
-    if (-not $interactive) {
-        Say 'No choice given for the run history (--keep-data or --delete-data); keeping it to be safe.'
-        return 'keep'
-    }
+    if (-not $interactive) { return [int]$Default }
     while ($true) {
-        $answer = Read-Host '[dwo-forge] Keep the run history and logs? [K]eep (moved out of the project) / [D]elete'
-        if ($answer -match '^[kK]') { return 'keep' }
-        if ($answer -match '^[dD]') { return 'delete' }
+        $answer = Read-Host "[dwo-forge] $Question"
+        if ($answer -match '^1') { return 1 }
+        if ($answer -match '^2') { return 2 }
     }
+}
+
+function Backup-ProjectFile([string]$Relative, [string]$BackupDir) {
+    $target = Join-Path $BackupDir $Relative
+    New-Item -ItemType Directory -Force (Split-Path -Parent $target) | Out-Null
+    Copy-Item -LiteralPath (Join-Path $Project $Relative) $target -Force
+}
+
+function Remove-UprojectEntries([string[]]$Names) {
+    # Removes the plugin objects from the Plugins array as text, so the rest of the file keeps its formatting.
+    $file = @(Get-ChildItem -Path $Project -Filter *.uproject -File)[0]
+    $text = [IO.File]::ReadAllText($file.FullName)
+    foreach ($n in $Names) {
+        $obj = '\{[^{}]*?"Name"\s*:\s*"' + [regex]::Escape($n) + '"[^{}]*\}'
+        $before = $text
+        $text = [regex]::Replace($text, ',\s*' + $obj, '')          # not the first entry
+        if ($text -eq $before) { $text = [regex]::Replace($text, $obj + '\s*,\s*', '') }   # first of several
+        if ($text -eq $before) { $text = [regex]::Replace($text, $obj, '') }               # the only entry
+    }
+    # An empty Plugins array goes away completely.
+    $text = [regex]::Replace($text, ',\s*"Plugins"\s*:\s*\[\s*\]', '')
+    $text = [regex]::Replace($text, '"Plugins"\s*:\s*\[\s*\]\s*,?', '')
+    $null = $text | ConvertFrom-Json   # stop with an error rather than write a broken .uproject
+    [IO.File]::WriteAllText($file.FullName, $text, $Utf8)
+}
+
+function Remove-BuildCsDep([string]$Relative, [string]$Module) {
+    # Removes "Module" from dependency lists: as a list item ("A", "Module", "B") or a single Add("Module") call.
+    $path = Join-Path $Project $Relative
+    $text = [IO.File]::ReadAllText($path)
+    $q = [regex]::Escape('"' + $Module + '"')
+    $text = [regex]::Replace($text, '(?m)^[ \t]*[A-Za-z]+DependencyModuleNames\.Add\(\s*' + $q + '\s*\);[ \t]*\r?\n', '')
+    $text = [regex]::Replace($text, '(?m)^[ \t]*' + $q + '[ \t]*,?[ \t]*(//[^\r\n]*)?\r?\n', '')   # one item per line
+    $text = [regex]::Replace($text, '\s*,\s*' + $q, '')                                           # "A", "Module"
+    $text = [regex]::Replace($text, $q + '\s*,\s*', '')                                           # "Module", "B"
+    $text = [regex]::Replace($text, '\{\s*' + $q + '\s*\}', '{ }')                               # { "Module" }
+    [IO.File]::WriteAllText($path, $text, $Utf8)
+}
+
+function Remove-EditorIniLines($Hits) {
+    $regex = '^(' + (($OurModules + @('DwoCanvasSettings', 'DesignBridgeSettings')) -join '|') + ')[.=]'
+    foreach ($h in $Hits) {
+        $path = Join-Path $Project $h.File
+        $lines = @([IO.File]::ReadAllLines($path) | Where-Object { $_ -notmatch $regex })
+        [IO.File]::WriteAllText($path, (($lines -join "`r`n") + "`r`n"), $Utf8)
+    }
+}
+
+function Remove-EmptyParents([string]$Path) {
+    $dir = Split-Path -Parent $Path
+    while ($dir -and $dir.Length -gt $Project.Length -and (Test-Path $dir) -and -not (Get-ChildItem -Force $dir)) {
+        Remove-Item -Force $dir
+        $dir = Split-Path -Parent $dir
+    }
+}
+
+function Move-OrDelete([string]$Relative, [bool]$Keep, [string]$KeepDir) {
+    $path = Join-Path $Project $Relative
+    if (-not (Test-Path -LiteralPath $path)) { return }
+    if ($Keep) {
+        $target = Join-Path $KeepDir $Relative
+        New-Item -ItemType Directory -Force (Split-Path -Parent $target) | Out-Null
+        try { Move-Item -LiteralPath $path $target -Force -ErrorAction Stop }
+        catch { Fail "Cannot move $Relative`: $($_.Exception.Message) Close the Unreal Editor and try again." }
+    } else {
+        if (Test-Path -LiteralPath $path -PathType Container) { Remove-Folder $path $Relative }
+        else {
+            try { Remove-Item -LiteralPath $path -Force -ErrorAction Stop }
+            catch { Fail "Cannot remove $Relative`: $($_.Exception.Message) Close the Unreal Editor and try again." }
+        }
+    }
+    Remove-EmptyParents $path
 }
 
 function Remove-LegacyLeftovers {
@@ -1371,80 +1609,133 @@ function Remove-LegacyLeftovers {
     if (-not $FromLegacyBat -and (Test-OurLauncher $LegacyLauncher)) { Remove-Item -Force $LegacyLauncher }
 }
 
+function Test-AnythingLeft($Scan) {
+    return ($Scan.Plugins.Count + $Scan.Launchers.Count + $Scan.Artifacts.Count + $Scan.Records.Count + $Scan.Generated.Count +
+            $Scan.Uproject.Count + $Scan.BuildCs.Count + $Scan.Configs.Count + $Scan.EditorIni.Count + $Scan.Runs + $Scan.Created.Count) -gt 0 -or
+           $Scan.Exclude -or (Test-Path $ForgeDir) -or (Test-Path $LegacyDir)
+}
+
 function Invoke-Uninstall {
     $state = Read-State
-    $canvas = Get-CanvasState
-    $anything = $state -or (Test-Path $ForgeDir) -or (Test-Path $PluginDest) -or (Get-InstalledStateMonitor) -or ($canvas -eq 'managed') -or (Test-Path $LegacyDir) -or (Test-OurLauncher $LegacyLauncher)
-    if (-not $anything) {
-        Say 'dwo-Forge is not attached to this project.'
-        Clear-ExcludeBlock | Out-Null
+    $scan = Get-UninstallScan
+    if ($Rest -contains '--plan-json') {
+        # For the GUI dialog: the scan only, nothing is changed.
+        [Console]::OutputEncoding = [Text.Encoding]::UTF8
+        Write-Output ($scan | ConvertTo-Json -Depth 5 -Compress)
+        return
+    }
+    if (-not (Test-AnythingLeft $scan)) {
+        Say 'dwo-Forge is not attached and left nothing in this project.'
         if ($env:DWO_FORGE_FROM_BAT -ne '1' -and (Test-Path $LauncherPath)) { Remove-Item -Force $LauncherPath }
         return
     }
-    $inv = Get-UninstallInventory
-    Say 'uninstall: removes everything dwo-Forge added to this project'
-    $canvasDirs = if ($canvas -eq 'managed') { @($CanvasDest, $CanvasOldDest) } else { @() }
-    Write-Host "    plugins     : $(@(@($PluginDest, $SmDest, $SmLegacyDest) + $canvasDirs | Where-Object { Test-Path $_ } | ForEach-Object { Split-Path -Leaf $_ }) -join ', ')"
-    Write-Host "    launcher    : __dwo-forge.bat$(if (Test-OurLauncher $LegacyLauncher) { ', __dwo-lens.bat (dwo-Lens 1.x)' })"
-    Write-Host "    exclude     : $(if ((Test-BlockPresent) -or (Test-BlockPresent -Legacy)) { (Get-Vcs).Exclude } else { 'none' })"
-    Write-Host ("    run history : {0} runs, {1:N1} MB (__dwo-forge\data)" -f $inv.Runs.Count, ($inv.DataBytes / 1MB))
-    Write-Host "    other files : $($inv.Created.Count) (perf CSV captures in Saved\Profiling)"
+    Write-UninstallScan $scan
 
-    # Check DwoCanvas users before removing anything, so a refusal leaves the attach intact.
-    if ($canvas -eq 'managed' -and -not ($Rest -contains '--force') -and @(Get-CanvasUsers).Count -gt 0) {
-        $null = Remove-Canvas $false   # prints the assets that use it
-        Fail 'Uninstall stopped. DwoCanvas is still in use.'
+    # Decide everything before changing anything, so an answer of "no" leaves the project as it was.
+    if ($scan.CodeUses.Count -gt 0 -and -not ($Rest -contains '--force')) {
+        $go = Read-Choice '--force' '--no-force' 'Project code still uses the plugins. Uninstall anyway? 1 = yes, 2 = no' '2'
+        if ($go -ne 1) { Fail 'Uninstall stopped. Edit the code listed above (or run again with --force).' }
     }
-    $choice = Read-DataChoice $inv
-    if (-not (Remove-StateMonitor ($Rest -contains '--force'))) { Fail 'Uninstall stopped. DwoStateMonitor is still in use.' }
-    if ($canvas -eq 'managed' -and -not (Remove-Canvas ($Rest -contains '--force'))) { Fail 'Uninstall stopped. DwoCanvas is still in use.' }
+    $hasHistory = $scan.Runs -gt 0 -or $scan.Created.Count -gt 0 -or ($scan.Artifacts | Where-Object { $_ -like 'Saved\*' -and $_ -notlike '*Tests' })
+    $keepData = $false
+    if ($hasHistory) {
+        $keepData = (Read-Choice '--keep-data' '--delete-data' 'Run history, logs and reports: 1 = keep (moved out of the project), 2 = delete' '1') -eq 1
+    }
+    $keepGenerated = $false
+    if ($scan.Generated.Count -gt 0 -or $scan.Records.Count -gt 0) {
+        $answer = Read-Choice '--keep-generated' '--delete-generated' 'Widgets made by canvas-import (they stop working without DwoCanvas): 1 = keep in the project, 2 = delete' '0'
+        if ($answer -eq 0) { Fail 'Uninstall stopped. Choose what happens to the widgets made by canvas-import: --keep-generated or --delete-generated.' }
+        $keepGenerated = $answer -eq 1
+    }
+    $cleanRefs = -not ($Rest -contains '--keep-references')
+
+    $stamp = (Split-Path -Leaf $Project) + '-' + (Get-Date).ToString('yyyyMMdd-HHmmss')
+    $keepDir = Join-Path $AppDataDir "uninstalled\$stamp"
+    $backupDir = Join-Path $keepDir 'backup'
+
+    # 1. Project files that name the plugins (backed up first).
+    if ($cleanRefs) {
+        $uprojectRel = (@(Get-ChildItem -Path $Project -Filter *.uproject -File)[0]).Name
+        if ($scan.Uproject.Count -gt 0) {
+            Backup-ProjectFile $uprojectRel $backupDir
+            Remove-UprojectEntries $scan.Uproject
+            Say "Removed from $uprojectRel Plugins: $($scan.Uproject -join ', ')"
+        }
+        foreach ($group in ($scan.BuildCs | Group-Object File)) {
+            Backup-ProjectFile $group.Name $backupDir
+            foreach ($hit in $group.Group) { Remove-BuildCsDep $group.Name $hit.Module }
+            Say "Removed from $($group.Name): $(@($group.Group | ForEach-Object { $_.Module }) -join ', ')"
+        }
+        foreach ($c in $scan.Configs) { Backup-ProjectFile $c $backupDir; Move-OrDelete $c $false $keepDir; Say "Removed $c" }
+        if ($scan.EditorIni.Count -gt 0) {
+            foreach ($h in $scan.EditorIni) { Backup-ProjectFile $h.File $backupDir }
+            Remove-EditorIniLines $scan.EditorIni
+            Say "Removed dwo-Forge module entries from the editor settings ($(@($scan.EditorIni | ForEach-Object { $_.File }) -join ', '))."
+        }
+    }
+
+    # 2. Plugins: checks already happened above, so remove unconditionally.
+    $null = Remove-StateMonitor $true
+    if ((Get-CanvasState) -eq 'managed') { $null = Remove-Canvas $true }
     Remove-Plugin
 
-    if ($choice -eq 'keep') {
-        $dest = Join-Path $AppDataDir ("uninstalled\" + (Split-Path -Leaf $Project) + '-' + (Get-Date).ToString('yyyyMMdd-HHmmss'))
-        New-Item -ItemType Directory -Force $dest | Out-Null
-        if (Test-Path $DataDir) { Move-Item $DataDir (Join-Path $dest 'data') }
-        foreach ($f in $inv.Created) {
-            $target = Join-Path $dest ("project-files\" + $f)
-            New-Item -ItemType Directory -Force (Split-Path -Parent $target) | Out-Null
-            Move-Item (Join-Path $Project $f) $target
-        }
-        Say "Run history kept at $dest"
-    } else {
-        foreach ($f in $inv.Created) { Remove-Item -Force (Join-Path $Project $f) -ErrorAction SilentlyContinue }
-        Say "Run history and $($inv.Created.Count) other file(s) deleted."
-    }
-    # Engine folders dwo-Forge runs created and that are now empty (for example Saved\Profiling\CSV).
-    foreach ($f in $inv.Created) {
-        $dir = Split-Path -Parent (Join-Path $Project $f)
-        while ($dir -and $dir.Length -gt $Project.Length -and (Test-Path $dir) -and -not (Get-ChildItem -Force $dir)) {
-            Remove-Item -Force $dir
-            $dir = Split-Path -Parent $dir
-        }
+    # 3. Generated widgets and their import records.
+    foreach ($g in $scan.Generated) { if (-not $keepGenerated) { Move-OrDelete $g $false $keepDir } }
+    foreach ($r in $scan.Records) { if (-not $keepGenerated) { Move-OrDelete $r $false $keepDir } }
+    if ($scan.Generated.Count -gt 0) {
+        if ($keepGenerated) { Say "Kept $($scan.Generated.Count) generated widget(s); they need DwoCanvas to open." }
+        else { Say "Deleted $($scan.Generated.Count) generated widget(s) and the import records." }
     }
 
+    # 4. Run history, reports, files dwo-Forge runs left, test leftovers.
+    if ($keepData -and (Test-Path $DataDir)) {
+        New-Item -ItemType Directory -Force $keepDir | Out-Null
+        Move-Item $DataDir (Join-Path $keepDir 'data')
+    }
+    foreach ($f in $scan.Created) { Move-OrDelete $f $keepData $keepDir }
+    foreach ($a in $scan.Artifacts) {
+        $isTest = $a -like 'Content\*' -or $a -like '*Tests'
+        Move-OrDelete $a ($keepData -and -not $isTest) $keepDir
+    }
+    if ($keepData) { Say "Run history and reports kept at $keepDir" } elseif ($hasHistory) { Say 'Run history and reports deleted.' }
+    if ($cleanRefs -and (Test-Path $backupDir)) { Say "Backup of edited project files: $backupDir" }
+
+    # 5. Attach state, launcher, exclude block.
     $cleared = Clear-ExcludeBlock
     Set-Location $Project
     if (Test-Path $ForgeDir) {
         Get-ChildItem $ForgeDir -Recurse -Force -File | ForEach-Object { if ($_.IsReadOnly) { $_.IsReadOnly = $false } }
-        Remove-Item -Recurse -Force $ForgeDir
+        Remove-Folder $ForgeDir '__dwo-forge'
     }
     Remove-LegacyLeftovers
     # A launcher run by itself deletes its own file after this script returns.
     if ($env:DWO_FORGE_FROM_BAT -ne '1' -and (Test-Path $LauncherPath)) { Remove-Item -Force $LauncherPath }
-
-    $left = @(@($PluginDest, $SmDest, $SmLegacyDest, $CanvasDest, $ForgeDir, $LegacyDir) | Where-Object { Test-Path $_ })
-    if (Test-Path (Join-Path $CanvasOldDest $CanvasOldMarker)) { $left += $CanvasOldDest }
-    if ($env:DWO_FORGE_FROM_BAT -ne '1' -and (Test-Path $LauncherPath)) { $left += $LauncherPath }
-    if ($left.Count -gt 0) { Say "Uninstalled, but these remain: $($left -join ', ')"; exit 3 }
+    $plugins = Join-Path $Project 'Plugins'
+    $existed = $state -and $state.PSObject.Properties['pluginsFolderExisted'] -and [bool]$state.pluginsFolderExisted
+    if (-not $existed -and (Test-Path $plugins) -and -not (Get-ChildItem -Force $plugins)) { Remove-Item -Force $plugins }
     if ($cleared) { Say 'Exclude entries removed.' }
+
+    # 6. Verify with a fresh scan.
+    $after = Get-UninstallScan
+    $left = @()
+    $left += $after.Plugins
+    $left += @($after.Launchers | Where-Object { -not ($_ -eq '__dwo-forge.bat' -and $env:DWO_FORGE_FROM_BAT -eq '1') -and -not ($_ -eq '__dwo-lens.bat' -and $FromLegacyBat) })
+    if ($after.Exclude) { $left += "exclude block in $($after.Exclude)" }
+    if (Test-Path $ForgeDir) { $left += '__dwo-forge' }
+    $left += @($after.Artifacts)
+    if ($cleanRefs) { $left += @($after.Uproject | ForEach-Object { ".uproject entry $_" }) + @($after.BuildCs | ForEach-Object { "$($_.Module) in $($_.File)" }) + @($after.Configs) }
+    if (-not $keepGenerated) { $left += @($after.Generated) + @($after.Records) }
+    if ($left.Count -gt 0) { Say "Uninstalled, but these remain: $($left -join ', ')"; exit 3 }
+    if ($scan.CodeUses.Count -gt 0) {
+        Say "Uninstalled. Project code still names the plugins in $($scan.CodeUses.Count) place(s) listed above; edit them before building."
+        exit 0
+    }
     $vcs = Get-Vcs
-    if ($vcs.Kind -ne 'none' -and $state -and $state.gitStatusBeforeAttach -ne $null) {
-        # Ignored: the running launcher (it deletes itself next), and a 2.0.0-era visible Plugins\DwoCanvas.
-        $after = (@((Get-ProjectStatus) -split "`n") | Where-Object { $_ -and $_ -notmatch '__dwo-(forge|lens)\.bat"?$' -and $_ -notmatch 'Plugins/DwoCanvas/' }) -join "`n"
+    if ($vcs.Kind -ne 'none' -and $state -and $state.gitStatusBeforeAttach -ne $null -and -not $keepGenerated -and $scan.Uproject.Count -eq 0 -and $scan.BuildCs.Count -eq 0) {
+        $now = (@((Get-ProjectStatus) -split "`n") | Where-Object { $_ -and $_ -notmatch '__dwo-(forge|lens)\.bat"?$' -and $_ -notmatch 'Plugins/DwoCanvas/' }) -join "`n"
         $before = (@("$($state.gitStatusBeforeAttach)" -split "`n") | Where-Object { $_ -and $_ -notmatch 'Plugins/DwoCanvas/' }) -join "`n"
-        if ($after -ne $before) { Say 'Uninstalled, but git status differs from before attach. Review: git status'; exit 3 }
-        Say 'Uninstalled. git status matches the state before attach.'
+        if ($now -ne $before) { Say 'Uninstalled. No dwo-Forge files remain; git status differs from before attach (your own changes since then). Review: git status'; exit 0 }
+        Say 'Uninstalled. No dwo-Forge files remain and git status matches the state before attach.'
     } else {
         Say 'Uninstalled. No dwo-Forge files remain in the project.'
     }

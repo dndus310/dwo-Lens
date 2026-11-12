@@ -24,18 +24,23 @@ Lens와 DwoStateMonitor는 프로젝트를 읽기만 하며, 언제 떼어 내�
 
 ### 제거 (Uninstall)
 
-창에서 `도구 > 제거`(또는 명령 팔레트 `Ctrl+K` → 제거)를 누르면 지울 항목과 실행 기록 크기를 보여 주고, **실행 기록·로그를 보존할지 삭제할지** 묻습니다.
+창에서 `도구 > 제거`(또는 명령 팔레트 `Ctrl+K` → 제거)를 누르거나 `__dwo-forge.bat uninstall`을 실행합니다. **플러그인을 먼저 따로 지울 필요가 없습니다.** 먼저 프로젝트를 검사해 dwo-Forge가 남긴 것을 모두 보여 주고, 사용자가 정할 것만 물은 뒤 한 번에 지웁니다.
 
-| 지우는 것 | 내용 |
-|---|---|
-| 플러그인 | `Plugins/__DwoLensInspector`, dwo-Forge가 설치한 `Plugins/__DwoStateMonitor` (dwo-Lens 1.x의 `Plugins/__StateMonitor` 포함. 프로젝트 코드가 쓰고 있으면 제거를 멈추고 알려 줌), `Plugins/__DwoCanvas` (생성된 위젯이 쓰고 있으면 제거를 멈추고 알려 줌) |
-| 실행 파일·설정 | `__dwo-forge.bat`, `__dwo-forge/` (부착 정보, 화면 설정, 문제 음소거), 남아 있으면 dwo-Lens 1.x의 `__dwo-lens.bat`, `__dwo-lens/` |
-| git exclude | 부착 때 넣은 dwo-Forge 블록(과 dwo-Lens 1.x 블록)만 제거. 다른 내용은 그대로 |
-| 실행 기록 | `__dwo-forge/data`와 dwo-Forge 실행이 프로젝트에 남긴 파일(성능 캡처 CSV). **보존**을 고르면 `%LOCALAPPDATA%\dwo-Forge\uninstalled\<프로젝트>-<시각>`으로 옮기고, **삭제**를 고르면 지움 |
+| 구분 | 내용 | 처리 |
+|---|---|---|
+| 플러그인 | `Plugins/__DwoLensInspector`, `__DwoStateMonitor`, `__DwoCanvas` (dwo-Lens 1.x의 `__StateMonitor` 포함) | 항상 지움 |
+| 실행 파일·부착 정보 | `__dwo-forge.bat`, `__dwo-forge/` (dwo-Lens 1.x의 `__dwo-lens.bat`, `__dwo-lens/` 포함) | 항상 지움 |
+| git exclude | 부착 때 넣은 dwo-Forge 블록 | 항상 지움 (다른 내용은 그대로) |
+| 테스트 잔여물 | `Content/DwoCanvasTests`, `Saved/DwoCanvasTests` (DwoCanvas 자동화 테스트가 남긴 빈 폴더·파일) | 항상 지움 |
+| 프로젝트 파일 등록 | `.uproject`의 `Plugins` 항목(DwoStateMonitor, DwoCanvas), `Build.cs` 의존성(`DwoStateMonitor`, `DwoCanvasRuntime`, `DwoCanvasEditor`), `Config/DefaultDwoCanvas.ini`, 에디터 개인 설정의 모듈 기록 줄 | 원본을 백업한 뒤 해당 항목만 지움. 나머지 내용과 서식은 그대로 (`--keep-references`로 건너뜀) |
+| DwoCanvas로 만든 위젯 | `canvas-import`가 만든 위젯 블루프린트·이미지(`T_DB_…`)와 가져오기 기록(`DwoCanvas/Records`) | **선택**: 삭제(`--delete-generated`) 또는 남김(`--keep-generated`). DwoCanvas 없이 열면 깨지므로 묻습니다 |
+| 실행 기록 | `__dwo-forge/data`, `Saved/DwoCanvas` 리포트, 성능 캡처 CSV | **선택**: 보존(`--keep-data`, `%LOCALAPPDATA%\dwo-Forge\uninstalled\<프로젝트>-<시각>`으로 이동) 또는 삭제(`--delete-data`) |
+| 플러그인을 쓰는 코드 | `#include "StateMonitorSubsystem.h"`처럼 프로젝트 C++ 코드가 플러그인을 쓰는 줄 | 자동으로 고치지 않음. 목록을 보여 주고 확인을 받은 뒤(`--force`) 제거. 제거 후 그 줄을 지워야 빌드됨 |
 
-**DwoCanvas는 남깁니다.** `canvas-import`로 만든 위젯 블루프린트가 `DwoCanvasRuntime` 모듈을 쓰므로, 지우면 그 에셋이 깨집니다. 필요 없어지면 `canvas-remove`로 따로 지웁니다.
-
-제거 뒤 git 프로젝트는 `git status`가 부착 전과 같은지(DwoCanvas 제외), git이 없는 프로젝트는 dwo-Forge 파일이 하나도 남지 않았는지 검사합니다. `Saved/`, `Intermediate/`, `DerivedDataCache/`처럼 에디터가 원래 쓰는 폴더는 건드리지 않습니다.
+- 편집한 프로젝트 파일의 원본은 `%LOCALAPPDATA%\dwo-Forge\uninstalled\<프로젝트>-<시각>\backup`에 남습니다.
+- 명령줄에서 선택 플래그를 주지 않으면 콘솔에서 묻습니다. 묻을 수 없는 환경(스크립트)에서 위젯 처리 방법이나 코드 사용 확인이 빠지면, 아무것도 바꾸지 않고 멈춥니다.
+- `__dwo-forge.bat uninstall --plan-json`은 바꾸지 않고 검사 결과만 JSON으로 출력합니다(창의 제거 대화상자가 사용).
+- 제거 뒤 다시 검사해 남은 것이 있으면 알립니다. git 프로젝트는 `git status`가 부착 전과 같은지도 확인합니다. `Saved/`, `Intermediate/`, `DerivedDataCache/`처럼 에디터가 원래 쓰는 폴더는 dwo-Forge 파일만 지웁니다.
 
 ### 명령줄
 
@@ -69,7 +74,7 @@ __dwo-forge.bat canvas-remove [--force]                :: 제거 (생성된 위�
 __dwo-forge.bat status | doctor     :: 부착 정보와 세 도구 상태 · 환경 점검
 __dwo-forge.bat update              :: dwo-Forge를 새 버전으로 바꾼 뒤 플러그인·실행 파일 갱신
 __dwo-forge.bat tools               :: 도구 카탈로그
-__dwo-forge.bat uninstall           :: 제거. 실행 기록 보존 여부를 물음 (--keep-data / --delete-data로 지정)
+__dwo-forge.bat uninstall           :: 한 번에 완전 제거. 기록·생성 위젯 처리를 물음 (--keep-data/--delete-data, --keep-generated/--delete-generated, --force)
 ```
 
 창에서 실행한 명령의 출력은 하단 **실행 로그** 패널에 표시되고, `%LOCALAPPDATA%\dwo-Forge\logs`에 파일로도 저장됩니다(최근 50개). 실패 알림의 **로그 파일 열기**로 바로 열 수 있습니다.
@@ -160,7 +165,7 @@ __dwo-forge.bat canvas-remove                           :: 제거 (Content의 .u
 ```
 
 - **설치 방식은 DwoStateMonitor와 같습니다.** 원본은 dwo-Forge의 `plugin/DwoCanvas`에 있고, `canvas-install`이 `Plugins/__DwoCanvas`에 복사합니다(git에서 숨김). `canvas-remove`와 `uninstall`이 지웁니다.
-- 생성된 위젯은 런타임 모듈 `DwoCanvasRuntime`(`UDwoCanvasShape`, `UDwoCanvasFrame`)을 씁니다. 그런 에셋이 남아 있으면 제거를 멈추고 목록을 보여 줍니다(`--force`로 강제). 그 위젯을 여는 다른 PC에도 DwoCanvas를 설치해야 합니다.
+- 생성된 위젯은 런타임 모듈 `DwoCanvasRuntime`(`UDwoCanvasShape`, `UDwoCanvasFrame`)을 씁니다. `canvas-remove`는 그런 에셋이 남아 있으면 멈추고 목록을 보여 줍니다(`--force`로 강제). `uninstall`은 멈추지 않고 위젯을 지울지 남길지 묻습니다. 그 위젯을 여는 다른 PC에도 DwoCanvas를 설치해야 합니다.
 - 2.0.0이 `Plugins/DwoCanvas`에 설치한 것은 다음 명령 때 `Plugins/__DwoCanvas`로 옮겨집니다.
 - Blueprint 전용 프로젝트도 미리 빌드한 에디터 바이너리가 들어가서 에디터가 컴파일 없이 열립니다.
 - `canvas-import`는 `UnrealEditor-Cmd <uproject> -run=DwoCanvasImport -File=<json> [-ResetOverrides] [-Doc=<이름>]`를 실행합니다. 오류가 없으면 종료 코드 0이고, 리포트는 `<프로젝트>/Saved/DwoCanvas/Reports/*.txt`에 저장됩니다. 에디터를 닫고 실행하세요.

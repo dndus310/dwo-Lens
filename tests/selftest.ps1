@@ -129,7 +129,7 @@ if (-not $SkipIntegration -and $Project) {
     $r = Run 'canvas-remove'
     Check 'canvas' 'canvas-remove refuses while widgets use it' ($r.Code -ne 0 -and (Test-Path $canvasDir)) ''
     $r = Run 'uninstall --delete-data'
-    Check 'canvas' 'uninstall refuses while widgets use it' ($r.Code -ne 0 -and (Test-Path $canvasDir) -and (Test-Path "$copy\__dwo-forge")) ''
+    Check 'canvas' 'uninstall asks what to do with generated widgets' ($r.Code -ne 0 -and $r.Out -match '--delete-generated' -and (Test-Path $canvasDir) -and (Test-Path "$copy\__dwo-forge")) 'nothing changed without a choice'
     # Drop what the import generated (widgets, textures, import records) so the rest of the cycle compares clean.
     & git -C $copy clean -fdq -- Content DwoCanvas 2>$null
     $r = Run 'canvas-remove'
@@ -172,14 +172,33 @@ if (-not $SkipIntegration -and $Project) {
     $migrated = Join-Path $copy 'Plugins\__DwoStateMonitor\DwoStateMonitor.uplugin'
     Check 'cycle' 'update' ($r.Code -eq 0 -and (Test-Path $bat) -and -not (Test-Path (Join-Path $copy '__dwo-forge\system'))) 'runs from the install folder' $r.Seconds
     Check 'cycle' 'update migrates __StateMonitor' (-not (Test-Path $legacySm) -and (Test-Path $migrated) -and ((Get-Content -Raw $migrated) -match 'TargetAllowList')) 'same (editor) mode'
-    $r = Run 'sm-remove'
-
-    $r = Run 'uninstall --delete-data'
-    $leftovers = @(Get-ChildItem -Force $copy | Where-Object { $_.Name -like '__*' }) + @(Get-ChildItem -Force (Join-Path $copy 'Plugins') -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '__*' })
+    # One-step uninstall with everything a user leaves after real use: installed plugins (no sm-remove /
+    # canvas-remove first), generated widgets and records, reports, and the project-file edits made for runtime use.
+    $r = Run 'sm-install --runtime'
+    $r = Run "canvas-import `"$sample`""
+    $uprojectFile = (Get-ChildItem $copy -Filter *.uproject)[0].FullName
+    $uprojectBefore = (Get-FileHash $uprojectFile).Hash
+    $up = Get-Content -Raw $uprojectFile
+    $entries = "`"Plugins`": [`r`n`t`t{`r`n`t`t`t`"Name`": `"DwoStateMonitor`",`r`n`t`t`t`"Enabled`": true`r`n`t`t},`r`n`t`t{`r`n`t`t`t`"Name`": `"DwoCanvas`",`r`n`t`t`t`"Enabled`": true`r`n`t`t},"
+    if ($up -match '"Plugins"\s*:\s*\[') { $up = $up -replace '"Plugins"\s*:\s*\[', $entries }
+    else { $up = $up.TrimEnd().TrimEnd('}').TrimEnd() + ",`r`n`t" + $entries.TrimEnd(',') + "`r`n`t]`r`n}`r`n" }
+    [IO.File]::WriteAllText($uprojectFile, $up)
+    $probeDir = Join-Path $copy 'Source\Probe'
+    New-Item -ItemType Directory -Force $probeDir | Out-Null
+    Set-Content -Encoding UTF8 (Join-Path $probeDir 'Probe.Build.cs') 'PublicDependencyModuleNames.AddRange(new string[] { "Core", "DwoStateMonitor", "DwoCanvasRuntime" });'
+    Set-Content -Encoding UTF8 (Join-Path $probeDir 'Probe.cpp') '#include "StateMonitorSubsystem.h"'
+    $r = Run 'uninstall --delete-data --delete-generated --force'
+    $leftovers = @(Get-ChildItem -Force $copy | Where-Object { $_.Name -like '__*' -or $_.Name -eq 'DwoCanvas' }) +
+                 @(Get-ChildItem -Force (Join-Path $copy 'Plugins') -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '__*' }) +
+                 @(@('Saved\DwoCanvas', 'Saved\DwoCanvasTests', 'Content\DwoCanvasTests', 'Config\DefaultDwoCanvas.ini') | Where-Object { Test-Path (Join-Path $copy $_) })
+    $buildCs = Get-Content -Raw (Join-Path $probeDir 'Probe.Build.cs')
+    Check 'cycle' 'one-step uninstall cleans project files' ((Get-FileHash $uprojectFile).Hash -eq $uprojectBefore -and $buildCs -notmatch 'Dwo' -and $r.Out -match 'edit them before building') '.uproject restored, Build.cs cleaned, code uses reported'
+    Remove-Item -Recurse -Force $probeDir   # the user's own code, not dwo-Forge's
+    if (-not (Get-ChildItem (Join-Path $copy 'Source') -ErrorAction SilentlyContinue)) { Remove-Item -Force (Join-Path $copy 'Source') -ErrorAction SilentlyContinue }
     $after = (@(& git -C $copy status --porcelain) | Where-Object { $_ -notmatch 'Plugins/' }) -join "`n"
     $exclude = Get-Content -Raw (Join-Path $copy '.git\info\exclude')
-    Check 'cycle' 'uninstall leaves no trace' ($r.Code -eq 0 -and $leftovers.Count -eq 0 -and $after -eq $before -and $exclude -notmatch 'dwo-(forge|lens) managed') "leftovers $($leftovers.Count)" $r.Seconds
-    Check 'canvas' 'uninstall removes DwoCanvas' (-not (Test-Path $canvasDir)) ''
+    Check 'cycle' 'uninstall leaves no trace' ($r.Code -eq 0 -and $leftovers.Count -eq 0 -and $after -eq $before -and $exclude -notmatch 'dwo-(forge|lens) managed') "leftovers $($leftovers.Count) $($leftovers -join ',')" $r.Seconds
+    Check 'canvas' 'uninstall removes DwoCanvas and its widgets' (-not (Test-Path $canvasDir) -and -not (Test-Path (Join-Path $copy 'Content\UI\Generated'))) ''
 }
 
 # ---------------------------------------------------------------- 5. projects without their own repository
@@ -223,6 +242,7 @@ if (-not $SkipIntegration -and $Project) {
     $out = & cmd /c "`"$zipLauncher`" attach `"$inner`"" 2>&1 | Out-String
     $hidden = ((& git -C $outer status --porcelain) -join "`n") -eq $before
     Check 'parent' 'attach inside a parent repository' ($LASTEXITCODE -eq 0 -and $hidden -and (Get-Content -Raw $excl) -match '/games/project/__dwo-forge/') 'prefixed exclude, parent status unchanged'
+    $null = & cmd /c "`"$(Join-Path $inner '__dwo-forge.bat')`" sizes" 2>&1   # some run history to keep
     $out = & cmd /c "`"$(Join-Path $inner '__dwo-forge.bat')`" uninstall --keep-data" 2>&1 | Out-String
     $kept = if ($out -match 'kept at (.+)') { $Matches[1].Trim() } else { '' }
     $left = Leftovers $inner

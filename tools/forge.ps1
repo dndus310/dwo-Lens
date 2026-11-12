@@ -1439,12 +1439,19 @@ function Find-GeneratedWidgets {
     return $users.ToArray()
 }
 
+function Get-EditorIniRegex {
+    # Module time stamps / settings keys, and the plugin browser's "seen plugins" records.
+    $keys = '^(' + (($OurModules + @('DwoCanvasSettings', 'DesignBridgeSettings')) -join '|') + ')[.=]'
+    $seen = '^InstalledPlugins=(' + ($OurPlugins -join '|') + ')\s*$'
+    return "$keys|$seen"
+}
+
 function Find-EditorIniLines {
     # Per-user editor settings the engine writes for loaded plugin modules (compile time stamps, panel state).
     $hits = @()
     $saved = Join-Path $Project 'Saved\Config'
     if (-not (Test-Path $saved)) { return @() }
-    $regex = '^(' + (($OurModules + @('DwoCanvasSettings', 'DesignBridgeSettings')) -join '|') + ')[.=]'
+    $regex = Get-EditorIniRegex
     foreach ($f in (Get-ChildItem $saved -Recurse -File -Filter *.ini -ErrorAction SilentlyContinue)) {
         $n = @([IO.File]::ReadAllLines($f.FullName) | Where-Object { $_ -match $regex }).Count
         if ($n -gt 0) { $hits += [pscustomobject]@{ File = $f.FullName.Substring($Project.Length + 1); Lines = $n } }
@@ -1565,7 +1572,7 @@ function Remove-BuildCsDep([string]$Relative, [string]$Module) {
 }
 
 function Remove-EditorIniLines($Hits) {
-    $regex = '^(' + (($OurModules + @('DwoCanvasSettings', 'DesignBridgeSettings')) -join '|') + ')[.=]'
+    $regex = Get-EditorIniRegex
     foreach ($h in $Hits) {
         $path = Join-Path $Project $h.File
         $lines = @([IO.File]::ReadAllLines($path) | Where-Object { $_ -notmatch $regex })

@@ -250,7 +250,8 @@ class ForgeCliTests(unittest.TestCase):
                       'PrivateDependencyModuleNames.Add("DwoCanvasEditor");\n')
         settings = write(self.project / "Config" / "DefaultDwoCanvas.ini", "[/Script/DwoCanvasEditor.DwoCanvasSettings]\n")
         ini = write(self.project / "Saved" / "Config" / "WindowsEditor" / "EditorPerProjectUserSettings.ini",
-                    "[ModuleFileTracking]\nDwoCanvasEditor.TimeStamp=1\nDwoCanvasEditor.LastCompileMethod=External\nEngine.TimeStamp=1\n")
+                    "[ModuleFileTracking]\nDwoCanvasEditor.TimeStamp=1\nDwoCanvasEditor.LastCompileMethod=External\nEngine.TimeStamp=1\n"
+                    "[PluginBrowser]\nInstalledPlugins=DwoCanvas\nInstalledPlugins=glTFRuntime\n")
         tests = write(self.project / "Content" / "DwoCanvasTests" / "Contract" / "x.uasset", "test leftover")
         reports = write(self.project / "Saved" / "DwoCanvas" / "Reports" / "r.txt", "report")
         code, out = self.forge("uninstall", "--delete-data", "--delete-generated")
@@ -265,6 +266,8 @@ class ForgeCliTests(unittest.TestCase):
         self.assertFalse(settings.exists())
         self.assertNotIn("DwoCanvasEditor", ini.read_text(encoding="utf-8"))
         self.assertIn("Engine.TimeStamp=1", ini.read_text(encoding="utf-8"))
+        self.assertNotIn("InstalledPlugins=DwoCanvas", ini.read_text(encoding="utf-8"))
+        self.assertIn("InstalledPlugins=glTFRuntime", ini.read_text(encoding="utf-8"))
         self.assertFalse(tests.exists() or (self.project / "Content" / "DwoCanvasTests").exists())
         self.assertFalse(reports.exists() or (self.project / "Saved" / "DwoCanvas").exists())
         backups = list((self.appdata / "dwo-Forge" / "uninstalled").glob("*/backup/Game.uproject"))

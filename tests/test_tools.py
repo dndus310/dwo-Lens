@@ -116,7 +116,22 @@ class LogParserTests(TempDir):
         self.assertEqual(crashes[0]["error"], "Access violation")
         self.assertEqual(crashes[0]["callstack"], ["A()", "B()"])
         self.assertIn("unreadable", crashes[1]["error"])
-        self.assertEqual(logs.verdict_of(logs.summarize([], crashes)), "fail")
+        self.assertEqual(logs.verdict_of(logs.summarize([], crashes)), "fail")  # no baseline: all new
+
+    def test_old_crashes_only_warn(self):
+        old = [{"folder": "UECC-1", "error": "x", "callstack": []}]
+        base = logs.summarize([], [dict(c) for c in old])
+        again = logs.summarize([], [dict(c) for c in old], baseline=base)
+        self.assertEqual(again["newCrashes"], 0)
+        self.assertEqual(logs.verdict_of(again), "warn")
+        more = logs.summarize([], [dict(c) for c in old] + [{"folder": "UECC-2", "error": "y", "callstack": []}], baseline=base)
+        self.assertEqual(more["newCrashes"], 1)
+        self.assertEqual(logs.verdict_of(more), "fail")
+
+    def test_load_json_accepts_bom(self):
+        p = self.tmp / "bom.uproject"
+        p.write_bytes(b"\xef\xbb\xbf" + b'{"FileVersion": 3}')
+        self.assertEqual(analyze.load_json(p)["FileVersion"], 3)
 
 
 # =============================================================================== analyzer

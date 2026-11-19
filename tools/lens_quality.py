@@ -33,7 +33,7 @@ def load_config(paths: list[Path]) -> dict:
     cfg: dict = {}
     for p in paths:
         if p and p.exists():
-            merge(cfg, json.loads(p.read_text(encoding="utf-8")))
+            merge(cfg, json.loads(p.read_text(encoding="utf-8-sig")))
     return cfg
 
 
@@ -188,7 +188,7 @@ def check_state_monitor(ctx: dict, cfg: dict) -> tuple[list, dict]:
     names = sm.get("pluginName", ["DwoStateMonitor", "StateMonitor"])
     plugin_names = [names] if isinstance(names, str) else list(names)
     root = ctx["project_file"].parent
-    uproject = json.loads(ctx["project_file"].read_text(encoding="utf-8"))
+    uproject = json.loads(ctx["project_file"].read_text(encoding="utf-8-sig"))
     plugin_file = None
     plugins_dir = root / "Plugins"
     if plugins_dir.exists():

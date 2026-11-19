@@ -101,7 +101,7 @@ if (-not $SkipIntegration -and $Project) {
     Check 'cycle' 'verify' ($vj.verdict -ne 'fail') "verdict $($vj.verdict)" $r.Seconds
 
     $r = Run 'logs'
-    Check 'cycle' 'logs' ($r.Code -eq 0 -and (Latest 'logs') -ne $null) '' $r.Seconds
+    Check 'cycle' 'logs' (($r.Code -eq 0 -or $r.Code -eq 2) -and (Latest 'logs') -ne $null) '' $r.Seconds   # 2 = fail verdict, like analyze
 
     $r = Run 'sm-install'
     Check 'cycle' 'sm-install' ($r.Code -eq 0 -and (Test-Path "$copy\Plugins\__DwoStateMonitor\DwoStateMonitor.uplugin")) '' $r.Seconds

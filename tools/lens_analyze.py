@@ -30,7 +30,7 @@ EXTERNAL_PREFIXES = ("__ExternalActors__", "__ExternalObjects__")
 # --------------------------------------------------------------------------- helpers
 
 def load_json(path: Path):
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(path.read_text(encoding="utf-8-sig"))  # .uproject files may start with a BOM
 
 
 def normalize_class(path: str) -> str:

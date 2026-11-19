@@ -776,7 +776,8 @@ struct App
 			add("log:" + Str(g, "fingerprint"), sev, "로그", Str(g, "sample"), Str(g, "category"), &g);
 		}
 		for (auto& c : Arr(Obj(d, "logs"), "crashes"))
-			add("crash:" + Str(c, "id", Str(c, "dir")), "fatal", "크래시", Str(c, "error", Str(c, "message", "크래시")), Str(c, "dir"), &c);
+			add("crash:" + Str(c, "folder", Str(c, "dir")), c.value("new", true) ? "fatal" : "warn", "크래시",
+			    Str(c, "error", Str(c, "message", "크래시")), Str(c, "folder", Str(c, "dir")), &c);
 		for (auto& map : Arr(Obj(d, "smoke"), "maps"))
 			if (Str(map, "verdict") != "pass")
 				add("smoke:" + Str(map, "map"), Str(map, "verdict"), "맵 스모크",

@@ -1062,6 +1062,7 @@ function Invoke-Logs {
     Write-Run $run 'logs' @([ordered]@{ id = 'ST-4'; name = 'logs'; verdict = $summary.verdict; files = $files.Count }) $summary.verdict $engine
     Say "[$($run.Id)] verdict: $($summary.verdict)"
     Say "Report: $(Join-Path $run.Dir 'out\report.html')"
+    if ($summary.verdict -eq 'fail') { exit 2 }
 }
 
 # ---------------------------------------------------------------- runtime lines (smoke, perf, sizes, trace, play)
@@ -1293,7 +1294,8 @@ function Invoke-Analyze {
     if (-not $state) { Fail 'Not attached. Run __dwo-forge.bat attach first.' }
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
-    $runId = 'run-' + (Get-Date).ToString('yyyyMMdd-HHmmss')
+    $startedAt = Get-Date
+    $runId = 'run-' + $startedAt.ToString('yyyyMMdd-HHmmss')
     $runDir = Join-Path $DataDir "runs\$runId"
     $rawDir = Join-Path $runDir 'raw'
     $outDir = Join-Path $runDir 'out'
@@ -1307,7 +1309,10 @@ function Invoke-Analyze {
     $code = $LASTEXITCODE
     $sw.Stop()
     $collected = Test-Path (Join-Path $rawDir 'meta.json')
-    $stations.Add([ordered]@{ id = 'ST-1'; name = 'collect'; verdict = $(if ($collected) { 'pass' } else { 'fail' }); exitCode = $code; ms = $sw.ElapsedMilliseconds; log = 'commandlet.log' })
+    # Output written but a non-zero exit (errors or ensures while loading assets): usable, but flag it.
+    $collectVerdict = if (-not $collected) { 'fail' } elseif ($code -ne 0) { 'warn' } else { 'pass' }
+    $stations.Add([ordered]@{ id = 'ST-1'; name = 'collect'; verdict = $collectVerdict; exitCode = $code; ms = $sw.ElapsedMilliseconds; log = 'commandlet.log' })
+    if ($collected -and $code -ne 0) { Say "[$runId] ST-1 collect: the editor exited with code $code (errors while loading the project). See $log" }
     if (-not $collected) { Write-Json (Join-Path $runDir 'run.json') @{ runId = $runId; stations = $stations; final = 'fail' }; Fail "Commandlet produced no output. See $log" }
 
     Say "[$runId] ST-2/3 analyze and gate"
@@ -1323,11 +1328,13 @@ function Invoke-Analyze {
     $run = [ordered]@{
         schema = 'lens.run/0.1'; runId = $runId; line = 'architecture-report'
         project = $state.project; engineVersion = $engine.Version; systemCommit = Get-SystemCommit
-        startedAt = (Get-Date).ToString('o'); stations = $stations; final = $verdict
+        startedAt = $startedAt.ToString('o'); finishedAt = (Get-Date).ToString('o'); stations = $stations; final = $verdict
     }
     Write-Json (Join-Path $runDir 'run.json') $run
     Say "[$runId] verdict: $verdict"
-    Say "Report: $(Join-Path $outDir 'report.html')"
+    $report = Join-Path $outDir 'report.html'
+    if (Test-Path $report) { Say "Report: $report" }
+    else { Say "No report: the analyzer stopped (exit code $pyCode) before writing one. The error is printed above." }
     if ($verdict -eq 'fail') { exit 2 }
 }
 

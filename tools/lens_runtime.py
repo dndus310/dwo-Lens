@@ -457,7 +457,7 @@ def main() -> int:
         print(f"[dwo-forge] perf: frames={result['frames']} FrameTime avg={ft.get('avg')} p95={ft.get('p95')} "
               f"hitches={len(result['hitches'])} -> {result['verdict']}")
     elif args.cmd == "sizes":
-        graph_doc = json.loads(args.graph.read_text(encoding="utf-8")) if args.graph and args.graph.exists() else None
+        graph_doc = json.loads(args.graph.read_text(encoding="utf-8-sig")) if args.graph and args.graph.exists() else None
         result = sizes(args.project, cfg, graph_doc, str(args.graph) if graph_doc else None)
         write_outputs(args.run, "sizes", result, render_sizes(result, run_id))
         print(f"[dwo-forge] sizes: {result['assetCount']} assets, {mb(result['totalBytes'])}, "

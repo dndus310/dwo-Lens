@@ -291,6 +291,7 @@ A/
 | `out/report.html` | 검사별 리포트 |
 | `out/graph.json`, `out/index.db` | 심볼·관계 (status, evidence 포함) |
 | `out/class_uml.puml` / `.mmd`, `out/flows/*.mmd` | 클래스 다이어그램, BP 실행 흐름 |
+| `out/class_uml.xmi` | UML 2 클래스 모델(XMI 2.1). Visual Paradigm의 `File > Import > XMI`(또는 `scripts\ImportXMI.bat -project <.vpp> -file <.xmi>`), Enterprise Architect, MagicDraw, Papyrus에서 가져옵니다. 클래스는 `/Game` 폴더, `C++/<모듈>`, `External/<모듈>` 패키지로 나뉘고 속성·함수·상속·참조가 모두 들어갑니다. 다이어그램은 가져온 뒤 패키지를 끌어다 놓아 만듭니다 |
 | `out/findings.json`, `out/quality.json`, `out/statemonitor.json` | 분석 결과와 품질 점검 |
 | `out/verify.json`, `out/logs.json` | 검증·로그 결과 |
 | `out/smoke.json`, `out/perf.json` (+`perf.csv`), `out/sizes.json`, `out/trace.json` (+`trace.utrace`) | 맵 부팅·성능·용량·트레이스 결과 |

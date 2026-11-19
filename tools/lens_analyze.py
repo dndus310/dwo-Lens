@@ -475,9 +475,12 @@ def class_diagram(g: Graph) -> tuple[str, str]:
             continue
         members = [f"+{p['type'].replace('<', '~').replace('>', '~')} {p['name']}" for p in s.get("properties", [])[:12]]
         methods = [f"+{f}()" for f in s.get("functions", [])[:12]]
-        mmd.append(f"class {cid} {{")
-        mmd += [f"  {m}" for m in members + methods]
-        mmd.append("}")
+        if members or methods:
+            mmd.append(f"class {cid} {{")
+            mmd += [f"  {m}" for m in members + methods]
+            mmd.append("}")
+        else:
+            mmd.append(f"class {cid}")   # Mermaid rejects an empty body ("class X {" + "}")
         stereo = " <<blueprint>>" if s["kind"] == "blueprint" else ""
         puml.append(f'class "{label}" as {cid}{stereo} {{')
         puml += [f"  {m}" for m in members + methods]
@@ -491,6 +494,101 @@ def class_diagram(g: Graph) -> tuple[str, str]:
             puml.append(f"{ids[r['target']]} {p} {ids[r['source']]}{label}")
     puml.append("@enduml")
     return "\n".join(mmd), "\n".join(puml)
+
+
+def class_xmi(g: Graph, model_name: str) -> str:
+    """UML 2 class model as XMI 2.1, for modeling tools that import XMI (Visual Paradigm, Enterprise Architect,
+    MagicDraw, Eclipse Papyrus). Same classes as the diagram but without the node cap or member limits:
+    project classes/blueprints, their direct external parents (in an "External" package), generalizations,
+    realizations and hard/soft asset references as dependencies."""
+    project = [s for s in g.symbols.values() if s["kind"] in ("class", "blueprint") and not s["external"]]
+    keys = {s["key"] for s in project}
+    edges = [r for r in g.edges("Inherits", "Implements", "RefHard", "RefSoft") if r["source"] in keys]
+    shown = keys | {r["target"] for r in edges if r["type"] in ("Inherits", "Implements")}
+
+    def q(v: str) -> str:
+        return html.escape(str(v), quote=True)
+
+    ids = {key: f"c{i}" for i, key in enumerate(sorted(shown), 1)}
+    types: dict[str, str] = {}
+
+    def type_id(name: str) -> str:
+        return types.setdefault(name, f"t{len(types) + 1}")
+
+    parents = defaultdict(list)
+    for r in edges:
+        if r["type"] == "Inherits" and r["target"] in ids:
+            parents[r["source"]].append(r["target"])
+
+    def class_xml(key: str, indent: str) -> list[str]:
+        s = g.symbols.get(key, {"name": short_name(key), "external": True})
+        cid = ids[key]
+        out = [f'{indent}<packagedElement xmi:type="uml:Class" xmi:id="{cid}" name="{q(s["name"])}">']
+        if s.get("kind") == "blueprint":
+            out.append(f'{indent}  <ownedComment xmi:type="uml:Comment" xmi:id="{cid}_doc" body="{q(s.get("asset_class") or "Blueprint")} {q(s.get("package", ""))}"/>')
+        for n, parent in enumerate(sorted(parents.get(key, [])), 1):
+            out.append(f'{indent}  <generalization xmi:type="uml:Generalization" xmi:id="{cid}_g{n}" general="{ids[parent]}"/>')
+        for n, p in enumerate(s.get("properties", []), 1):
+            name = str(p.get("name", "")).strip()
+            out.append(f'{indent}  <ownedAttribute xmi:type="uml:Property" xmi:id="{cid}_a{n}" name="{q(name)}" '
+                       f'visibility="public" type="{type_id(str(p.get("type", "")).strip() or "unknown")}"/>')
+        for n, f in enumerate(s.get("functions", []), 1):
+            out.append(f'{indent}  <ownedOperation xmi:type="uml:Operation" xmi:id="{cid}_o{n}" name="{q(str(f).strip())}" visibility="public"/>')
+        out.append(f"{indent}</packagedElement>")
+        return out
+
+    # Classes go into packages that mirror where they live (/Game/... folders for blueprints, C++/<module>,
+    # External/<module>). Same-named blueprints in different folders are common, and a flat model makes
+    # importers rename or reject them.
+    def folder(key: str) -> list[str]:
+        s = g.symbols.get(key, {})
+        if key in keys:
+            if s.get("kind") == "blueprint" and s.get("package"):
+                return [p for p in s["package"].split("/")[:-1] if p]
+            return ["C++", s.get("module") or "Unknown"]
+        return ["External", s.get("module") or (s.get("package") or "").strip("/").split("/")[0] or "Engine"]
+
+    tree: dict = {}
+    for key in sorted(shown):
+        node = tree
+        for part in folder(key):
+            node = node.setdefault(part, {})
+        node.setdefault("", []).append(key)
+
+    body: list[str] = []
+    pkg_ids = iter(range(1, 1 << 30))
+
+    def emit(node: dict, indent: str) -> None:
+        for key in node.get("", []):
+            body.extend(class_xml(key, indent))
+        for name in sorted(k for k in node if k):
+            body.append(f'{indent}<packagedElement xmi:type="uml:Package" xmi:id="p{next(pkg_ids)}" name="{q(name)}">')
+            emit(node[name], indent + "  ")
+            body.append(f"{indent}</packagedElement>")
+
+    emit(tree, "    ")
+    n = 0
+    for r in sorted(edges, key=lambda r: (r["source"], r["target"], r["type"])):
+        if r["type"] == "Inherits" or r["source"] not in ids or r["target"] not in ids:
+            continue
+        n += 1
+        kind = "uml:Realization" if r["type"] == "Implements" else "uml:Dependency"
+        name = "" if r["type"] == "Implements" else f' name="{r["type"]}"'
+        body.append(f'    <packagedElement xmi:type="{kind}" xmi:id="r{n}"{name} client="{ids[r["source"]]}" supplier="{ids[r["target"]]}"/>')
+    if types:
+        body.append('    <packagedElement xmi:type="uml:Package" xmi:id="pkg_types" name="Types">')
+        body += [f'      <packagedElement xmi:type="uml:DataType" xmi:id="{tid}" name="{q(name)}"/>' for name, tid in sorted(types.items(), key=lambda t: t[1])]
+        body.append("    </packagedElement>")
+    return "\n".join([
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<xmi:XMI xmi:version="2.1" xmlns:xmi="http://schema.omg.org/spec/XMI/2.1" xmlns:uml="http://www.eclipse.org/uml2/3.0.0/UML">',
+        '  <xmi:Documentation exporter="dwo-Forge Lens" exporterVersion="' + q(EXTRACTOR_VERSION) + '"/>',
+        f'  <uml:Model xmi:id="model" name="{q(model_name)}">',
+        *body,
+        "  </uml:Model>",
+        "</xmi:XMI>",
+        "",
+    ])
 
 
 def module_diagram(g: Graph) -> str | None:
@@ -658,7 +756,7 @@ def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, dia
 <section><h2>Blueprint</h2><div class="scroll"><table><thead><tr><th>이름</th><th>종류</th><th>부모</th><th>그래프</th><th>호출 대상 클래스</th></tr></thead>
 <tbody>{''.join(bp_rows) or "<tr><td colspan='5'>없음</td></tr>"}</tbody></table></div>
 <h3>실행 흐름</h3>{''.join(flows_html) or "<p class='meta'>실행 흐름 없음</p>"}</section>
-<section class="meta">결과 파일: graph.json · index.db · class_uml.puml · class_uml.mmd · findings.json · quality.json · statemonitor.json · flows/*.mmd</section>
+<section class="meta">결과 파일: graph.json · index.db · class_uml.puml · class_uml.mmd · class_uml.xmi (Visual Paradigm 등 UML 도구용) · findings.json · quality.json · statemonitor.json · flows/*.mmd</section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
 <script>mermaid.initialize({{startOnLoad:true,securityLevel:'strict',maxTextSize:200000,
@@ -709,6 +807,7 @@ def main() -> int:
     (args.out / "findings.json").write_text(json.dumps({"runId": args.run_id, **result}, ensure_ascii=False, indent=1), encoding="utf-8")
     (args.out / "class_uml.mmd").write_text(classes_mmd, encoding="utf-8")
     (args.out / "class_uml.puml").write_text(classes_puml, encoding="utf-8")
+    (args.out / "class_uml.xmi").write_text(class_xmi(g, args.project.stem), encoding="utf-8")
     if diagrams["modules"]:
         (args.out / "modules.mmd").write_text(diagrams["modules"], encoding="utf-8")
     if diagrams["assets"]:

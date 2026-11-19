@@ -222,6 +222,41 @@ class ModuleScanTests(TempDir):
         self.assertEqual(result["findings"][0]["rule"], "module-cycle")
 
 
+class ClassModelTests(unittest.TestCase):
+    def graph(self):
+        g = analyze.Graph()
+        g.symbol("class:/Script/Engine.Actor", "class", "Actor", external=True, module="Engine")
+        for folder in ("/Game/A/BP_Door", "/Game/B/BP_Door"):   # same class name in two folders
+            key = g.symbol(f"bp:{folder}.BP_Door_C", "blueprint", "BP_Door_C", package=folder, asset_class="Blueprint",
+                           properties=[{"name": "Open Speed ", "type": "double"}], functions=["Open Door"])
+            g.relate(key, "class:/Script/Engine.Actor", "Inherits", "parent")
+        g.symbol("bp:/Game/A/BP_Empty.BP_Empty_C", "blueprint", "BP_Empty_C", package="/Game/A/BP_Empty")
+        return g
+
+    def test_mermaid_has_no_empty_class_body(self):
+        mmd, _ = analyze.class_diagram(self.graph())
+        self.assertIn("class BP_Empty_C\n", mmd + "\n")
+        self.assertNotRegex(mmd, r"\{\s*\}")   # Mermaid 10 rejects "class X {" + "}"
+
+    def test_xmi_packages_keep_same_names_apart(self):
+        import xml.etree.ElementTree as ET
+        root = ET.fromstring(analyze.class_xmi(self.graph(), "P"))
+        t = "{http://schema.omg.org/spec/XMI/2.1}type"
+        classes = [e for e in root.iter() if e.get(t) == "uml:Class"]
+        self.assertEqual(sorted(c.get("name") for c in classes), ["Actor", "BP_Door_C", "BP_Door_C", "BP_Empty_C"])
+        parents = {}
+        for pkg in (e for e in root.iter() if e.get(t) == "uml:Package"):
+            for child in pkg:
+                if child.get(t) == "uml:Class":
+                    parents.setdefault(child.get("name"), set()).add(pkg.get("name"))
+        self.assertEqual(parents["BP_Door_C"], {"A", "B"})
+        self.assertEqual(parents["Actor"], {"Engine"})
+        gens = [e for e in root.iter() if e.get(t) == "uml:Generalization"]
+        self.assertEqual(len(gens), 2)
+        attr = next(e for e in root.iter() if e.get(t) == "uml:Property")
+        self.assertEqual(attr.get("name"), "Open Speed")
+
+
 # =============================================================================== quality checks
 
 class QualityTests(TempDir):

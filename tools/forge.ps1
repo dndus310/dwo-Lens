@@ -101,11 +101,18 @@ function Resolve-Engine([string]$Association) {
 }
 
 # ---------------------------------------------------------------- git
+function Invoke-Utf8([scriptblock]$Block) {
+    # git and Python (PYTHONUTF8) print UTF-8, but Windows PowerShell decodes captured native output with the
+    # console code page (949 on Korean Windows), which garbles non-ASCII paths. Decode as UTF-8 for this call only.
+    $prev = [Console]::OutputEncoding
+    try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false) } catch { }
+    try { & $Block } finally { try { [Console]::OutputEncoding = $prev } catch { } }
+}
 function Invoke-Git([string[]]$GitArgs) {
     # git is optional: a project without version control (or a PC without git) simply has no repository.
     if (-not (Get-Command git -ErrorAction SilentlyContinue)) { return $null }
     $ErrorActionPreference = 'Continue'
-    $out = & git -C $Project @GitArgs 2>$null
+    $out = Invoke-Utf8 { & git -C $Project @GitArgs 2>$null }
     if ($LASTEXITCODE -ne 0) { return $null }
     return $out
 }
@@ -118,7 +125,7 @@ function Get-Vcs {
     $top = Invoke-Git @('rev-parse', '--show-toplevel')
     if (-not $top) { return [pscustomobject]@{ Kind = 'none'; Top = $null; Prefix = ''; Exclude = $null } }
     # Prefix comparison stays correct through junctions, symlinks and redirected profile paths.
-    $prefix = ((& git -C $Project rev-parse --show-prefix 2>$null) | Out-String).Trim()
+    $prefix = ((Invoke-Utf8 { & git -C $Project rev-parse --show-prefix 2>$null }) | Out-String).Trim()
     $excl = Invoke-Git @('rev-parse', '--path-format=absolute', '--git-path', 'info/exclude')
     return [pscustomobject]@{ Kind = $(if ($prefix) { 'parent' } else { 'own' }); Top = "$top"; Prefix = $prefix
                               Exclude = $(if ($excl) { ("$excl" -replace '/', '\') } else { $null }) }
@@ -197,7 +204,7 @@ function Get-ProjectStatus {
     # Porcelain status of the project folder, used to prove attach/uninstall leave no trace.
     # Engine work folders are excluded: running the editor always touches them.
     # Porcelain paths are relative to the repository root; strip the project prefix (parent repository case).
-    $prefix = ((& git -C $Project rev-parse --show-prefix 2>$null) | Out-String).Trim()
+    $prefix = ((Invoke-Utf8 { & git -C $Project rev-parse --show-prefix 2>$null }) | Out-String).Trim()
     $s = Invoke-Git @('status', '--porcelain', '--untracked-files=all', '--', '.')
     if (-not $s) { return '' }
     $kept = @($s) | Where-Object {

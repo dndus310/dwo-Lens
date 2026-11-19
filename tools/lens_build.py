@@ -30,9 +30,17 @@ SKIP_REASONS = {"blueprint-only": "Blueprint 전용 프로젝트라 컴파일할
 
 
 def read_lines(path: Path) -> list[str]:
+    """Build logs are console output: UTF-8 on a UTF-8 console, else the OEM code page (949 on Korean Windows)."""
     if not path.exists():
         return []
-    return path.read_text(encoding="utf-8", errors="replace").splitlines()
+    data = path.read_bytes()
+    try:
+        return data.decode("utf-8-sig").splitlines()
+    except UnicodeDecodeError:
+        try:
+            return data.decode("oem", errors="replace").splitlines()   # Windows only
+        except LookupError:
+            return data.decode("utf-8", errors="replace").splitlines()
 
 
 def parse_compile(lines: list[str]) -> dict:

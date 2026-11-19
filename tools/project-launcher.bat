@@ -23,6 +23,13 @@ if "%CMD%"=="" (
 rem ---- find the dwo-Forge install folder: recorded at attach, else DWO_FORGE_HOME (DWO_LENS_HOME before 2.0) ----
 set "HOME_DIR="
 if exist "%PROJ%\__dwo-forge\home.txt" set /p HOME_DIR=<"%PROJ%\__dwo-forge\home.txt"
+rem home.txt is UTF-8; set /p reads it in the console code page (949 on Korean Windows), which breaks
+rem non-ASCII folder names. Let PowerShell decode it; for /f gets it back in the console code page.
+if not exist "%HOME_DIR%\tools\forge.ps1" if exist "%PROJ%\__dwo-forge\home.txt" (
+  set "DWO_FORGE_HOMEFILE=%PROJ%\__dwo-forge\home.txt"
+  for /f "usebackq delims=" %%H in (`powershell -NoProfile -Command "[IO.File]::ReadAllText($env:DWO_FORGE_HOMEFILE).Trim()"`) do set "HOME_DIR=%%H"
+  set "DWO_FORGE_HOMEFILE="
+)
 if not exist "%HOME_DIR%\tools\forge.ps1" set "HOME_DIR=%DWO_FORGE_HOME%"
 if not exist "%HOME_DIR%\tools\forge.ps1" set "HOME_DIR=%DWO_LENS_HOME%"
 if not exist "%HOME_DIR%\tools\forge.ps1" (

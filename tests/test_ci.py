@@ -184,10 +184,54 @@ class JobXmlTests(unittest.TestCase):
         names = [p.find("name").text for p in root.find("properties/hudson.model.ParametersDefinitionProperty/parameterDefinitions")]
         self.assertEqual(names, ["REASON", "COMPILE", "LENS", "PACKAGE"])
         script = root.find("definition/script").text
-        self.assertIn('"C:\\\\P\\\\__dwo-forge.bat" compile', script)
+        self.assertIn("DWO_FORGE_LAUNCHER = 'C:\\\\P\\\\__dwo-forge.bat'", script)
+        self.assertIn("powershell '& $env:DWO_FORGE_LAUNCHER compile; exit $LASTEXITCODE'", script)
         self.assertIn("for (check in ['analyze', 'logs', 'sizes'])", script)
         self.assertIn("junit allowEmptyResults: true", script)
         self.assertEqual(root.find("definition/sandbox").text, "true")
+
+    def test_step_scripts_carry_no_paths(self):
+        # Jenkins writes step scripts as UTF-8 and cmd/PowerShell 5.1 read them in the console code page (949 on Korean
+        # Windows): a Korean user or project name must only reach the steps through environment variables.
+        launcher = "C:\\Users\\홍길동\\내 프로젝트\\__dwo-forge.bat"
+        script = forge_ci.pipeline_script(launcher, ["analyze"])
+        self.assertNotIn("bat ", script)
+        self.assertNotIn("bat(", script)
+        steps = [l for l in script.splitlines() if "powershell" in l]
+        self.assertTrue(steps)
+        for line in steps:
+            self.assertTrue(line.isascii(), line)
+        self.assertIn("DWO_FORGE_LAUNCHER = 'C:\\\\Users\\\\홍길동\\\\내 프로젝트\\\\__dwo-forge.bat'", script)
+
+    def test_launcher_quote_is_escaped(self):
+        script = forge_ci.pipeline_script("C:\\O'Brien\\__dwo-forge.bat", [])
+        self.assertIn("DWO_FORGE_LAUNCHER = 'C:\\\\O\\'Brien\\\\__dwo-forge.bat'", script)
+
+
+class BuildLogEncodingTests(Tmp):
+    def test_utf8_log(self):
+        p = self.tmp / "compile.log"
+        p.write_bytes("\ufeffC:\\프로젝트\\A.cpp(3): error C2039: 'X': 'Y'의 멤버가 아닙니다.\n".encode("utf-8"))
+        errors = lens_build.parse_compile(lens_build.read_lines(p))["errors"]
+        self.assertEqual(errors[0]["file"], "C:\\프로젝트\\A.cpp")
+        self.assertIn("멤버가 아닙니다", errors[0]["message"])
+
+    def test_console_code_page_log(self):
+        # A 949 console writes the log in cp949; it must not come back as replacement characters.
+        import codecs
+        try:
+            if codecs.lookup("oem").name != "cp949":
+                self.skipTest("this PC's OEM code page is not 949")
+        except LookupError:
+            self.skipTest("no OEM code page (not Windows)")
+        p = self.tmp / "compile.log"
+        p.write_bytes("C:\\프로젝트\\A.cpp(3): error C2039: 멤버가 아닙니다\n".encode("cp949"))
+        self.assertIn("프로젝트", lens_build.read_lines(p)[0])
+
+    def test_undecodable_bytes_do_not_crash(self):
+        p = self.tmp / "package.log"
+        p.write_bytes(b"BUILD SUCCESSFUL\n\xff\xfe\xfa broken\n")
+        self.assertEqual(lens_build.read_lines(p)[0], "BUILD SUCCESSFUL")
 
 
 class BundleTests(Tmp):

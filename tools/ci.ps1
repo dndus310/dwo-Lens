@@ -19,6 +19,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $Utf8 = New-Object System.Text.UTF8Encoding($false)
+$env:PYTHONUTF8 = '1'
 $SystemDir = Split-Path -Parent $PSScriptRoot
 $AppDataDir = Join-Path $env:LOCALAPPDATA 'dwo-Forge'
 # DWO_FORGE_CI_HOME (user environment variable) moves the whole local CI, e.g. to a larger disk.
@@ -34,6 +35,13 @@ $Hooks = @('post-commit', 'post-merge', 'pre-push', 'reference-transaction')
 $Plugins = @('workflow-aggregator', 'junit')
 if ($Project) { $Project = (Resolve-Path $Project).Path.TrimEnd('\') }
 
+function Invoke-Utf8([scriptblock]$Block) {
+    # git and Python (PYTHONUTF8) print UTF-8, but Windows PowerShell decodes captured native output with the
+    # console code page (949 on Korean Windows), which garbles non-ASCII paths. Decode as UTF-8 for this call only.
+    $prev = [Console]::OutputEncoding
+    try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false) } catch { }
+    try { & $Block } finally { try { [Console]::OutputEncoding = $prev } catch { } }
+}
 function Say([string]$Message) { Write-Host "[dwo-forge] $Message" }
 function Fail([string]$Message) { Write-Host "[dwo-forge] ERROR: $Message" -ForegroundColor Red; exit 1 }
 function Has([string]$Flag) { return @($Rest) -contains $Flag }
@@ -62,7 +70,7 @@ function Get-ConfigFiles {
     return $files
 }
 function Get-CiConfig {
-    $json = & python (Join-Path $SystemDir 'tools\forge_ci.py') config --config @(Get-ConfigFiles)
+    $json = Invoke-Utf8 { & python (Join-Path $SystemDir 'tools\forge_ci.py') config --config @(Get-ConfigFiles) }
     return ($json | ConvertFrom-Json).ci
 }
 function Get-Port {
@@ -101,9 +109,21 @@ function Test-Running {
     return (Invoke-Jenkins 'GET' '/api/json?tree=mode' -TimeoutSec 5).Status -eq 200
 }
 function Get-JobName {
+    # A registered project keeps its job name.
+    $mine = @(Get-Projects | Where-Object { $_.project -eq $Project -and $_.job })
+    if ($mine.Count) { return $mine[0].job }
     $ci = Get-CiConfig
-    $name = (Get-ChildItem $Project -Filter *.uproject -File | Select-Object -First 1).BaseName
-    return ("$($ci.jobPrefix)-$name" -replace '[^A-Za-z0-9_.-]', '_')
+    $base = (Get-ChildItem $Project -Filter *.uproject -File | Select-Object -First 1).BaseName
+    $ascii = ($base -replace '[^A-Za-z0-9_.-]+', '_').Trim('_')
+    if (-not $ascii) { $ascii = 'project' }
+    $name = "$($ci.jobPrefix)-$ascii"
+    # Non-ASCII names (e.g. Korean) and a second checkout of the same project would otherwise share one job.
+    $clash = @(Get-Projects | Where-Object { $_.job -eq $name -and $_.project -ne $Project }).Count -gt 0
+    if ($clash -or $ascii -ne $base) {
+        $sha = [Security.Cryptography.SHA1]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($Project.ToLowerInvariant()))
+        $name += '-' + (($sha[0..3] | ForEach-Object { $_.ToString('x2') }) -join '')
+    }
+    return $name
 }
 
 # ---------------------------------------------------------------- bundle (internet PC)
@@ -239,6 +259,7 @@ if (!tokens.tokenListSortedByName.any { it.name == 'dwo-forge' }) {
 }
 u.save()
 j.setNumExecutors(1)
+j.setSlaveAgentPort(-1)
 j.setNoUsageStatistics(true)
 // Offline: plugins come from the bundle, so there is no update site to contact (tool installers included).
 if (j.updateCenter.sites.size() > 0) { j.updateCenter.sites.replaceBy([]); j.updateCenter.save() }
@@ -259,7 +280,7 @@ function Invoke-Install {
     Say "extracting $bundle"
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     [IO.Compression.ZipFile]::ExtractToDirectory($bundle, $stage)
-    $check = & python (Join-Path $SystemDir 'tools\forge_ci.py') verify-bundle --dir $stage
+    $check = Invoke-Utf8 { & python (Join-Path $SystemDir 'tools\forge_ci.py') verify-bundle --dir $stage }
     if ($LASTEXITCODE -ne 0) { Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue; Write-Host $check; Fail 'The bundle is damaged or incomplete.' }
     $manifest = $check | ConvertFrom-Json
     Say "bundle ok: Jenkins $($manifest.jenkinsVersion), $($manifest.java), $($manifest.fileCount) files verified"
@@ -285,6 +306,13 @@ function Invoke-Install {
         Say "account: dwo-forge (password and API token in $SecretsPath)"
     }
     $secrets = Read-JsonFile $SecretsPath
+    $wantPort = Opt '--port'
+    if ($wantPort) {
+        if ($wantPort -notmatch '^\d{4,5}$' -or [int]$wantPort -lt 1024 -or [int]$wantPort -gt 65535) { Fail '--port takes a number from 1024 to 65535.' }
+        $secrets.port = [int]$wantPort
+        Write-JsonFile $SecretsPath $secrets
+        Say "port: $wantPort"
+    }
     Write-InitScript
     Write-JsonFile $CiStatePath ([ordered]@{ port = [int]$secrets.port; jenkinsVersion = $manifest.jenkinsVersion; java = $manifest.java
                                              bundle = (Split-Path -Leaf $bundle); installedAt = (Get-Date).ToString('o') })
@@ -305,13 +333,16 @@ function Start-Jenkins {
     if (Test-Running) { Say "already running: $(Get-BaseUrl)/"; return }
     $port = Get-Port
     $busy = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
-    if ($busy) { Fail "Port $port is used by another program (pid $($busy[0].OwningProcess)). Set ci.port in __dwo-forge/config.json and reinstall." }
+    if ($busy) { Fail "Port $port is used by another program (pid $($busy[0].OwningProcess)). Move the local CI to a free port: dwo-Forge.bat ci-install --port 8099" }
     New-Item -ItemType Directory -Force $LogDir | Out-Null
     $java = Join-Path $Runtime 'jre\bin\java.exe'
     $log = Join-Path $LogDir 'jenkins.log'
     if (Test-Path $log) { Move-Item -Force $log "$log.1" }
     $javaArgs = "-Xmx1g -Djava.awt.headless=true -Dfile.encoding=UTF-8 -Djenkins.install.runSetupWizard=false " +
                 "-Dhudson.model.DownloadService.never=true -Dhudson.model.UpdateCenter.never=true " +
+                # No inbound agent port: it listens on every interface (firewall prompt, exposed port) and a local CI
+                # has no remote agents.
+                "-Djenkins.model.Jenkins.slaveAgentPort=-1 -Djenkins.model.Jenkins.slaveAgentPortEnforce=true " +
                 "-DJENKINS_HOME=`"$JenkinsHome`" -Ddwo.forge.secrets=`"$SecretsPath`" " +
                 "-jar `"$(Join-Path $Runtime 'jenkins.war')`" --httpListenAddress=127.0.0.1 --httpPort=$port --webroot=`"$(Join-Path $CiDir 'war')`""
     # Started through WMI so it is not part of the caller's process tree: closing the dwo-Forge window or a
@@ -392,7 +423,11 @@ function Invoke-Remove {
         } else { $keep = $true }
     }
     foreach ($p in Get-Projects) {
-        if (Test-Path $p.project) { Remove-ProjectHooks $p.project; Remove-Item (Join-Path $p.project '__dwo-forge\ci.json') -ErrorAction SilentlyContinue }
+        if (Test-Path $p.project) {
+            Remove-ProjectHooks $p.project
+            Remove-Item (Join-Path $p.project '__dwo-forge\ci.json') -ErrorAction SilentlyContinue
+            Remove-Item -Recurse -Force (Join-Path $p.project '__dwo-forge\ci') -ErrorAction SilentlyContinue
+        }
     }
     if (Test-Path $CiDir) { Stop-Jenkins }
     if ($keep -and (Test-Path (Join-Path $JenkinsHome 'jobs'))) {
@@ -410,7 +445,7 @@ function Invoke-Remove {
 function Get-HooksDir([string]$Proj) {
     if (-not (Get-Command git -ErrorAction SilentlyContinue)) { return $null }
     $ErrorActionPreference = 'Continue'
-    $d = & git -C $Proj rev-parse --git-path hooks 2>$null
+    $d = Invoke-Utf8 { & git -C $Proj rev-parse --git-path hooks 2>$null }
     if ($LASTEXITCODE -ne 0 -or -not $d) { return $null }
     if (-not [IO.Path]::IsPathRooted($d)) { $d = Join-Path $Proj $d }
     return [IO.Path]::GetFullPath($d)
@@ -454,7 +489,7 @@ exit 0
 function Install-ProjectHooks([string]$Proj) {
     $dir = Get-HooksDir $Proj
     if (-not $dir) { Say 'git hooks: not a git repository, skipped (use ci-trigger or HTTP to start builds)'; return @() }
-    $top = & git -C $Proj rev-parse --show-toplevel 2>$null
+    $top = Invoke-Utf8 { & git -C $Proj rev-parse --show-toplevel 2>$null }
     if ($top -and ([IO.Path]::GetFullPath($top) -ne [IO.Path]::GetFullPath($Proj))) {
         Say "git hooks: note - the repository root is $top, so commits anywhere in it trigger this project's builds."
     }
@@ -510,6 +545,7 @@ function Invoke-Job {
         }
         Remove-ProjectHooks $Project
         Remove-Item $projCi -ErrorAction SilentlyContinue
+        Remove-Item -Recurse -Force (Join-Path $Project '__dwo-forge\ci') -ErrorAction SilentlyContinue   # hook log, push markers
         Save-Projects @(Get-Projects | Where-Object { $_.project -ne $Project })
         return
     }
@@ -584,7 +620,7 @@ function Invoke-Hook {
         if ($inputFile) { $pyArgs += @('--input', $inputFile) }
         $pyArgs += '--config'
         $pyArgs += @(Get-ConfigFiles)
-        $json = & python @pyArgs 2>&1
+        $json = Invoke-Utf8 { & python @pyArgs 2>&1 }
         if ($LASTEXITCODE -ne 0) { throw "decide failed: $($json -join ' ')" }
         # Windows PowerShell returns a JSON array as one object; enumerate it (and drop the empty-array case).
         $triggers = @(($json -join "`n") | ConvertFrom-Json | ForEach-Object { $_ } | Where-Object { $_ -and $_.event })
@@ -602,6 +638,21 @@ function Invoke-Hook {
         if ($inputFile) { Remove-Item $inputFile -ErrorAction SilentlyContinue }
     }
 }
+
+function Assert-Python {
+    # A fresh Windows has only the Microsoft Store "python" alias, which prints an install hint and fails.
+    $ErrorActionPreference = 'Continue'
+    $v = $null
+    if (Get-Command python -ErrorAction SilentlyContinue) {
+        $v = Invoke-Utf8 { & python -c "import sys; print('%d.%d' % sys.version_info[:2])" 2>$null }
+        if ($LASTEXITCODE -ne 0) { $v = $null }
+    }
+    if (-not ("$v" -match '^(\d+)\.(\d+)$' -and ([int]$Matches[1] * 100 + [int]$Matches[2]) -ge 310)) {
+        Fail ('Python 3.10 or later is required (the "python" command' + $(if ($v) { ", found $v" } else { '' }) + '). ' +
+              'Install it with the python.org Windows installer (it works offline; tick "Add python.exe to PATH"), then run this again.')
+    }
+}
+Assert-Python
 
 switch ($Command) {
     'ci-bundle'  { Invoke-Bundle }

@@ -74,7 +74,7 @@ __dwo-forge.bat canvas-remove [--force]                :: 제거 (생성된 위�
 
 :: 로컬 CI (아래 '로컬 CI')
 dwo-Forge.bat ci-bundle                     :: (인터넷 PC) Jenkins·Java·플러그인 오프라인 번들 만들기
-dwo-Forge.bat ci-install [--bundle <zip>]   :: 번들로 설치 (네트워크 불필요). ci-start / ci-stop / ci-status / ci-remove
+dwo-Forge.bat ci-install [--bundle <zip>] [--port N]   :: 번들로 설치 (네트워크 불필요). ci-start / ci-stop / ci-status / ci-remove
 __dwo-forge.bat ci-job [--remove]           :: 이 프로젝트의 CI 작업과 git 훅 등록 (해제)
 __dwo-forge.bat ci-hooks [--remove]         :: git 훅만 다시 설치 (clone·reset 뒤) 또는 제거
 __dwo-forge.bat ci-trigger [--reason 내용] [--stages compile,lens,package]   :: 빌드 요청 (외부 이벤트 주입)
@@ -271,7 +271,7 @@ A/
 |---|---|
 | 1. 번들 만들기 (인터넷 PC, 한 번) | `dwo-Forge.bat ci-bundle` → `bundles/dwo-forge-ci-bundle-<버전>.zip`. Jenkins LTS(war, SHA-256 확인), Eclipse Temurin 21 JRE(체크섬 확인), 플러그인(`workflow-aggregator`, `junit`과 의존성)을 묶고 파일마다 SHA-256을 `manifest.json`에 기록 |
 | 2. 설치 (폐쇄망 PC) | 번들을 `bundles/`에 두거나 `dwo-Forge.bat ci-install --bundle <zip>`. 체크섬을 확인한 뒤 설치하고 시작합니다. 네트워크에 접속하지 않고 관리자 권한도 필요 없습니다. 창에서는 **로컬 CI** 화면의 `설치 (오프라인 번들)` |
-| 3. 프로젝트 등록 | `__dwo-forge.bat ci-job` 또는 창의 `CI 작업 등록`. Jenkins 파이프라인 작업과 git 훅(`post-commit`, `post-merge`, `pre-push`, `reference-transaction`)을 설치합니다. 기존 훅(git-lfs 등)은 `<훅>.dwo-forge-orig`로 보존되어 먼저 실행됩니다 |
+| 3. 프로젝트 등록 | `__dwo-forge.bat ci-job` 또는 창의 `CI 작업 등록`. Jenkins 파이프라인 작업과 git 훅(`post-commit`, `post-merge`, `pre-push`, `reference-transaction`)을 설치합니다. 기존 훅(git-lfs 등)은 `<훅>.dwo-forge-orig`로 보존되어 먼저 실행됩니다. 프로젝트 이름이 한글이거나 같은 프로젝트를 두 곳에 받아 둔 경우 작업 이름 뒤에 경로 기반 8자리 식별자가 붙어 서로 겹치지 않습니다 |
 
 **트리거** (기본값, `ci.triggers`에서 변경)
 
@@ -293,9 +293,11 @@ A/
 
 **결과 보기**: 창의 **로컬 CI** 화면에서 빌드 목록·결과·실시간 로그를 보고, `지금 빌드`로 단계를 골라 실행합니다. 같은 내용을 Jenkins 화면(`http://127.0.0.1:8098/`, 계정은 `계정 복사`)에서도 볼 수 있고, 각 빌드에는 JUnit 추세와 Lens 리포트가 첨부됩니다. Lens 검사가 fail이면 빌드는 UNSTABLE, 컴파일·패키지 실패는 FAILURE입니다.
 
-**보안**: Jenkins는 `127.0.0.1`에서만 열리고, 설치할 때 만든 무작위 비밀번호의 계정으로만 접근합니다. 사용 통계 전송과 업데이트 사이트 접속은 꺼 둡니다(업데이트 사이트를 등록하지 않으므로 Jenkins가 외부로 연결하지 않습니다).
+**다른 PC에 설치할 때**: 따로 설치하거나 설정할 것은 Python 3.10 이상(dwo-Forge 공통 요구 사항)뿐입니다. Java·Jenkins·플러그인은 번들에 들어 있고, 관리자 권한·서비스 등록·방화벽 허용·인터넷이 필요 없습니다. Python이 없거나 Microsoft Store 바로 가기만 있으면 설치 전에 그렇게 알려 줍니다. 8098 포트를 다른 프로그램이 쓰고 있으면 `ci-install --port 8099`처럼 다른 포트로 설치합니다. 한국어 Windows(코드 페이지 949)에서 사용자 이름·dwo-Forge 폴더·프로젝트 경로에 한글이나 공백이 있어도 동작합니다(Jenkins 단계는 경로를 스크립트에 넣지 않고 환경 변수로 넘깁니다).
 
-**제거**: `__dwo-forge.bat ci-job --remove`는 그 프로젝트의 작업과 훅만, `dwo-Forge.bat ci-remove`는 Jenkins와 모든 작업·훅을 지웁니다(`--keep-data`면 빌드 기록을 `%LOCALAPPDATA%\dwo-Forge\uninstalled`로 옮김). 프로젝트를 `uninstall`하면 그 프로젝트의 작업과 훅도 함께 지워집니다.
+**보안**: Jenkins는 `127.0.0.1`에서만 열리고(원격 에이전트 포트도 열지 않음), 설치할 때 만든 무작위 비밀번호의 계정으로만 접근합니다. 사용 통계 전송과 업데이트 사이트 접속은 꺼 둡니다(업데이트 사이트를 등록하지 않으므로 Jenkins가 외부로 연결하지 않습니다).
+
+**제거**: `__dwo-forge.bat ci-job --remove`는 그 프로젝트의 작업과 훅만, `dwo-Forge.bat ci-remove`는 Jenkins와 모든 작업·훅을 지웁니다(`--keep-data`면 빌드 기록을 `%LOCALAPPDATA%\dwo-Forge\uninstalled`로 옮김). 프로젝트를 `uninstall`하면 그 프로젝트의 작업과 훅도 함께 지워집니다. 제거 후에는 Jenkins 프로세스·포트·서비스·예약 작업이나 프로젝트의 훅·CI 기록(`__dwo-forge/ci`)이 남지 않습니다.
 
 ## 설정
 

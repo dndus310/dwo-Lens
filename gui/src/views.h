@@ -109,7 +109,7 @@ static void RunLineButton(App& app, int line, bool primary = true, const char* l
 	ImGui::BeginDisabled(!app.attached);
 	bool clicked = primary ? PrimaryButton(text.c_str()) : ImGui::Button(text.c_str());
 	ImGui::EndDisabled();
-	Tooltip(app.attached ? kLines[line].desc : "먼저 프로젝트에 부착하세요.");
+	Tooltip(app.attached ? kLines[line].desc : "먼저 프로젝트를 연동하세요.");
 	if (clicked) app.Run(kLines[line].command);
 }
 
@@ -153,18 +153,22 @@ static void DrawOverviewNav(App& app)
 	TextBold(app.projectName);
 	TextDim(app.isCodeProject ? "C++ 프로젝트" : "Blueprint 전용 프로젝트");
 	ImGui::Spacing();
-	KeyValue("상태", app.attached ? "부착됨" : app.legacyAttached ? "dwo-Lens 1.x 부착 · 이전 중" : "부착 안 됨", 70);
+	KeyValue("상태", app.attached ? "연동됨" : app.legacyAttached ? "dwo-Lens 1.x 연동 · 이전 중" : "연동 안 됨", 70);
 	if (app.attached)
 	{
 		KeyValue("엔진", "UE " + app.Engine(), 70);
-		KeyValue("시스템", app.SystemCommit(), 70);
-		KeyValue("부착", Str(app.state, "attachedAt").substr(0, 16), 70);
+		KeyValue("버전", app.SystemCommit(), 70);
+		{
+			std::string at = Str(app.state, "attachedAt").substr(0, 16);
+			if (at.size() > 10 && at[10] == 'T') at[10] = ' ';
+			KeyValue("연동 일시", at, 70);
+		}
 	}
 	KeyValue("경로", PathUtf8(app.project), 70);
 	ImGui::Spacing();
 	if (!app.attached)
 	{
-		if (PrimaryButton((std::string(ICON_LINK) + "  이 프로젝트에 부착").c_str(), ImVec2(-FLT_MIN, 0))) app.Run("attach");
+		if (PrimaryButton((std::string(ICON_LINK) + "  이 프로젝트에 연동").c_str(), ImVec2(-FLT_MIN, 0))) app.Run("attach");
 		Tooltip("Lens 검사 플러그인과 __dwo-forge 폴더를 넣습니다. .uproject와 기존 파일은 건드리지 않고, 도구 > 제거로 모두 지울 수 있습니다.");
 	}
 	SectionHeader("최근 프로젝트");
@@ -187,7 +191,7 @@ static void DrawOverviewMain(App& app)
 {
 	if (!app.hasUProject)
 	{
-		if (EmptyState(ICON_FOLDER, "프로젝트를 여세요", "언리얼 프로젝트 폴더(.uproject가 있는 폴더)를 고르거나 이 창으로 끌어다 놓으세요. 부착은 버튼 하나로 끝납니다.", "프로젝트 열기..."))
+		if (EmptyState(ICON_FOLDER, "프로젝트를 여세요", "언리얼 프로젝트 폴더(.uproject가 있는 폴더)를 고르거나 이 창으로 끌어다 놓으세요. 연동은 버튼 하나면 됩니다.", "프로젝트 열기..."))
 		{
 			fs::path p;
 			if (PickOpen(g_hwnd, true, L".uproject가 있는 프로젝트 폴더 선택", p)) app.SetProject(p);
@@ -198,15 +202,15 @@ static void DrawOverviewMain(App& app)
 	ImGui::PushFont(g_fonts.big);
 	ImGui::TextUnformatted(app.projectName.c_str());
 	ImGui::PopFont();
-	std::string sub = (app.attached ? "UE " + app.Engine() + "  ·  " : std::string("부착되지 않음  ·  ")) +
-	                  (app.isCodeProject ? "C++" : "Blueprint 전용") + (app.attached ? "  ·  시스템 " + app.SystemCommit() : "");
+	std::string sub = (app.attached ? "UE " + app.Engine() + "  ·  " : std::string("연동되지 않음  ·  ")) +
+	                  (app.isCodeProject ? "C++" : "Blueprint 전용") + (app.attached ? "  ·  dwo-Forge " + app.SystemCommit() : "");
 	TextDim(sub);
 	float right = ImGui::GetWindowContentRegionMax().x;
 	ImGui::SameLine();
 	ImGui::SetCursorPosX(right - S(330));
 	ImGui::BeginDisabled(!app.attached);
-	if (PrimaryButton((std::string(ICON_PLAY) + "  기본 라인 실행").c_str())) app.RunAll();
-	Tooltip("분석 → 로그 → 용량을 차례로 실행합니다 (엔진을 띄우지 않거나 짧은 라인).");
+	if (PrimaryButton((std::string(ICON_PLAY) + "  기본 검사 실행").c_str())) app.RunAll();
+	Tooltip("아키텍처 분석 → 로그 분석 → 콘텐츠 용량을 차례로 실행합니다 (빨리 끝나는 검사만).");
 	ImGui::SameLine();
 	if (ImGui::Button((std::string(ICON_SAVE) + "  종합 리포트").c_str())) ui.problemSel = "", app.requestActivity = Activity::History;
 	Tooltip("기록 화면에서 종합 HTML 리포트를 저장합니다.");
@@ -215,13 +219,13 @@ static void DrawOverviewMain(App& app)
 
 	if (!app.attached && app.legacyAttached)
 	{
-		EmptyState(ICON_SYNC, "dwo-Lens 1.x로 부착된 프로젝트입니다",
+		EmptyState(ICON_SYNC, "dwo-Lens 1.x로 연동된 프로젝트입니다",
 		           "__dwo-lens 폴더와 실행 파일, git exclude 블록을 dwo-Forge 이름으로 옮기고 있습니다. 실행 기록과 설정은 그대로 유지됩니다. 실행 로그에서 진행 상황을 볼 수 있습니다.");
 		return;
 	}
 	if (!app.attached)
 	{
-		if (EmptyState(ICON_LINK, "아직 부착되지 않았습니다", "부착하면 프로젝트 폴더에 __dwo-forge 폴더, __dwo-forge.bat, 미리 빌드된 검사 플러그인이 생깁니다. git 프로젝트라면 git에서 숨겨지고, 도구 > 제거로 흔적 없이 지울 수 있습니다.", "부착"))
+		if (EmptyState(ICON_LINK, "아직 연동되지 않은 프로젝트입니다", "연동하면 프로젝트 폴더에 __dwo-forge 폴더, __dwo-forge.bat, 미리 빌드된 검사 플러그인이 추가됩니다. git 프로젝트에서는 변경 목록에 나타나지 않으며, 도구 > dwo-Forge 제거로 흔적 없이 지울 수 있습니다.", "연동"))
 			app.Run("attach");
 		return;
 	}
@@ -242,7 +246,7 @@ static void DrawOverviewMain(App& app)
 		if (!p.muted && p.severity != "info") { ++openCount; newCount += p.isNew ? 1 : 0; }
 	{
 		ImU32 c = withRuns == 0 ? col::Muted : worst >= 4 ? col::Fail : worst >= 3 ? col::Warn : col::Pass;
-		const char* state = withRuns == 0 ? "아직 실행 기록이 없습니다" : worst >= 4 ? "실패한 라인이 있습니다" : worst >= 3 ? "경고가 있습니다" : "모든 라인 통과";
+		const char* state = withRuns == 0 ? "아직 실행 기록이 없습니다" : worst >= 4 ? "실패한 검사가 있습니다" : worst >= 3 ? "경고가 있습니다" : "모든 검사 통과";
 		ImVec2 p = ImGui::GetCursorScreenPos();
 		ImVec2 size(ImGui::GetContentRegionAvail().x, S(54));
 		ImDrawList* dl = ImGui::GetWindowDrawList();
@@ -250,7 +254,7 @@ static void DrawOverviewMain(App& app)
 		dl->AddRect(p, p + size, WithAlpha(c, 0.45f), S(6));
 		dl->AddText(g_fonts.icon, g_fonts.icon->FontSize, p + ImVec2(S(16), S(16)), c, worst >= 3 ? ICON_WARNING : ICON_OK);
 		dl->AddText(g_fonts.title, g_fonts.title->FontSize, p + ImVec2(S(48), S(8)), col::Text, state);
-		std::string detail = Fmt("실행한 라인 %d/%d  ·  문제 %d  ·  새 문제 %d  ·  경고 이상 라인 %d", withRuns, kLineCount, openCount, newCount, failing);
+		std::string detail = Fmt("실행한 검사 %d/%d  ·  문제 %d  ·  새 문제 %d  ·  경고 이상 검사 %d", withRuns, kLineCount, openCount, newCount, failing);
 		dl->AddText(p + ImVec2(S(48), S(32)), col::Dim, detail.c_str());
 		ImGui::InvisibleButton("health", size);
 		if (ImGui::IsItemClicked()) app.requestActivity = Activity::Problems;
@@ -296,8 +300,8 @@ static void DrawOverviewMain(App& app)
 	const RunMetrics* mS = metric(sm);
 	const RunMetrics* mP = metric(pe);
 	const RunMetrics* mZ = metric(sz);
-	card("k_find", "아키텍처 발견", mA ? std::to_string(mA->findingsFail + mA->findingsWarn) : "-", 0,
-	     [](const RunMetrics& m) { return (float)(m.findingsFail + m.findingsWarn); }, true, col::Purple, Activity::Architecture, "", "실패·경고 수준 발견 (순환 참조, 하드 참조 체인 등)");
+	card("k_find", "아키텍처 문제", mA ? std::to_string(mA->findingsFail + mA->findingsWarn) : "-", 0,
+	     [](const RunMetrics& m) { return (float)(m.findingsFail + m.findingsWarn); }, true, col::Purple, Activity::Architecture, "", "실패·경고 수준의 구조 문제 (순환 참조, 하드 참조 체인 등)");
 	card("k_bp", "BP 복잡도 초과", mA ? std::to_string(mA->bpOver) : "-", 0, [](const RunMetrics& m) { return (float)m.bpOver; }, true,
 	     col::Warn, Activity::Problems, "", "노드·분기·실행 체인 기준을 넘는 BP 그래프");
 	card("k_test", "테스트 통과율", mV && mV->testsTotal ? Fmt("%.0f%%", 100.0 * mV->testsPass / mV->testsTotal) : "-", 1,
@@ -323,11 +327,11 @@ static void DrawOverviewMain(App& app)
 	ImGui::Spacing();
 
 	// ---- lines
-	SectionHeader("생산 라인", "최근 10회 판정");
+	SectionHeader("Lens 검사", "최근 10회 결과");
 	if (ImGui::BeginTable("lines", 6, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_SizingStretchProp))
 	{
-		ImGui::TableSetupColumn("라인", ImGuiTableColumnFlags_WidthStretch, 2.0f);
-		ImGui::TableSetupColumn("판정", ImGuiTableColumnFlags_WidthFixed, S(70));
+		ImGui::TableSetupColumn("검사", ImGuiTableColumnFlags_WidthStretch, 2.0f);
+		ImGui::TableSetupColumn("결과", ImGuiTableColumnFlags_WidthFixed, S(70));
 		ImGui::TableSetupColumn("마지막 실행", ImGuiTableColumnFlags_WidthFixed, S(110));
 		ImGui::TableSetupColumn("소요", ImGuiTableColumnFlags_WidthFixed, S(80));
 		ImGui::TableSetupColumn("추세", ImGuiTableColumnFlags_WidthFixed, S(110));
@@ -360,7 +364,8 @@ static void DrawOverviewMain(App& app)
 			ImGui::EndDisabled();
 			ImGui::SameLine();
 			ImGui::BeginDisabled(!r);
-			if (ImGui::SmallButton("결과")) app.requestActivity = App::ActivityOfLine(i);
+			if (ImGui::SmallButton("상세")) app.requestActivity = App::ActivityOfLine(i);
+			Tooltip("이 검사의 결과 화면으로 이동");
 			ImGui::SameLine();
 			if (ImGui::SmallButton(ICON_PAGE) && r) OpenWithShell(r->dir / "out" / "report.html");
 			Tooltip("HTML 리포트 열기");
@@ -402,7 +407,7 @@ static void DrawOverviewInspector(App& app)
 	bool connected = false;
 	for (auto& s : app.store.sessions) connected |= !s.sources.empty();
 	Step steps[] = {
-		{ "프로젝트에 부착", app.attached, "부착", [&] { app.Run("attach"); } },
+		{ "프로젝트 연동", app.attached, "연동", [&] { app.Run("attach"); } },
 		{ "아키텍처 분석 실행", analyzed, "실행", [&] { app.Run("analyze"); } },
 		{ "검증 실행 (에디터 닫고)", verified, "실행", [&] { app.Run("verify"); } },
 		{ "DwoStateMonitor 설치", app.stateMonitor != 0, "설치", [&] { app.Run("sm-install"); } },
@@ -857,10 +862,10 @@ static void DrawArchitectureInspector(App& app)
 	KeyValue("BP 그래프", std::to_string(s.flows.size()));
 	KeyValue("호출 관계", std::to_string(s.calls.size()));
 	KeyValue("에셋 참조", std::to_string(s.assetRefs.size()));
-	KeyValue("발견", Fmt("실패 %d · 경고 %d · 정보 %d", m.findingsFail, m.findingsWarn, m.findingsInfo));
+	KeyValue("검출 항목", Fmt("실패 %d · 경고 %d · 정보 %d", m.findingsFail, m.findingsWarn, m.findingsInfo));
 	KeyValue("BP 초과", std::to_string(m.bpOver));
 	KeyValue("이름 규칙", std::to_string(m.naming));
-	SectionHeader("발견");
+	SectionHeader("검출 항목");
 	for (auto& f : Arr(Obj(app.Outputs(*r), "findings"), "findings"))
 	{
 		SeverityPill(Str(f, "severity"));
@@ -871,7 +876,7 @@ static void DrawArchitectureInspector(App& app)
 
 // ============================================================================ problems
 
-static const char* kProblemGroups[] = { "묶지 않음", "범주", "심각도", "라인" };
+static const char* kProblemGroups[] = { "묶지 않음", "범주", "심각도", "검사" };
 
 static std::string ProblemGroupOf(const Problem& p)
 {
@@ -907,7 +912,7 @@ static void DrawProblemsNav(App& app)
 	}
 	SectionHeader("상태");
 	ImGui::Checkbox(Fmt("새 문제만  (%d)", newCount).c_str(), &ui.onlyNew);
-	ImGui::Checkbox(Fmt("음소거 표시  (%d)", muted).c_str(), &ui.showMuted);
+	ImGui::Checkbox(Fmt("무시한 문제 표시  (%d)", muted).c_str(), &ui.showMuted);
 	SectionHeader("심각도");
 	for (const char* sev : { "fatal", "error", "warn", "minor", "info" })
 	{
@@ -931,10 +936,10 @@ static void DrawProblemsNav(App& app)
 static void DrawProblemsMain(App& app)
 {
 	app.RebuildProblems();
-	ViewHeader(ICON_WARNING, "문제", "모든 라인의 최신 실행에서 모은 문제");
+	ViewHeader(ICON_WARNING, "문제", "모든 검사의 최신 실행에서 모은 문제");
 	if (app.problems.empty())
 	{
-		EmptyState(ICON_OK, "문제가 없습니다", app.runs.empty() ? "라인을 실행하면 발견·테스트 실패·로그 오류·스모크 실패를 이곳에 모읍니다." : "최신 실행에서 열린 문제가 없습니다.");
+		EmptyState(ICON_OK, "문제가 없습니다", app.runs.empty() ? "검사를 실행하면 아키텍처 문제·테스트 실패·로그 오류·스모크 실패를 이곳에 모읍니다." : "최신 실행에서 열린 문제가 없습니다.");
 		return;
 	}
 	SearchBox("##pfilter", ui.filter, sizeof(ui.filter), ICON_SEARCH "  제목, 대상, 범주 검색", S(340));
@@ -952,7 +957,7 @@ static void DrawProblemsMain(App& app)
 		ImGui::TableSetupColumn("문제", ImGuiTableColumnFlags_WidthStretch, 3.0f);
 		ImGui::TableSetupColumn("대상", ImGuiTableColumnFlags_WidthStretch, 2.0f);
 		ImGui::TableSetupColumn("범주", ImGuiTableColumnFlags_WidthFixed, S(100));
-		ImGui::TableSetupColumn("라인", ImGuiTableColumnFlags_WidthFixed, S(100));
+		ImGui::TableSetupColumn("검사", ImGuiTableColumnFlags_WidthFixed, S(100));
 		ImGui::TableSetupColumn("실행", ImGuiTableColumnFlags_WidthFixed, S(90));
 		ImGui::TableHeadersRow();
 		std::vector<const Problem*> rows;
@@ -1009,7 +1014,7 @@ static void DrawProblemsMain(App& app)
 				ui.problemSel = p.key;
 			if (ImGui::BeginPopupContextItem())
 			{
-				if (ImGui::MenuItem(p.muted ? "음소거 해제" : "음소거 (기준선에 추가)"))
+				if (ImGui::MenuItem(p.muted ? "무시 해제" : "무시 (기준선에 추가)"))
 				{
 					if (p.muted) app.mutes.erase(p.key); else app.mutes.insert(p.key);
 					app.SaveProjectSettings();
@@ -1079,10 +1084,10 @@ static void DrawProblemsInspector(App& app)
 	ImGui::Spacing();
 	KeyValue("대상", sel->object, 70);
 	KeyValue("범주", sel->category, 70);
-	KeyValue("라인", sel->line >= 0 ? kLines[sel->line].name : "-", 70);
+	KeyValue("검사", sel->line >= 0 ? kLines[sel->line].name : "-", 70);
 	KeyValue("실행", sel->runId, 70);
 	ImGui::Spacing();
-	if (ImGui::Button(sel->muted ? "음소거 해제" : (std::string(ICON_CLOSE) + " 음소거").c_str()))
+	if (ImGui::Button(sel->muted ? "무시 해제" : (std::string(ICON_CLOSE) + " 무시").c_str()))
 	{
 		if (sel->muted) app.mutes.erase(sel->key); else app.mutes.insert(sel->key);
 		app.SaveProjectSettings();
@@ -1291,7 +1296,7 @@ static void DrawTestsMain(App& app)
 			else if (ImGui::BeginTable("maps", 7, kTable))
 			{
 				ImGui::TableSetupScrollFreeze(0, 1);
-				for (const char* h : { "판정", "맵", "오류", "경고", "ensure", "시간", "종료 코드" }) ImGui::TableSetupColumn(h);
+				for (const char* h : { "결과", "맵", "오류", "경고", "ensure", "시간", "종료 코드" }) ImGui::TableSetupColumn(h);
 				ImGui::TableHeadersRow();
 				for (auto& m : Arr(Obj(app.Outputs(*smoke), "smoke"), "maps"))
 				{
@@ -1423,7 +1428,7 @@ static void DrawLogsMain(App& app)
 	RunLineButton(app, 2, true, ICON_PLAY " 로그 분석");
 	if (!r)
 	{
-		if (EmptyState(ICON_LIST, "로그 분석 기록이 없습니다", "Saved/Logs와 Saved/Crashes를 읽어 같은 메시지를 지문으로 묶고, 이전 실행 대비 새 오류를 표시합니다.", app.attached ? "로그 분석" : nullptr))
+		if (EmptyState(ICON_LIST, "로그 분석 기록이 없습니다", "Saved/Logs와 Saved/Crashes를 읽어 같은 메시지를 하나로 묶고, 이전 실행 대비 새 오류를 표시합니다.", app.attached ? "로그 분석" : nullptr))
 			app.Run("logs");
 		return;
 	}
@@ -1505,7 +1510,7 @@ static void DrawLogsInspector(App& app)
 		Title(Str(g, "sample"));
 		ImGui::PopTextWrapPos();
 		KeyValue("횟수", std::to_string(Num(g, "count")), 70);
-		KeyValue("지문", ui.logSel, 70);
+		KeyValue("그룹 ID", ui.logSel, 70);
 		// first and last seen across log runs
 		std::string first, last;
 		for (auto* h : app.RunsOf(2, 50))
@@ -1771,7 +1776,7 @@ static void DrawPerformanceMain(App& app)
 				}
 			};
 			if (ImGui::BeginTabItem("큰 에셋")) { table("largest", Arr(sizes, "largest"), "asset", "bytes", nullptr, nullptr); ImGui::EndTabItem(); }
-			if (ImGui::BeginTabItem("함께 로드되는 무게"))
+			if (ImGui::BeginTabItem("함께 로드되는 용량"))
 			{
 				TextDim("에셋을 로드할 때 하드 참조로 함께 로드되는 에셋 용량의 합 (최신 분석 결과 기준)");
 				table("closures", Arr(sizes, "heaviestClosures"), "asset", "closureBytes", "closureCount", "에셋 수");
@@ -1868,7 +1873,7 @@ static std::string WriteBundleReport(App& app, const fs::path& dest)
 {
 	std::string style, body, mermaid;
 	std::string cover = "<section><div class='meta'>dwo-Forge Lens 종합 리포트</div><h1>" + HtmlEscape(app.projectName) +
-	                    "</h1><div class='scroll'><table><thead><tr><th>라인</th><th>실행 ID</th><th>판정</th></tr></thead><tbody>";
+	                    "</h1><div class='scroll'><table><thead><tr><th>검사</th><th>실행 ID</th><th>결과</th></tr></thead><tbody>";
 	int parts = 0;
 	for (int i = 0; i < kLineCount; ++i)
 	{
@@ -1948,7 +1953,7 @@ static void StationStrip(const RunInfo& r)
 static void DrawCompare(App& app, const RunInfo& a, const RunInfo& b)
 {
 	SectionHeader(("비교  " + StampOf(a.id) + "  →  " + StampOf(b.id)).c_str());
-	if (a.lineIndex != b.lineIndex) { TextColored(col::Warn, "같은 라인의 실행끼리 비교하세요."); return; }
+	if (a.lineIndex != b.lineIndex) { TextColored(col::Warn, "같은 검사의 실행끼리 비교하세요."); return; }
 	std::vector<Problem> pa, pb;
 	App::CollectProblems(app, a, pa);
 	App::CollectProblems(app, b, pb);
@@ -1975,7 +1980,7 @@ static void DrawCompare(App& app, const RunInfo& a, const RunInfo& b)
 		for (const char* h : { "지표", "이전", "이후", "변화" }) ImGui::TableSetupColumn(h);
 		ImGui::TableHeadersRow();
 		row("문제", (double)pa.size(), (double)pb.size(), true);
-		row("발견 (실패+경고)", x.findingsFail + x.findingsWarn, y.findingsFail + y.findingsWarn, true);
+		row("아키텍처 문제 (실패+경고)", x.findingsFail + x.findingsWarn, y.findingsFail + y.findingsWarn, true);
 		row("BP 복잡도 초과", x.bpOver, y.bpOver, true);
 		row("이름 규칙", x.naming, y.naming, true);
 		row("테스트 실패", x.testsFail, y.testsFail, true);
@@ -2007,7 +2012,7 @@ static void DrawCompare(App& app, const RunInfo& a, const RunInfo& b)
 
 static void DrawHistoryNav(App& app)
 {
-	SectionHeader("라인");
+	SectionHeader("검사");
 	if (ImGui::Selectable(Fmt("전체  (%d)", (int)app.runs.size()).c_str(), ui.historyLine < 0)) ui.historyLine = -1;
 	for (int i = 0; i < kLineCount; ++i)
 	{
@@ -2017,7 +2022,7 @@ static void DrawHistoryNav(App& app)
 	}
 	SectionHeader("리포트");
 	if (ImGui::Button((std::string(ICON_SAVE) + "  종합 리포트 저장...").c_str(), ImVec2(-FLT_MIN, 0))) SaveBundleReport(app);
-	Tooltip("라인마다 최신 실행의 리포트를 표지와 함께 HTML 파일 하나로 저장합니다.");
+	Tooltip("검사마다 최신 실행의 리포트를 표지와 함께 HTML 파일 하나로 저장합니다.");
 }
 
 static void DrawHistoryMain(App& app)
@@ -2025,20 +2030,20 @@ static void DrawHistoryMain(App& app)
 	ViewHeader(ICON_HISTORY, "실행 기록", Fmt("%d회", (int)app.runs.size()));
 	if (app.runs.empty())
 	{
-		EmptyState(ICON_HISTORY, "실행 기록이 없습니다", "라인을 실행하면 이곳에 판정·공정·소요 시간이 쌓이고, 두 실행을 골라 비교할 수 있습니다.");
+		EmptyState(ICON_HISTORY, "실행 기록이 없습니다", "검사를 실행하면 이곳에 결과·단계·소요 시간이 쌓이고, 두 실행을 골라 비교할 수 있습니다.");
 		return;
 	}
-	TextDim("체크 두 개를 고르면 비교합니다. 두 번 클릭하면 결과 화면으로 이동합니다.");
+	TextDim("두 실행을 체크하면 비교합니다. 두 번 클릭하면 결과 화면으로 이동합니다.");
 	bool comparing = !ui.compareA.empty() && !ui.compareB.empty();
 	float tableHeight = comparing ? ImGui::GetContentRegionAvail().y * 0.45f : 0;
 	if (ImGui::BeginTable("history", 7, kTable, ImVec2(0, tableHeight)))
 	{
 		ImGui::TableSetupScrollFreeze(0, 1);
 		ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, S(26));
-		ImGui::TableSetupColumn("판정", ImGuiTableColumnFlags_WidthFixed, S(64));
-		ImGui::TableSetupColumn("라인", ImGuiTableColumnFlags_WidthFixed, S(130));
+		ImGui::TableSetupColumn("결과", ImGuiTableColumnFlags_WidthFixed, S(64));
+		ImGui::TableSetupColumn("검사", ImGuiTableColumnFlags_WidthFixed, S(130));
 		ImGui::TableSetupColumn("실행 ID", ImGuiTableColumnFlags_WidthStretch);
-		ImGui::TableSetupColumn("공정", ImGuiTableColumnFlags_WidthFixed, S(110));
+		ImGui::TableSetupColumn("단계", ImGuiTableColumnFlags_WidthFixed, S(110));
 		ImGui::TableSetupColumn("시작", ImGuiTableColumnFlags_WidthFixed, S(100));
 		ImGui::TableSetupColumn("소요", ImGuiTableColumnFlags_WidthFixed, S(80));
 		ImGui::TableHeadersRow();
@@ -2101,13 +2106,13 @@ static void DrawHistoryMain(App& app)
 static void DrawHistoryInspector(App& app)
 {
 	const RunInfo* r = app.FindRun(ui.historySel);
-	if (!r) { TextDim("실행을 고르면 공정과 산출물이 여기에 표시됩니다."); return; }
+	if (!r) { TextDim("실행을 고르면 단계와 결과 파일이 여기에 표시됩니다."); return; }
 	VerdictPill(r->verdict);
 	Title(r->lineIndex >= 0 ? kLines[r->lineIndex].name : r->line);
 	TextDim(r->id);
 	KeyValue("시작", r->startedAt.substr(0, 19), 70);
 	KeyValue("소요", Duration(r->seconds), 70);
-	KeyValue("시스템", Str(r->run, "systemCommit"), 70);
+	KeyValue("버전", Str(r->run, "systemCommit"), 70);
 	ImGui::Spacing();
 	if (ImGui::Button((std::string(ICON_PAGE) + " 리포트").c_str())) OpenWithShell(r->dir / "out" / "report.html");
 	ImGui::SameLine();
@@ -2115,7 +2120,7 @@ static void DrawHistoryInspector(App& app)
 	ImGui::SameLine();
 	if (ImGui::Button(ICON_FOLDER)) OpenWithShell(r->dir);
 	Tooltip("실행 폴더 열기");
-	SectionHeader("공정");
+	SectionHeader("단계");
 	for (auto& st : Arr(r->run, "stations"))
 	{
 		ImGui::PushID(Str(st, "id").c_str());
@@ -2132,7 +2137,7 @@ static void DrawHistoryInspector(App& app)
 		}
 		ImGui::PopID();
 	}
-	SectionHeader("산출물");
+	SectionHeader("결과 파일");
 	std::error_code ec;
 	if (fs::is_directory(r->dir / "out", ec))
 		for (auto& e : fs::directory_iterator(r->dir / "out", ec))
@@ -2160,10 +2165,10 @@ struct ForgeToolDef
 };
 
 static const ForgeToolDef kForgeTools[] = {
-	{ "lens", ICON_LAYERS, "Lens", "분석 라인: 아키텍처, 문제, 검증, 로그, 성능·용량 (DwoLensInspector)" },
+	{ "lens", ICON_LAYERS, "Lens", "분석·검증 검사: 아키텍처, 문제, 검증, 로그, 성능·용량 (DwoLensInspector)" },
 	{ "statemonitor", ICON_EYE, "DwoStateMonitor", "실행 중인 게임의 상태를 실시간으로 보는 런타임 플러그인" },
 	{ "canvas", ICON_CANVAS, "DwoCanvas", "디자인 파일(*.dwocanvas.json)을 UMG 위젯 블루프린트로 가져오는 플러그인" },
-	{ "forge", ICON_FORGE, "dwo-Forge", "부착, 업데이트, 제어판, 자체 검증" },
+	{ "forge", ICON_FORGE, "dwo-Forge", "프로젝트 연동, 업데이트, 제어판, 자체 검증" },
 };
 
 static const char* ToolNameOf(const std::string& key)
@@ -2191,15 +2196,15 @@ static void DrawToolsNav(App& app)
 	float w = -FLT_MIN;
 	if (!app.attached)
 	{
-		if (PrimaryButton((std::string(ICON_LINK) + "  부착").c_str(), ImVec2(w, 0))) app.Run("attach");
+		if (PrimaryButton((std::string(ICON_LINK) + "  프로젝트 연동").c_str(), ImVec2(w, 0))) app.Run("attach");
 	}
 	else
 	{
-		if (ImGui::Button((std::string(ICON_SETTINGS) + "  환경 점검 (doctor)").c_str(), ImVec2(w, 0))) app.Run("doctor");
-		if (ImGui::Button((std::string(ICON_INFO) + "  상태 (status)").c_str(), ImVec2(w, 0))) app.Run("status");
-		if (ImGui::Button((std::string(ICON_SYNC) + "  시스템 업데이트").c_str(), ImVec2(w, 0))) app.Run("update");
-		Tooltip("부착된 플러그인과 실행 파일을 dwo-Forge 저장소의 최신 버전으로 맞춥니다. dwo-Lens 1.x의 StateMonitor도 DwoStateMonitor로 옮깁니다.");
-		if (DangerButton((std::string(ICON_DELETE) + "  제거 (uninstall)").c_str(), ImVec2(w, 0))) app.confirmDetach = true;
+		if (ImGui::Button((std::string(ICON_SETTINGS) + "  환경 점검").c_str(), ImVec2(w, 0))) app.Run("doctor");
+		if (ImGui::Button((std::string(ICON_INFO) + "  상태 확인").c_str(), ImVec2(w, 0))) app.Run("status");
+		if (ImGui::Button((std::string(ICON_SYNC) + "  dwo-Forge 업데이트").c_str(), ImVec2(w, 0))) app.Run("update");
+		Tooltip("프로젝트에 설치된 플러그인과 실행 파일을 이 dwo-Forge 버전으로 맞춥니다. dwo-Lens 1.x의 StateMonitor도 DwoStateMonitor로 옮깁니다.");
+		if (DangerButton((std::string(ICON_DELETE) + "  dwo-Forge 제거").c_str(), ImVec2(w, 0))) app.confirmDetach = true;
 	}
 	ImGui::EndDisabled();
 }
@@ -2218,20 +2223,20 @@ static bool BeginToolCard(const char* id, const char* icon, const char* name, fl
 static void LensCard(App& app, float width, float height)
 {
 	BeginToolCard("lenscard", ICON_LAYERS, "Lens", width, height);
-	if (app.attached) Pill("부착됨", col::Pass);
+	if (app.attached) Pill("연동됨", col::Pass);
 	else if (app.legacyAttached) Pill("dwo-Lens 1.x · 이전 중", col::Warn);
-	else Pill("부착 안 됨", col::Muted);
+	else Pill("연동 안 됨", col::Muted);
 	ImGui::PushTextWrapPos(0);
 	TextDim("analyze · verify · logs · smoke · perf · sizes · trace. 숨김 플러그인 DwoLensInspector가 커맨드릿으로 리플렉션·BP·에셋을 수집합니다.");
 	ImGui::PopTextWrapPos();
 	int done = 0, failed = 0;
 	for (int i = 0; i < kLineCount; ++i)
 		if (const RunInfo* r = app.Latest(i)) { ++done; failed += r->verdict == "fail"; }
-	TextDim(Fmt("라인 %d개 중 %d개 실행 기록 · 실패 %d", kLineCount, done, failed));
+	TextDim(Fmt("검사 %d개 중 %d개 실행함 · 실패 %d", kLineCount, done, failed));
 	ImGui::SetCursorPosY(ImGui::GetWindowHeight() - ImGui::GetFrameHeight() - S(10));
 	ImGui::BeginDisabled(app.runner.running || !app.hasUProject);
-	if (!app.attached) { if (PrimaryButton("부착")) app.Run("attach"); }
-	else if (PrimaryButton("기본 라인 실행")) app.RunAll();
+	if (!app.attached) { if (PrimaryButton("연동")) app.Run("attach"); }
+	else if (PrimaryButton("기본 검사 실행")) app.RunAll();
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	if (ImGui::Button("대시보드")) app.requestActivity = Activity::Overview;
@@ -2285,7 +2290,7 @@ static void CanvasCard(App& app, float width, float height)
 	else Pill("설치 안 됨", col::Muted);
 	ImGui::PushTextWrapPos(0);
 	TextDim("Figma·HTML 등에서 내보낸 *.dwocanvas.json을 위젯 블루프린트 디자이너 트리로 가져옵니다. 다시 가져와도 UE에서 고친 내용은 유지됩니다. "
-	        "Plugins/__DwoCanvas에 숨겨 설치되고 제거나 uninstall 때 지워집니다.");
+	        "Plugins/__DwoCanvas에 숨겨 설치되며, DwoCanvas나 dwo-Forge를 제거하면 함께 지워집니다.");
 	ImGui::PopTextWrapPos();
 	ImGui::SetCursorPosY(ImGui::GetWindowHeight() - ImGui::GetFrameHeight() - S(10));
 	if (app.canvas == 0)
@@ -2293,7 +2298,7 @@ static void CanvasCard(App& app, float width, float height)
 		ImGui::BeginDisabled(app.runner.running || !app.attached);
 		if (PrimaryButton("설치")) app.Run("canvas-install");
 		ImGui::EndDisabled();
-		Tooltip(app.attached ? "Plugins/__DwoCanvas에 설치합니다 (git에서 숨김)." : "먼저 프로젝트에 부착하세요.");
+		Tooltip(app.attached ? "Plugins/__DwoCanvas에 설치합니다 (git에서 숨김)." : "먼저 프로젝트를 연동하세요.");
 		ImGui::SameLine();
 	}
 	if (ImGui::Button("열기##canvas")) app.requestActivity = Activity::Canvas;
@@ -2302,7 +2307,7 @@ static void CanvasCard(App& app, float width, float height)
 
 static void DrawToolsMain(App& app)
 {
-	ViewHeader(ICON_PUZZLE, "도구", "dwo-Forge가 제공하는 세 도구와 생산 라인, 도구 카탈로그");
+	ViewHeader(ICON_PUZZLE, "도구", "dwo-Forge가 제공하는 세 도구와 Lens 검사, 도구 카탈로그");
 	SectionHeader("제공 도구");
 	{
 		float avail = ImGui::GetContentRegionAvail().x;
@@ -2315,7 +2320,7 @@ static void DrawToolsMain(App& app)
 		if (columns > 1) ImGui::SameLine();
 		CanvasCard(app, w, h);
 	}
-	SectionHeader("Lens 생산 라인");
+	SectionHeader("Lens 검사");
 	float avail = ImGui::GetContentRegionAvail().x;
 	int columns = ImMax(1, (int)(avail / S(300)));
 	float w = (avail - (columns - 1) * ImGui::GetStyle().ItemSpacing.x) / columns;
@@ -2382,7 +2387,7 @@ static void DrawToolsInspector(App& app)
 		}
 	SectionHeader("dwo-Forge");
 	KeyValue("저장소", PathUtf8(app.home), 70);
-	KeyValue("시스템", app.SystemCommit(), 70);
+	KeyValue("버전", app.SystemCommit(), 70);
 	KeyValue("카탈로그", std::to_string(Arr(app.catalog, "tools").size()) + "개 도구", 70);
 	SectionHeader("제공 도구");
 	for (auto& def : kForgeTools)

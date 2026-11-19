@@ -23,7 +23,7 @@ static const LineDef kLines[] = {
 	{ "logs", "logs", "logs", "로그 분석", ICON_LIST, "Saved/Logs·크래시 분석, 이전 실행 대비 새 오류", false },
 	{ "smoke", "smoke", "smoke", "맵 스모크", ICON_PLAY, "맵마다 게임을 띄워 오류·ensure·크래시 수집", true },
 	{ "perf", "perf", "perf", "성능 캡처", ICON_SPEED, "CSV 프로파일러로 프레임·스레드 시간과 히치 측정", true },
-	{ "sizes", "sizes", "sizes", "콘텐츠 용량", ICON_PACKAGE, "에셋 용량, 폴더·유형별 분포, 하드 참조로 함께 로드되는 무게", false },
+	{ "sizes", "sizes", "sizes", "콘텐츠 용량", ICON_PACKAGE, "에셋 용량, 폴더·유형별 분포, 하드 참조로 함께 로드되는 용량", false },
 	{ "trace", "trace", "trace", "Insights 트레이스", ICON_DIAG, "Unreal Insights 트레이스 캡처", true },
 };
 static const int kLineCount = (int)(sizeof(kLines) / sizeof(kLines[0]));
@@ -892,11 +892,14 @@ struct App
 			{
 				fs::path logFile = runner.logFile;
 				std::string verb = done.substr(0, done.find(' '));
-				std::string what = verb == "attach" ? "부착" : verb == "uninstall" ? "제거" : verb == "update" ? "업데이트"
+				std::string what = verb == "attach" ? "프로젝트 연동" : verb == "uninstall" ? "dwo-Forge 제거" : verb == "update" ? "dwo-Forge 업데이트"
 				                 : verb == "canvas-import" ? "DwoCanvas 가져오기" : verb == "canvas-validate" ? "디자인 파일 검사"
 				                 : verb == "canvas-install" ? "DwoCanvas 설치" : verb == "canvas-remove" ? "DwoCanvas 제거"
 				                 : verb == "sm-install" ? "DwoStateMonitor 설치" : verb == "sm-remove" ? "DwoStateMonitor 제거"
-				                 : verb == "status" && migrationStarted ? "dwo-Lens 1.x 이전" : verb;
+				                 : verb == "status" && migrationStarted ? "dwo-Lens 1.x 이전" : verb == "status" ? "상태 확인"
+				                 : verb == "doctor" ? "환경 점검" : verb == "play" ? "게임 실행" : verb;
+				for (int i = 0; i < kLineCount; ++i)
+					if (verb == kLines[i].command) what = kLines[i].name;   // a check that stopped before writing its run
 				std::string body = code == 0 ? "완료" : "실패 (종료 코드 " + std::to_string(code) + ") · " + runner.LastLine();
 				if (code == 0 && verb == "uninstall" && forgetAfterUninstall)
 				{

@@ -154,7 +154,7 @@ def render_smoke(result: dict, run_id: str) -> str:
     counts = {v: sum(1 for m in result["maps"] if m["verdict"] == v) for v in ("pass", "warn", "fail")}
     head = (f"<section><h2>요약</h2>{kpis([('맵', len(result['maps'])), ('pass', counts['pass']), ('warn', counts['warn']), ('fail', counts['fail']), ('맵당 초', result['seconds'])])}"
             f"<p class='meta'>fail: Fatal · 크래시 · ensure · Error &gt; {result['maxErrors']} · 비정상 종료 / warn: Error · Warning &gt; {result['maxWarnings']} · 조기 종료 {esc(result['note'])}</p></section>")
-    table = ("<section><h2>맵 부팅</h2><div class='scroll'><table><thead><tr><th>맵</th><th>판정</th><th>exit</th><th>초</th><th>Error</th>"
+    table = ("<section><h2>맵 부팅</h2><div class='scroll'><table><thead><tr><th>맵</th><th>결과</th><th>exit</th><th>초</th><th>Error</th>"
              f"<th>Warning</th><th>ensure</th><th>Fatal</th><th>사유</th></tr></thead><tbody>{''.join(rows) or '<tr><td colspan=9>없음</td></tr>'}</tbody></table></div></section>")
     return page("맵 부팅 스모크", result["verdict"], run_id, head + table + "".join(details))
 
@@ -374,7 +374,7 @@ def render_sizes(result: dict, run_id: str) -> str:
     flag = lambda b: f" <span class='badge warn'>&gt; {limit} MB</span>" if b > limit * 1048576 else ""  # noqa: E731
     return page("콘텐츠 용량", result["verdict"], run_id, head
                 + table("큰 에셋", ["에셋", "크기"], [(f"<code>{esc(x['asset'])}</code>{flag(x['bytes'])}", mb(x["bytes"])) for x in result["largest"]])
-                + table("하드 참조 로드 무게 (자신 + 하드 참조로 함께 로드되는 에셋)", ["에셋", "합계", "함께 로드"],
+                + table("하드 참조 로드 용량 (자신 + 하드 참조로 함께 로드되는 에셋)", ["에셋", "합계", "함께 로드"],
                         [(f"<code>{esc(x['asset'])}</code>", mb(x["closureBytes"]), x["closureCount"]) for x in result["heaviestClosures"]])
                 + table("폴더", ["폴더", "크기", "에셋"], [(f"<code>{esc(x['folder'])}</code>", mb(x["bytes"]), x["count"]) for x in result["byFolder"]])
                 + table("파일 형식", ["확장자", "크기", "파일"], [(esc(x["ext"]), mb(x["bytes"]), x["count"]) for x in result["byType"]]))

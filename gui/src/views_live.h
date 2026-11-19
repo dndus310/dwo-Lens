@@ -338,7 +338,7 @@ static void LiveGuide(App& app)
 	if (app.live.port != 47731) howTo += Fmt(" 기본 포트가 아니므로 게임을 -StateMonitorPort=%d로 실행하세요.", app.live.port);
 	step(2, false, "게임 실행", howTo.c_str());
 	ImGui::BeginDisabled(!app.attached || app.stateMonitor == 0);
-	if (PrimaryButton((std::string(ICON_PLAY) + "  게임 실행 (play)").c_str())) app.Run("play");
+	if (PrimaryButton((std::string(ICON_PLAY) + "  게임 실행").c_str())) app.Run("play");
 	ImGui::EndDisabled();
 	Tooltip("UnrealEditor로 프로젝트를 -game 모드로 띄웁니다.");
 	ImGui::Unindent(S(24));

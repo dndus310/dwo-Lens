@@ -1057,9 +1057,11 @@ function Invoke-Logs {
     if ($baseline) { $pyArgs += @('--baseline', $baseline) }
     $ignore = @($cfg.logs.ignoreCategories)
     if ($ignore.Count -gt 0) { $pyArgs += '--ignore'; $pyArgs += $ignore }
+    $sw = [Diagnostics.Stopwatch]::StartNew()
     & python @pyArgs
+    $sw.Stop()
     $summary = Get-Content -Raw -Encoding UTF8 (Join-Path $run.Dir 'out\logs.json') | ConvertFrom-Json
-    Write-Run $run 'logs' @([ordered]@{ id = 'ST-4'; name = 'logs'; verdict = $summary.verdict; files = $files.Count }) $summary.verdict $engine
+    Write-Run $run 'logs' @([ordered]@{ id = 'ST-4'; name = 'logs'; verdict = $summary.verdict; files = $files.Count; ms = $sw.ElapsedMilliseconds }) $summary.verdict $engine
     Say "[$($run.Id)] verdict: $($summary.verdict)"
     Say "Report: $(Join-Path $run.Dir 'out\report.html')"
     if ($summary.verdict -eq 'fail') { exit 2 }

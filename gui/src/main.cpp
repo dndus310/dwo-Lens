@@ -99,7 +99,7 @@ static std::vector<Command> BuildCommands(App& app)
 		std::string cmd = kLines[i].command;
 		list.push_back({ std::string("실행: ") + kLines[i].name, cmd, [&app, cmd] { app.Run(cmd); }, app.attached });
 	}
-	list.push_back({ "실행: 기본 라인 모두", "analyze, logs, sizes", [&app] { app.RunAll(); }, app.attached });
+	list.push_back({ "실행: 기본 검사 모두", "analyze, logs, sizes", [&app] { app.RunAll(); }, app.attached });
 	list.push_back({ "게임 실행 (DwoStateMonitor 연결)", "play", [&app] { app.Run("play"); app.requestActivity = Activity::Live; }, app.attached });
 	list.push_back({ "DwoStateMonitor 설치 (에디터 전용)", "sm-install", [&app] { app.Run("sm-install"); }, app.attached && app.stateMonitor == 0 });
 	list.push_back({ "DwoStateMonitor 설치 (패키지 게임 포함)", "sm-install --runtime", [&app] { app.Run("sm-install --runtime"); }, app.attached && app.stateMonitor == 0 });
@@ -113,10 +113,10 @@ static std::vector<Command> BuildCommands(App& app)
 	list.push_back({ "종합 리포트 저장...", "HTML", [&app] { SaveBundleReport(app); }, !app.runs.empty() });
 	list.push_back({ "프로젝트 열기...", "Ctrl+O", [&app] { fs::path p; if (PickOpen(g_hwnd, true, L".uproject가 있는 프로젝트 폴더 선택", p)) app.SetProject(p); } });
 	list.push_back({ "새로고침", "F5", [&app] { app.outputs.clear(); app.metrics.clear(); app.structureFor.clear(); app.Refresh(); } });
-	list.push_back({ "부착", "attach", [&app] { app.Run("attach"); }, app.hasUProject && !app.attached });
-	list.push_back({ "시스템 업데이트", "update", [&app] { app.Run("update"); }, app.attached });
+	list.push_back({ "프로젝트 연동", "attach", [&app] { app.Run("attach"); }, app.hasUProject && !app.attached });
+	list.push_back({ "dwo-Forge 업데이트", "update", [&app] { app.Run("update"); }, app.attached });
 	list.push_back({ "환경 점검", "doctor", [&app] { app.Run("doctor"); }, app.attached });
-	list.push_back({ "제거 (uninstall)...", "uninstall", [&app] { app.confirmDetach = true; }, app.attached });
+	list.push_back({ "dwo-Forge 제거...", "uninstall", [&app] { app.confirmDetach = true; }, app.attached });
 	list.push_back({ "실행 로그 보기", "Ctrl+`", [&app] { app.showConsole = true; } });
 	list.push_back({ "실행 취소", "Esc", [&app] { app.runner.Cancel(); }, (bool)app.runner.running });
 	list.push_back({ "DwoStateMonitor 녹화 저장...", "JSONL", [&app] {
@@ -148,7 +148,7 @@ static void DrawCommandPalette(App& app)
 		if (ImGui::IsWindowAppearing()) { g_paletteQuery[0] = 0; g_paletteIndex = 0; ImGui::SetKeyboardFocusHere(); }
 		ImGui::SetNextItemWidth(-FLT_MIN);
 		ImGui::PushFont(g_fonts.title);
-		if (ImGui::InputTextWithHint("##q", ICON_SEARCH "  명령, 화면, 라인 검색", g_paletteQuery, sizeof(g_paletteQuery))) g_paletteIndex = 0;
+		if (ImGui::InputTextWithHint("##q", ICON_SEARCH "  명령, 화면, 검사 검색", g_paletteQuery, sizeof(g_paletteQuery))) g_paletteIndex = 0;
 		ImGui::PopFont();
 		auto commands = BuildCommands(app);
 		std::vector<std::pair<int, int>> scored;
@@ -226,8 +226,8 @@ static void DrawMenuBar(App& app, bool& quit)
 		for (int i = 0; i < kLineCount; ++i)
 			if (ImGui::MenuItem((std::string(kLines[i].icon) + "  " + kLines[i].name).c_str(), kLines[i].command, false, app.attached)) app.Run(kLines[i].command);
 		ImGui::Separator();
-		if (ImGui::MenuItem("기본 라인 모두 실행", nullptr, false, app.attached)) app.RunAll();
-		if (ImGui::MenuItem("게임 실행 (play)", nullptr, false, app.attached)) app.Run("play");
+		if (ImGui::MenuItem("기본 검사 모두 실행", nullptr, false, app.attached)) app.RunAll();
+		if (ImGui::MenuItem("게임 실행", nullptr, false, app.attached)) app.Run("play");
 		ImGui::Separator();
 		if (ImGui::MenuItem("실행 취소", "Esc", false, app.runner.running)) app.runner.Cancel();
 		if (ImGui::MenuItem("대기열 비우기", nullptr, false, !app.queue.empty())) app.queue.clear();
@@ -266,10 +266,10 @@ static void DrawMenuBar(App& app, bool& quit)
 		if (ImGui::MenuItem("제거##canvas", nullptr, false, app.canvas == 1)) app.Run("canvas-remove");
 		ImGui::Separator();
 		ImGui::TextDisabled("dwo-Forge");
-		if (ImGui::MenuItem("부착", nullptr, false, app.hasUProject && !app.attached)) app.Run("attach");
-		if (ImGui::MenuItem("시스템 업데이트", nullptr, false, app.attached)) app.Run("update");
+		if (ImGui::MenuItem("프로젝트 연동", nullptr, false, app.hasUProject && !app.attached)) app.Run("attach");
+		if (ImGui::MenuItem("dwo-Forge 업데이트", nullptr, false, app.attached)) app.Run("update");
 		if (ImGui::MenuItem("환경 점검", nullptr, false, app.attached)) app.Run("doctor");
-		if (ImGui::MenuItem("제거 (uninstall)...", nullptr, false, app.attached)) app.confirmDetach = true;
+		if (ImGui::MenuItem("dwo-Forge 제거...", nullptr, false, app.attached)) app.confirmDetach = true;
 		ImGui::EndMenu();
 	}
 	if (ImGui::BeginMenu("도움말"))
@@ -428,7 +428,7 @@ static void DrawStatusBar(App& app)
 	{
 		StatusDot(app.attached ? col::Pass : col::Muted);
 		ImGui::SameLine();
-		ImGui::TextUnformatted(app.hasUProject ? (app.projectName + (app.attached ? "  ·  UE " + app.Engine() : app.legacyAttached ? "  ·  dwo-Lens 1.x 부착 (이전 중)" : "  ·  부착 안 됨")).c_str() : "프로젝트 없음");
+		ImGui::TextUnformatted(app.hasUProject ? (app.projectName + (app.attached ? "  ·  UE " + app.Engine() : app.legacyAttached ? "  ·  dwo-Lens 1.x 연동 (이전 중)" : "  ·  연동 안 됨")).c_str() : "프로젝트 없음");
 	}
 	// right side
 	app.RebuildProblems();
@@ -466,7 +466,7 @@ static void DrawConsole(App& app)
 		CopyToClipboard(all);
 	}
 	ImGui::SameLine();
-	if (ToolButton(ICON_DOWN, "끝까지 따라가기", ui.consoleFollow)) ui.consoleFollow = !ui.consoleFollow;
+	if (ToolButton(ICON_DOWN, "자동 스크롤", ui.consoleFollow)) ui.consoleFollow = !ui.consoleFollow;
 	ImGui::SameLine();
 	SearchBox("##cfilter", ui.consoleFilter, sizeof(ui.consoleFilter), ICON_FILTER "  필터", S(220));
 	if (app.runner.running)
@@ -602,7 +602,7 @@ static void DrawDetachModal(App& app)
 	if (!ImGui::BeginPopupModal("dwo-Forge 제거", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) return;
 	Title("이 프로젝트에서 dwo-Forge를 완전히 제거합니다");
 	ImGui::PushTextWrapPos(S(630));
-	TextDim("플러그인을 따로 지울 필요 없이 한 번에 지웁니다. 부착할 때 넣은 것, 도구가 만든 것, 프로젝트 파일에 등록된 항목까지 정리합니다.");
+	TextDim("플러그인을 따로 지울 필요 없이 한 번에 지웁니다. 연동할 때 추가한 파일, 도구가 만든 파일, 프로젝트 파일에 등록된 항목까지 정리합니다.");
 	ImGui::PopTextWrapPos();
 	if (g_plan.state == 1)
 	{
@@ -654,7 +654,7 @@ static void DrawDetachModal(App& app)
 	ImGui::BeginChild("plan", ImVec2(S(630), 0), ImGuiChildFlags_AutoResizeY);
 	SectionHeader("항상 지우는 것");
 	bullet(plugins.empty() ? col::Muted : col::Text, ICON_DELETE, "플러그인", plugins.empty() ? "없음" : JoinStrings(json(plugins)));
-	bullet(col::Text, ICON_DELETE, "실행 파일·부착 정보", JoinStrings(json(launchers)) + (launchers.empty() ? "" : ", ") + "__dwo-forge\\");
+	bullet(col::Text, ICON_DELETE, "실행 파일·연동 정보", JoinStrings(json(launchers)) + (launchers.empty() ? "" : ", ") + "__dwo-forge\\");
 	bullet(exclude.empty() ? col::Muted : col::Text, ICON_DELETE, "git exclude", exclude.empty() ? "추가한 항목 없음" : "dwo-Forge 블록만 · " + exclude);
 	std::vector<std::string> tests;
 	for (auto& a : artifacts) if (a.find("Tests") != std::string::npos) tests.push_back(a);

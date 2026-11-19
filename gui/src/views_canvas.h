@@ -60,7 +60,7 @@ static void DrawCanvasNav(App& app)
 	ImGui::BeginChild("canvasstate", ImVec2(0, S(118)), ImGuiChildFlags_Borders);
 	TextBold(std::string(ICON_CANVAS) + "  DwoCanvas");
 	ImGui::SameLine();
-	Pill(app.canvas == 0 ? "설치 안 됨" : app.canvas == 1 ? "설치됨" : "프로젝트 소유", app.canvas == 0 ? col::Muted : app.canvas == 1 ? col::Pass : col::Info);
+	Pill(app.canvas == 0 ? "설치 안 됨" : app.canvas == 1 ? "설치됨" : "프로젝트에 포함", app.canvas == 0 ? col::Muted : app.canvas == 1 ? col::Pass : col::Info);
 	TextDim(app.canvas == 1 ? "Plugins/__DwoCanvas" + (app.canvasVersion.empty() ? std::string() : "  ·  " + app.canvasVersion)
 	        : app.canvas == 2 ? "프로젝트의 DwoCanvas" + (app.canvasVersion.empty() ? std::string() : "  ·  " + app.canvasVersion)
 	        : std::string("Plugins/__DwoCanvas에 설치합니다"));
@@ -71,8 +71,8 @@ static void DrawCanvasNav(App& app)
 		ImGui::BeginDisabled(!idle || !app.attached);
 		if (PrimaryButton((std::string(ICON_DOWNLOAD) + "  설치").c_str(), ImVec2(-FLT_MIN, 0))) app.Run("canvas-install");
 		ImGui::EndDisabled();
-		Tooltip(app.attached ? "미리 빌드한 에디터 바이너리와 소스를 Plugins/__DwoCanvas에 복사합니다. git에서 숨겨지고, 제거나 uninstall 때 지워집니다."
-		                     : "먼저 프로젝트에 부착하세요.");
+		Tooltip(app.attached ? "미리 빌드한 에디터 바이너리와 소스를 Plugins/__DwoCanvas에 복사합니다. git 변경 목록에 나타나지 않으며, DwoCanvas나 dwo-Forge를 제거하면 함께 지워집니다."
+		                     : "먼저 프로젝트를 연동하세요.");
 	}
 	else
 	{
@@ -177,12 +177,12 @@ static void CanvasActions(App& app)
 	bool idle = !app.runner.running;
 	bool canImport = haveFile && app.canvas != 0 && app.hasUProject;
 	ImGui::BeginDisabled(!haveFile || !app.hasUProject);
-	if (ImGui::Button((std::string(ICON_CHECKLIST) + "  검사 (Validate)").c_str())) RunCanvas(app, "canvas-validate");
+	if (ImGui::Button((std::string(ICON_CHECKLIST) + "  검사").c_str())) RunCanvas(app, "canvas-validate");
 	ImGui::EndDisabled();
 	Tooltip("python -m dwocanvas validate: 스키마와 규칙을 확인합니다. 엔진을 띄우지 않아 몇 초면 끝납니다.");
 	ImGui::SameLine();
 	ImGui::BeginDisabled(!canImport);
-	if (PrimaryButton((std::string(ICON_DOWNLOAD) + "  가져오기 (Import)").c_str())) RunCanvas(app, "canvas-import");
+	if (PrimaryButton((std::string(ICON_DOWNLOAD) + "  가져오기").c_str())) RunCanvas(app, "canvas-import");
 	Tooltip("UnrealEditor-Cmd -run=DwoCanvasImport. UE에서 고친 위젯은 유지하고 디자인이 바뀐 곳만 다시 만듭니다. 에디터를 닫고 실행하세요.");
 	ImGui::SameLine();
 	if (ImGui::Button((std::string(ICON_REFRESH) + "  초기화하고 가져오기").c_str())) RunCanvas(app, "canvas-import", true);
@@ -243,7 +243,7 @@ static void CanvasReportSummary(App& app)
 	chip("오류", r->errors, r->errors ? col::Fail : col::Muted, "ERROR 줄. 하나라도 있으면 커맨드릿 종료 코드가 0이 아닙니다.");
 	chip("경고", r->warnings, r->warnings ? col::Warn : col::Muted, "WARN 줄");
 	chip("정보", r->infos, col::Info, "info 줄");
-	chip("쓴 에셋", (int)r->written.size(), col::Accent, "이번 가져오기에서 저장한 에셋");
+	chip("저장한 에셋", (int)r->written.size(), col::Accent, "이번 가져오기에서 저장한 에셋");
 	if (!r->counts.empty())
 	{
 		TextDim("위젯");
@@ -256,7 +256,7 @@ static void CanvasReportSummary(App& app)
 	(void)c;
 	ImGui::Spacing();
 
-	static const char* tabs[] = { "오류·경고", "쓴 에셋", "원문" };
+	static const char* tabs[] = { "오류·경고", "저장한 에셋", "전체 로그" };
 	Segmented("canvastab", tabs, 3, ui.canvasTab);
 	if (ui.canvasTab == 0)
 	{
@@ -344,7 +344,7 @@ static void DrawCanvasInspector(App& app)
 	KeyValue("에디터 모듈", "DwoCanvasEditor", 80);
 	ImGui::PushTextWrapPos(0);
 	TextDim("원본은 dwo-Forge에 있고 Plugins/__DwoCanvas에 설치됩니다(git에서 숨김). 생성된 위젯 블루프린트가 DwoCanvasRuntime을 쓰므로, "
-	        "그런 위젯이 남아 있으면 제거와 uninstall을 멈추고 알려 줍니다. 위젯을 여는 다른 PC에도 DwoCanvas가 설치되어 있어야 합니다.");
+	        "그런 위젯이 남아 있으면 DwoCanvas 제거와 dwo-Forge 제거를 멈추고 알려 줍니다. 위젯을 여는 다른 PC에도 DwoCanvas가 설치되어 있어야 합니다.");
 	ImGui::PopTextWrapPos();
 
 	if (CanvasReport* r = app.CanvasReportAt((size_t)ImMax(0, ui.canvasReport)))

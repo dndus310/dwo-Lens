@@ -237,7 +237,7 @@ def check_state_monitor(ctx: dict, cfg: dict) -> tuple[list, dict]:
         submits = sum(1 for r in cpp_refs if r["submit"]) + len(bp_submits)
         findings.append({"severity": "info", "rule": "state-monitor",
                          "message": f"DwoStateMonitor 사용 중: 제출 지점 {submits}곳 (C++ {sum(1 for r in cpp_refs if r['submit'])}, BP {len(bp_submits)}), "
-                                    f"Source ID {len(source_ids)}개. 검증 라인에서 '{data['testFilter']}' 테스트를 함께 실행합니다.",
+                                    f"Source ID {len(source_ids)}개. 검증에서 '{data['testFilter']}' 테스트를 함께 실행합니다.",
                          "items": [f"{r['file']}:{r['line']}  {r['code']}" for r in cpp_refs if r["submit"]]
                                   + [f"BP {b['blueprint']}.{b['graph']}  {b['function']}" for b in bp_submits]})
     return findings, data

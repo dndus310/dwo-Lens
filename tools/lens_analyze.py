@@ -610,7 +610,7 @@ def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, dia
                 len(f["items"]), "<br>".join(esc(p) for p in preview))
         rows.append(f"<tr><td><span class='badge {f['severity']}'>{f['severity']}</span></td>"
                     f"<td><code>{esc(f['rule'])}</code></td><td>{esc(f['message'])}{items}</td></tr>")
-    findings_html = "".join(rows) or "<tr><td colspan='3'>발견 사항 없음</td></tr>"
+    findings_html = "".join(rows) or "<tr><td colspan='3'>검출된 문제 없음</td></tr>"
 
     def mermaid_block(title: str, source: str | None, note: str = "") -> str:
         if not source:
@@ -650,7 +650,7 @@ def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, dia
 <div class="kpi"><b>{status.get('verified', 0)}</b><span>verified 관계</span></div>
 <div class="kpi"><b>{status.get('unknown', 0)}</b><span>unknown 관계</span></div>
 </div></section>
-<section><h2>검증 게이트</h2><div class="scroll"><table><thead><tr><th>판정</th><th>규칙</th><th>내용</th></tr></thead><tbody>{findings_html}</tbody></table></div></section>
+<section><h2>품질 게이트</h2><div class="scroll"><table><thead><tr><th>결과</th><th>규칙</th><th>내용</th></tr></thead><tbody>{findings_html}</tbody></table></div></section>
 {quality_html}
 <section><h2>클래스 구조</h2>{mermaid_block('클래스 UML', diagrams['classes'])}</section>
 <section><h2>모듈 의존성</h2>{mermaid_block('모듈 · 플러그인', diagrams['modules'])}</section>
@@ -658,7 +658,7 @@ def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, dia
 <section><h2>Blueprint</h2><div class="scroll"><table><thead><tr><th>이름</th><th>종류</th><th>부모</th><th>그래프</th><th>호출 대상 클래스</th></tr></thead>
 <tbody>{''.join(bp_rows) or "<tr><td colspan='5'>없음</td></tr>"}</tbody></table></div>
 <h3>실행 흐름</h3>{''.join(flows_html) or "<p class='meta'>실행 흐름 없음</p>"}</section>
-<section class="meta">산출물: graph.json · index.db · class_uml.puml · class_uml.mmd · findings.json · quality.json · statemonitor.json · flows/*.mmd</section>
+<section class="meta">결과 파일: graph.json · index.db · class_uml.puml · class_uml.mmd · findings.json · quality.json · statemonitor.json · flows/*.mmd</section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
 <script>mermaid.initialize({{startOnLoad:true,securityLevel:'strict',maxTextSize:200000,

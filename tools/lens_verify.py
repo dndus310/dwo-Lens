@@ -113,7 +113,7 @@ def render_verify(result: dict, run_id: str) -> str:
                          f"<div class='scroll'><table><thead><tr><th>테스트</th><th>결과</th><th>오류</th></tr></thead><tbody>{rows or '<tr><td colspan=3>없음</td></tr>'}</tbody></table></div></section>")
         else:
             parts.append(head + f"<p class='meta'>{esc(step.get('note', '실행 안 함'))}</p></section>")
-    return page("검증 라인", result["verdict"], run_id, "".join(parts))
+    return page("검증", result["verdict"], run_id, "".join(parts))
 
 
 # --------------------------------------------------------------------------- main
@@ -153,7 +153,7 @@ def main() -> int:
                 f"Warning {c['Warning']} · 그룹 {len(summary['groups'])} · 새 그룹 {summary['newGroups']} · 크래시 {len(summary['crashes'])} (새 크래시 {summary['newCrashes']})</p>"
                 f"<code>{'<br>'.join(html.escape(f) for f in summary['files'])}</code></section>"
                 f"<section><h2>오류 · 경고 그룹</h2>{log_groups_html(summary, 80)}</section>")
-        (out / "report.html").write_text(page("로그 라인", summary["verdict"], run_id, body), encoding="utf-8")
+        (out / "report.html").write_text(page("로그 분석", summary["verdict"], run_id, body), encoding="utf-8")
         print(f"[dwo-forge] logs: {c} groups={len(summary['groups'])} new={summary['newGroups']} "
               f"crashes={len(summary['crashes'])} newCrashes={summary['newCrashes']} verdict={summary['verdict']}")
     return 0

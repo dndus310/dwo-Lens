@@ -10,6 +10,9 @@ rem        Lens            analyze, verify, logs, smoke, perf, sizes, trace, pla
 rem        DwoStateMonitor sm-install [--runtime], sm-remove
 rem        DwoCanvas       canvas-install, canvas-remove, canvas-validate ^<file^>,
 rem                        canvas-import ^<file^> [--reset] [--doc Name]
+rem        build           compile, package
+rem    dwo-Forge.bat ci-bundle ^| ci-install [--bundle zip] ^| ci-start ^| ci-stop ^| ci-status ^| ci-remove
+rem        local CI (Jenkins on this PC, offline bundle). Per project: __dwo-forge.bat ci-job / ci-trigger
 rem ============================================================================
 setlocal EnableExtensions
 set "HOME_DIR=%~dp0"
@@ -29,6 +32,10 @@ if /i "%~x1"==".uproject" (
 )
 pushd "%ARG%" 2>nul && (popd & goto :project)
 
+rem ---- local CI on this PC (no project needed): dwo-Forge.bat ci-<command> [options] ----
+set "C1=%~1"
+if /i "%C1:~0,3%"=="ci-" goto :ci
+
 rem ---- command line: dwo-Forge.bat <command> <project> ----
 set "PROJ=%~2"
 if "%PROJ%"=="" set "PROJ=%CD%"
@@ -45,3 +52,7 @@ exit /b
 powershell -NoProfile -ExecutionPolicy Bypass -File "%HOME_DIR%\tools\gui.ps1" -SystemDir "%HOME_DIR%" -ForgeHome "%HOME_DIR%"
 if errorlevel 1 pause
 exit /b
+
+:ci
+powershell -NoProfile -ExecutionPolicy Bypass -File "%HOME_DIR%\tools\ci.ps1" -Command %1 %2 %3 %4 %5 %6 %7 %8 %9
+exit /b %ERRORLEVEL%

@@ -10,7 +10,8 @@ param(
     [Parameter(Mandatory = $true)]
     [ValidateSet('attach', 'update', 'status', 'analyze', 'verify', 'logs', 'smoke', 'perf', 'sizes', 'trace', 'play', 'tools', 'gui',
                  'sm-install', 'sm-remove', 'canvas-install', 'canvas-remove', 'canvas-import', 'canvas-validate',
-                 'doctor', 'uninstall', 'detach')]
+                 'doctor', 'uninstall', 'detach', 'compile', 'package',
+                 'ci-job', 'ci-trigger', 'ci-hook', 'ci-hooks', 'ci-status', 'ci-install', 'ci-start', 'ci-stop', 'ci-remove', 'ci-bundle')]
     [string]$Command,
     [Parameter(Mandatory = $true)]
     [string]$Project,
@@ -986,6 +987,115 @@ function Write-Run($Run, [string]$Line, $Stations, [string]$Final, $Engine) {
         engineVersion = $Engine.Version; systemCommit = Get-SystemCommit
         finishedAt = (Get-Date).ToString('o'); stations = $Stations; final = $Final
     })
+    Complete-RunOutputs $Run.Dir
+}
+
+function Complete-RunOutputs([string]$RunDir) {
+    # Every finished run: JUnit + SARIF for CI (compared with the previous run of the same check), a copy into
+    # DWO_FORGE_CI_OUT when a CI job runs us, then the retention limit (oldest runs beyond it are removed).
+    $id = Split-Path -Leaf $RunDir
+    $prefix = $id.Split('-')[0]
+    $pyArgs = @((Join-Path $SystemDir 'tools\lens_export.py'), '--run', $RunDir)
+    $baseline = Get-PreviousOutput $prefix 'results.sarif' $id
+    if ($baseline) { $pyArgs += @('--baseline', $baseline) }
+    if ($env:DWO_FORGE_CI_OUT) { $pyArgs += @('--copy-to', $env:DWO_FORGE_CI_OUT) }
+    & python @pyArgs
+    & python (Join-Path $SystemDir 'tools\forge_ci.py') prune --runs (Join-Path $DataDir 'runs') --config @(Get-ConfigFiles)
+}
+
+# ---------------------------------------------------------------- build lines (compile, package)
+function Get-EditorTarget($UProject) {
+    # <Name>Editor.Target.cs under Source; the UE convention is <Project>Editor.
+    $src = Join-Path $Project 'Source'
+    $t = @(Get-ChildItem $src -Filter '*Editor.Target.cs' -File -ErrorAction SilentlyContinue | Select-Object -First 1)
+    if ($t.Count) { return $t[0].Name -replace '\.Target\.cs$', '' }
+    return "$($UProject.Name)Editor"
+}
+
+function Invoke-Logged([string]$Exe, [string]$Arguments, [string]$Log, [int]$TimeoutMinutes) {
+    # Console tools (Build.bat, RunUAT.bat) with stdout+stderr in one log. Returns the exit code, -1 on timeout.
+    $p = Start-Process -FilePath 'cmd.exe' -ArgumentList "/d /s /c `"`"$Exe`" $Arguments > `"$Log`" 2>&1`"" -NoNewWindow -PassThru
+    $null = $p.Handle
+    if (-not $p.WaitForExit($TimeoutMinutes * 60000)) {
+        & taskkill /PID $p.Id /T /F 2>$null | Out-Null
+        Say "timed out after $TimeoutMinutes min"
+        return -1
+    }
+    return $p.ExitCode
+}
+
+function Invoke-Compile {
+    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-forge.bat attach first.' }
+    $uproject = Get-UProject
+    $engine = Resolve-Engine $uproject.Json.EngineAssociation
+    $cfg = Get-Config
+    $run = New-RunDir 'compile'
+    $raw = Join-Path $run.Dir 'raw'
+    New-Item -ItemType Directory -Force $raw | Out-Null
+    $py = Join-Path $SystemDir 'tools\lens_build.py'
+    if (-not $uproject.IsCode) {
+        Say "[$($run.Id)] B1 compile: Blueprint-only project, nothing to compile"
+        & python $py compile --run $run.Dir --skipped blueprint-only
+        Write-Run $run 'compile' @([ordered]@{ id = 'B1'; name = 'compile'; verdict = 'pass'; ms = 0 }) 'pass' $engine
+        Say "[$($run.Id)] verdict: pass"
+        return
+    }
+    $target = Get-EditorTarget $uproject
+    $timeout = [int](Get-ConfigValue $cfg.build 'compileTimeoutMinutes' 60)
+    $buildBat = Join-Path $engine.Root 'Engine\Build\BatchFiles\Build.bat'
+    Say "[$($run.Id)] B1 compile: $target Win64 Development (UnrealBuildTool)"
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    $code = Invoke-Logged $buildBat "$target Win64 Development -Project=`"$($uproject.Path)`" -WaitMutex -NoHotReloadFromIDE" (Join-Path $raw 'compile.log') $timeout
+    $sw.Stop()
+    Write-Json (Join-Path $raw 'compile-meta.json') ([ordered]@{ target = $target; platform = 'Win64'; configuration = 'Development'
+                                                                 exitCode = $code; seconds = [math]::Round($sw.Elapsed.TotalSeconds, 1) })
+    & python $py compile --run $run.Dir
+    $result = Read-LineResult (Join-Path $run.Dir 'out\compile.json')
+    Complete-Line $run 'compile' @([ordered]@{ id = 'B1'; name = $target; exitCode = $code; ms = $sw.ElapsedMilliseconds; verdict = $result.verdict; log = 'raw\compile.log' }) $result $engine
+}
+
+function Clear-SpaceForPackage($Retention) {
+    # A packaged build can take many GB: below minFreeDiskGB, drop the oldest kept packages first.
+    $min = [double](Get-ConfigValue $Retention 'minFreeDiskGB' 20)
+    $drive = [IO.DriveInfo]::new([IO.Path]::GetPathRoot($Project))
+    $free = $drive.AvailableFreeSpace / 1GB
+    if ($free -ge $min) { return }
+    $old = @(Get-ChildItem (Join-Path $DataDir 'runs') -Directory -Filter 'package-*' -ErrorAction SilentlyContinue | Sort-Object Name)
+    foreach ($d in $old) {
+        Say "Low disk space ($([math]::Round($free, 1)) GB free, minimum $min GB): removing old package run $($d.Name)"
+        Remove-Item -Recurse -Force $d.FullName -ErrorAction SilentlyContinue
+        $free = $drive.AvailableFreeSpace / 1GB
+        if ($free -ge $min) { return }
+    }
+    Say "Warning: only $([math]::Round($free, 1)) GB free on $($drive.Name) (retention.minFreeDiskGB = $min)."
+}
+
+function Invoke-Package {
+    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-forge.bat attach first.' }
+    $uproject = Get-UProject
+    $engine = Resolve-Engine $uproject.Json.EngineAssociation
+    $cfg = Get-Config
+    $platform = [string](Get-ConfigValue $cfg.build 'platform' 'Win64')
+    $config = [string](Get-ConfigValue $cfg.build 'configuration' 'Development')
+    $timeout = [int](Get-ConfigValue $cfg.build 'packageTimeoutMinutes' 180)
+    Clear-SpaceForPackage $cfg.retention
+    $run = New-RunDir 'package'
+    $raw = Join-Path $run.Dir 'raw'
+    $archive = Join-Path $run.Dir 'build'
+    New-Item -ItemType Directory -Force $raw | Out-Null
+    $flags = "-project=`"$($uproject.Path)`" -noP4 -platform=$platform -clientconfig=$config -cook -stage -pak -archive -archivedirectory=`"$archive`" -unattended -utf8output -nocompileeditor"
+    if ($uproject.IsCode) { $flags += ' -build' }
+    $extra = [string](Get-ConfigValue $cfg.build 'extraPackageArgs' '')
+    if ($extra) { $flags += " $extra" }
+    Say "[$($run.Id)] P1 package: $platform $config (RunUAT BuildCookRun)"
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    $code = Invoke-Logged $engine.RunUAT "BuildCookRun $flags" (Join-Path $raw 'package.log') $timeout
+    $sw.Stop()
+    Write-Json (Join-Path $raw 'package-meta.json') ([ordered]@{ platform = $platform; configuration = $config; exitCode = $code
+                                                                 seconds = [math]::Round($sw.Elapsed.TotalSeconds, 1) })
+    & python (Join-Path $SystemDir 'tools\lens_build.py') package --run $run.Dir --archive $archive
+    $result = Read-LineResult (Join-Path $run.Dir 'out\package.json')
+    Complete-Line $run 'package' @([ordered]@{ id = 'P1'; name = "$platform $config"; exitCode = $code; ms = $sw.ElapsedMilliseconds; verdict = $result.verdict; log = 'raw\package.log' }) $result $engine
 }
 
 function Invoke-Verify {
@@ -1333,6 +1443,7 @@ function Invoke-Analyze {
         startedAt = $startedAt.ToString('o'); finishedAt = (Get-Date).ToString('o'); stations = $stations; final = $verdict
     }
     Write-Json (Join-Path $runDir 'run.json') $run
+    Complete-RunOutputs $runDir
     Say "[$runId] verdict: $verdict"
     $report = Join-Path $outDir 'report.html'
     if (Test-Path $report) { Say "Report: $report" }
@@ -1690,6 +1801,11 @@ function Invoke-Uninstall {
         }
     }
 
+    # 1b. Local CI: this project's Jenkins job and the git hooks (Jenkins itself is per PC and stays).
+    if (Test-Path (Join-Path $ForgeDir 'ci.json')) {
+        & (Join-Path $SystemDir 'tools\ci.ps1') -Command 'ci-job' -Project $Project -Rest @('--remove')
+    }
+
     # 2. Plugins: checks already happened above, so remove unconditionally.
     $null = Remove-StateMonitor $true
     if ((Get-CanvasState) -eq 'managed') { $null = Remove-Canvas $true }
@@ -1758,7 +1874,7 @@ function Invoke-Uninstall {
 }
 
 # Every command first migrates what dwo-Lens 1.x left in the project ('tools' does not touch a project).
-if ($Command -ne 'tools') { Invoke-Migration }
+if ($Command -ne 'tools' -and $Command -notlike 'ci-*') { Invoke-Migration }
 
 switch ($Command) {
     'attach'  { Invoke-Attach 'attach' }
@@ -1766,6 +1882,13 @@ switch ($Command) {
     'status'  { Invoke-Status }
     'doctor'  { if (-not (Invoke-Doctor)) { exit 1 } }
     'analyze' { Invoke-Analyze }
+    'compile' { Invoke-Compile }
+    'package' { Invoke-Package }
+    { $_ -like 'ci-*' } {
+        # Local CI lives in ci.ps1 (machine-wide Jenkins + this project's job and git hooks).
+        & (Join-Path $SystemDir 'tools\ci.ps1') -Command $Command -Project $Project -Rest $Rest
+        exit $LASTEXITCODE
+    }
     'verify'  { Invoke-Verify }
     'logs'    { Invoke-Logs }
     'smoke'   { Invoke-Smoke }

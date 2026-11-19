@@ -439,6 +439,46 @@
       "description": "Install state, design file picker (drag and drop), validate / import / import with reset, and a summary of the latest import report.",
       "invocation": "dwo-Forge GUI > DwoCanvas (Ctrl+0)",
       "output": "interactive"
+    },
+    {
+      "id": "ubt-editor-compile",
+      "tool": "lens",
+      "station": "BUILD",
+      "kind": "build",
+      "status": "ready",
+      "command": "compile",
+      "invocation": "Engine/Build/BatchFiles/Build.bat <Project>Editor Win64 Development -Project=<uproject>",
+      "output": "out/compile.json"
+    },
+    {
+      "id": "uat-buildcookrun",
+      "tool": "lens",
+      "station": "BUILD",
+      "kind": "build",
+      "status": "ready",
+      "command": "package",
+      "invocation": "RunUAT BuildCookRun -cook -stage -pak -archive [-build]",
+      "output": "out/package.json, build/"
+    },
+    {
+      "id": "ci-export",
+      "tool": "lens",
+      "station": "OPS",
+      "kind": "build",
+      "status": "ready",
+      "command": "(every check)",
+      "invocation": "tools/lens_export.py: JUnit + SARIF 2.1.0 with baselineState",
+      "output": "out/junit.xml, out/results.sarif"
+    },
+    {
+      "id": "local-jenkins",
+      "tool": "forge",
+      "station": "OPS",
+      "kind": "build",
+      "status": "ready",
+      "command": "ci-install / ci-job / ci-trigger",
+      "invocation": "Jenkins LTS + Temurin 21 JRE from an offline bundle, 127.0.0.1 only, git hooks",
+      "output": "%LOCALAPPDATA%/dwo-Forge/ci"
     }
   ]
 }

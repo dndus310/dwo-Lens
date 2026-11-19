@@ -11,6 +11,7 @@
 //   dwo-forge-gui.exe ... --screenshot <file.bmp>                      (renders a few frames, saves the window, exits)
 
 #include "views_canvas.h"
+#include "views_ci.h"
 
 #include "backends/imgui_impl_dx11.h"
 #include "backends/imgui_impl_win32.h"
@@ -44,6 +45,7 @@ static const ActivityDef kActivities[] = {
 	{ Activity::Canvas, ICON_CANVAS, "DwoCanvas", "canvas", "Ctrl+0", ImGuiKey_0, "DwoCanvas" },
 	{ Activity::History, ICON_HISTORY, "실행 기록", "history", "Ctrl+8", ImGuiKey_8, "Forge" },
 	{ Activity::Tools, ICON_PUZZLE, "도구", "tools", "Ctrl+9", ImGuiKey_9, "Forge" },
+	{ Activity::Ci, ICON_SYNC, "로컬 CI", "ci", "", ImGuiKey_None, "Forge" },
 };
 
 // Short caption drawn above each group in the activity bar.
@@ -757,7 +759,7 @@ static void DrawApp(App& app, bool& quit)
 	if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_GraveAccent, false)) app.showConsole = true;
 	if (io.KeyCtrl && !io.WantTextInput)
 		for (auto& a : kActivities)
-			if (ImGui::IsKeyPressed(a.hotkey, false)) app.requestActivity = a.id;
+			if (a.hotkey != ImGuiKey_None && ImGui::IsKeyPressed(a.hotkey, false)) app.requestActivity = a.id;
 	if (app.requestActivity != Activity::Count)
 	{
 		if (app.activity != app.requestActivity) ui.filter[0] = 0;
@@ -811,6 +813,7 @@ static void DrawApp(App& app, bool& quit)
 		case Activity::Canvas: DrawCanvasNav(app); break;
 		case Activity::History: DrawHistoryNav(app); break;
 		case Activity::Tools: DrawToolsNav(app); break;
+		case Activity::Ci: DrawCiNav(app); break;
 		default: break;
 		}
 	}
@@ -832,6 +835,7 @@ static void DrawApp(App& app, bool& quit)
 		case Activity::Canvas: DrawCanvasMain(app); break;
 		case Activity::History: DrawHistoryMain(app); break;
 		case Activity::Tools: DrawToolsMain(app); break;
+		case Activity::Ci: DrawCiMain(app); break;
 		default: break;
 		}
 	}
@@ -852,6 +856,7 @@ static void DrawApp(App& app, bool& quit)
 		case Activity::Canvas: DrawCanvasInspector(app); break;
 		case Activity::History: DrawHistoryInspector(app); break;
 		case Activity::Tools: DrawToolsInspector(app); break;
+		case Activity::Ci: DrawCiInspector(app); break;
 		default: break;
 		}
 	}

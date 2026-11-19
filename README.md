@@ -59,6 +59,8 @@ __dwo-forge.bat perf [맵]           :: CSV 프로파일러로 프레임 캡처,
 __dwo-forge.bat sizes               :: Content 용량, 하드 참조로 함께 로드되는 용량 (엔진 불필요)
 __dwo-forge.bat trace [맵]          :: Unreal Insights 트레이스(.utrace) 기록
 __dwo-forge.bat play [맵]           :: 게임 창 실행 (DwoStateMonitor 연결용)
+__dwo-forge.bat compile            :: C++ 컴파일 (UnrealBuildTool, 에디터 대상). 에디터를 닫고 실행
+__dwo-forge.bat package            :: 패키지 빌드 (RunUAT BuildCookRun). 결과물은 최근 3개만 보관
 
 :: DwoStateMonitor
 __dwo-forge.bat sm-install [--runtime]   :: 설치 (아래 '제공 도구: DwoStateMonitor')
@@ -69,6 +71,13 @@ __dwo-forge.bat canvas-install                         :: Plugins/__DwoCanvas에
 __dwo-forge.bat canvas-validate <파일>                  :: 디자인 파일 검사
 __dwo-forge.bat canvas-import <파일> [--reset] [--doc 이름]  :: 위젯 블루프린트로 가져오기
 __dwo-forge.bat canvas-remove [--force]                :: 제거 (생성된 위젯이 쓰고 있으면 거부)
+
+:: 로컬 CI (아래 '로컬 CI')
+dwo-Forge.bat ci-bundle                     :: (인터넷 PC) Jenkins·Java·플러그인 오프라인 번들 만들기
+dwo-Forge.bat ci-install [--bundle <zip>]   :: 번들로 설치 (네트워크 불필요). ci-start / ci-stop / ci-status / ci-remove
+__dwo-forge.bat ci-job [--remove]           :: 이 프로젝트의 CI 작업과 git 훅 등록 (해제)
+__dwo-forge.bat ci-hooks [--remove]         :: git 훅만 다시 설치 (clone·reset 뒤) 또는 제거
+__dwo-forge.bat ci-trigger [--reason 내용] [--stages compile,lens,package]   :: 빌드 요청 (외부 이벤트 주입)
 
 :: 관리
 __dwo-forge.bat status | doctor     :: 연동 정보와 세 도구 상태 · 환경 점검
@@ -99,6 +108,7 @@ __dwo-forge.bat uninstall           :: 한 번에 완전 제거. 기록·생성 
 | DwoStateMonitor | DwoStateMonitor (Ctrl+7) | 실행 중인 게임의 상태를 실시간으로 표시 (아래 '제공 도구: DwoStateMonitor') |
 | DwoCanvas | DwoCanvas (Ctrl+0) | 설치·제거 카드, 디자인 파일 고르기(열기 대화상자 또는 `*.dwocanvas.json` 끌어다 놓기), 검사·가져오기·초기화하고 가져오기, 최신 리포트 요약 (아래 '제공 도구: DwoCanvas') |
 | dwo-Forge | 실행 기록 (Ctrl+8) | 실행별 단계 띠, 두 실행 **비교**(지표 변화, 새로 생긴·해결된 문제, 결과가 바뀐 테스트), 결과 파일 |
+| dwo-Forge | 로컬 CI | Jenkins 설치·시작·중지·제거, 이 프로젝트의 CI 작업 등록, 빌드 목록·결과·실시간 로그, `지금 빌드`(단계 선택) |
 | dwo-Forge | 도구 (Ctrl+9) | 세 도구 카드(상태·설치·제거), Lens 검사 카드, 도구별로 묶은 카탈로그, 관리(점검·업데이트·제거) |
 
 - **명령 팔레트 (Ctrl+K)**: 모든 화면 이동, 검사 실행, 설치, DwoCanvas 검사·가져오기, 리포트 저장을 검색해서 실행합니다.
@@ -241,11 +251,51 @@ A/
 | `perf` | 성능 캡처 | `-ExecCmds="csvprofile frames=N"` + `-ExitAfterCsvProfiling` (CSV 프로파일러, `Saved/Profiling/CSV`), FrameTime·GameThread·RenderThread·RHIThread p50/p95/p99, 히치. fail: p95 > `perf.budgetMs` |
 | `sizes` | 용량 | `.uasset/.umap/.uexp/.ubulk` 합계, 최신 `analyze`의 `graph.json`으로 하드 참조 폐포 용량. warn: 에셋 > `sizes.warnAssetMB` |
 | `trace` | 트레이스 | `-trace=<trace.channels> -tracefile=<run>/out/trace.utrace`, `trace.seconds`초 후 창을 닫음. Unreal Insights로 열기 |
+| `compile` | B1 컴파일 | `Engine/Build/BatchFiles/Build.bat <프로젝트>Editor Win64 Development`. 오류·경고를 파일·줄 단위로 집계. Blueprint 전용 프로젝트는 건너뜀(통과). fail: 종료 코드 ≠ 0 또는 오류 |
+| `package` | P1 패키지 | `RunUAT BuildCookRun -cook -stage -pak -archive` (C++ 프로젝트는 `-build`). 결과물은 실행 폴더의 `build/`. fail: `BUILD SUCCESSFUL` 없음, warn: 쿡 오류가 있지만 결과물 생성 |
 | `play` | (실행 아님) | `UnrealEditor <맵> -game -windowed 1280x720` 분리 실행. GUI에서 DwoStateMonitor 뷰어로 상태를 받을 게임을 띄울 때 사용 |
 
 맵 인수를 생략하면 `perf.map`, 그다음 `Config/DefaultEngine.ini`의 `GameDefaultMap`을 씁니다. 결과가 fail이면 종료 코드 2입니다.
 
+모든 검사는 끝날 때 `out/junit.xml`(JUnit)과 `out/results.sarif`(SARIF 2.1.0)도 만듭니다. SARIF의 각 문제에는 이전 실행과 비교한 `baselineState`(new / unchanged)가 들어가므로, Jenkins·GitHub Actions·GitLab·TeamCity에서 **새 문제만** 품질 게이트로 쓸 수 있습니다. 환경 변수 `DWO_FORGE_CI_OUT`이 있으면 두 파일과 리포트를 그 폴더의 `<실행 ID>/`로 복사합니다(CI 작업이 결과를 모을 때 사용).
+
+실행 기록은 `retention`에 따라 검사마다 최근 30개(패키지는 3개)만 남기고 오래된 것부터 지웁니다. 패키지 빌드 전에 디스크 여유 공간이 `retention.minFreeDiskGB`보다 적으면 오래된 패키지부터 지웁니다.
+
 전체 목록과 계획 중인 도구(Insights 내보내기, PerfReportTool 리포트, 정적 분석 등)는 `tools/catalog.json` 또는 `__dwo-forge.bat tools`로 확인합니다. 카탈로그 항목은 `tool` 값(lens, statemonitor, canvas, forge)으로 묶입니다.
+
+## 로컬 CI (Jenkins, 폐쇄망 지원)
+
+내 PC에서만 쓰는 Jenkins를 설치해, git 이벤트나 외부 요청이 들어오면 **C++ 컴파일 → Lens 검사 → 패키지 빌드**를 자동으로 실행합니다. DwoStateMonitor처럼 설치·제거하지만, Jenkins는 프로젝트가 아니라 PC에 하나(`%LOCALAPPDATA%\dwo-Forge\ci`)만 설치되고 프로젝트마다 작업(job)이 하나씩 생깁니다. 프로젝트 폴더에는 아무것도 추가되지 않습니다(git 훅은 `.git/hooks`에 들어갑니다).
+
+| 단계 | 하는 일 |
+|---|---|
+| 1. 번들 만들기 (인터넷 PC, 한 번) | `dwo-Forge.bat ci-bundle` → `bundles/dwo-forge-ci-bundle-<버전>.zip`. Jenkins LTS(war, SHA-256 확인), Eclipse Temurin 21 JRE(체크섬 확인), 플러그인(`workflow-aggregator`, `junit`과 의존성)을 묶고 파일마다 SHA-256을 `manifest.json`에 기록 |
+| 2. 설치 (폐쇄망 PC) | 번들을 `bundles/`에 두거나 `dwo-Forge.bat ci-install --bundle <zip>`. 체크섬을 확인한 뒤 설치하고 시작합니다. 네트워크에 접속하지 않고 관리자 권한도 필요 없습니다. 창에서는 **로컬 CI** 화면의 `설치 (오프라인 번들)` |
+| 3. 프로젝트 등록 | `__dwo-forge.bat ci-job` 또는 창의 `CI 작업 등록`. Jenkins 파이프라인 작업과 git 훅(`post-commit`, `post-merge`, `pre-push`, `reference-transaction`)을 설치합니다. 기존 훅(git-lfs 등)은 `<훅>.dwo-forge-orig`로 보존되어 먼저 실행됩니다 |
+
+**트리거** (기본값, `ci.triggers`에서 변경)
+
+| 이벤트 | 기본 브랜치 | 단계 |
+|---|---|---|
+| 내가 원격으로 push | `develop` | 컴파일 + Lens + 패키지 |
+| merge (현재 브랜치) | `develop` | 컴파일 + Lens |
+| 브랜치 생성 | `feature/*` | 컴파일 + Lens |
+| 커밋 | `develop`, `feature/*` | Lens |
+| 외부 명령·HTTP | - | 컴파일 + Lens + 패키지 |
+
+- push는 내 PC의 `pre-push` 기록과 원격 추적 브랜치 갱신이 일치할 때만 셉니다. 다른 사람의 push를 `fetch`로 받아 온 것은 빌드하지 않습니다.
+- 원격 서버에서 PR을 merge한 것은 내 PC에서 감지할 수 없습니다. 이때는 `ci-trigger`나 HTTP로 빌드를 요청합니다.
+- 외부 이벤트 주입: `__dwo-forge.bat ci-trigger --reason "QA 요청" --stages compile,lens`, 또는 HTTP `POST http://127.0.0.1:8098/job/<작업>/buildWithParameters?REASON=...&COMPILE=true&LENS=true&PACKAGE=false` (기본 인증: `secrets.json`의 사용자와 API 토큰).
+- 같은 작업이 이미 대기열에 있으면 새 요청은 그 빌드에 합쳐집니다. 한 번에 한 빌드만 실행합니다.
+- Jenkins가 꺼져 있으면 훅이나 `ci-trigger`가 자동으로 시작합니다. 훅이 무엇을 판단했는지는 `__dwo-forge/ci/hook.log`에 남습니다.
+
+**보관 개수**: Jenkins는 최근 `ci.keepBuilds`(기본 30)개 빌드만 남기고, 넘으면 가장 오래된 빌드부터 하나씩 지웁니다(첨부 결과는 `ci.keepArtifacts`개). 패키지 결과물은 Lens 실행 기록에 최근 `retention.packages`(기본 3)개만 남습니다.
+
+**결과 보기**: 창의 **로컬 CI** 화면에서 빌드 목록·결과·실시간 로그를 보고, `지금 빌드`로 단계를 골라 실행합니다. 같은 내용을 Jenkins 화면(`http://127.0.0.1:8098/`, 계정은 `계정 복사`)에서도 볼 수 있고, 각 빌드에는 JUnit 추세와 Lens 리포트가 첨부됩니다. Lens 검사가 fail이면 빌드는 UNSTABLE, 컴파일·패키지 실패는 FAILURE입니다.
+
+**보안**: Jenkins는 `127.0.0.1`에서만 열리고, 설치할 때 만든 무작위 비밀번호의 계정으로만 접근합니다. 사용 통계 전송과 업데이트 센터 접속은 꺼 둡니다.
+
+**제거**: `__dwo-forge.bat ci-job --remove`는 그 프로젝트의 작업과 훅만, `dwo-Forge.bat ci-remove`는 Jenkins와 모든 작업·훅을 지웁니다(`--keep-data`면 빌드 기록을 `%LOCALAPPDATA%\dwo-Forge\uninstalled`로 옮김). 프로젝트를 `uninstall`하면 그 프로젝트의 작업과 훅도 함께 지워집니다.
 
 ## 설정
 
@@ -256,7 +306,9 @@ A/
   "naming": { "forbidAssetsAtContentRoot": false },
   "verify": { "automationFilters": ["Project.", "MyGame."] },
   "perf": { "map": "/Game/Maps/L_Main", "budgetMs": 16.6 },
-  "smoke": { "exclude": ["/Game/Developers/*", "/Game/Test/*"], "maxErrors": 3 }
+  "smoke": { "exclude": ["/Game/Developers/*", "/Game/Test/*"], "maxErrors": 3 },
+  "retention": { "runsPerCheck": 20, "packages": 2 },
+  "ci": { "keepBuilds": 50, "triggers": { "push": { "branches": ["develop", "release/*"] }, "commit": { "branches": [] } } }
 }
 ```
 
@@ -274,6 +326,10 @@ A/
 | `tools/lens_logs.py` | Lens: UE 로그·크래시 파서 |
 | `tools/lens_verify.py` | Lens: 검증·로그 결과 판정과 리포트 |
 | `tools/lens_runtime.py` | Lens: 맵 부팅·성능 CSV·용량·트레이스 결과 판정과 리포트 |
+| `tools/lens_build.py` | 빌드 검사: 컴파일·패키지 로그 → 오류 목록, 결과, 리포트 |
+| `tools/lens_export.py` | 실행 결과 → JUnit, SARIF 2.1.0 (이전 실행 대비 new/unchanged) |
+| `tools/ci.ps1`, `tools/forge_ci.py` | 로컬 CI: 오프라인 번들, Jenkins 설치·실행, 프로젝트 작업, git 훅과 트리거 판단, 보관 개수 |
+| `tools/vendor/mermaid.min.js` | 리포트 다이어그램용 Mermaid 10.9.1 (MIT). 리포트가 인터넷 없이 그려지도록 실행 기록 폴더로 복사 |
 | `tools/catalog.json` | 도구 레지스트리 (세 도구별로 묶음) |
 | `gui/`, `tools/gui.ps1` | ImGui 제어판 (Dear ImGui 1.91.9b docking, nlohmann/json 3.11.3, MIT). DwoStateMonitor 뷰어, DwoCanvas 화면 포함 |
 | `config/default.json` | Lens 규칙과 기준값 |
@@ -295,3 +351,5 @@ A/
 | `out/findings.json`, `out/quality.json`, `out/statemonitor.json` | 분석 결과와 품질 점검 |
 | `out/verify.json`, `out/logs.json` | 검증·로그 결과 |
 | `out/smoke.json`, `out/perf.json` (+`perf.csv`), `out/sizes.json`, `out/trace.json` (+`trace.utrace`) | 맵 부팅·성능·용량·트레이스 결과 |
+| `out/compile.json`, `out/package.json`, `raw/compile.log`, `raw/package.log`, `build/` | 컴파일·패키지 결과와 전체 로그, 패키지 결과물 |
+| `out/junit.xml`, `out/results.sarif` | CI용 결과 (모든 검사) |

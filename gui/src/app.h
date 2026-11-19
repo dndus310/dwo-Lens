@@ -25,6 +25,8 @@ static const LineDef kLines[] = {
 	{ "perf", "perf", "perf", "성능 캡처", ICON_SPEED, "CSV 프로파일러로 프레임·스레드 시간과 히치 측정", true },
 	{ "sizes", "sizes", "sizes", "콘텐츠 용량", ICON_PACKAGE, "에셋 용량, 폴더·유형별 분포, 하드 참조로 함께 로드되는 용량", false },
 	{ "trace", "trace", "trace", "Insights 트레이스", ICON_DIAG, "Unreal Insights 트레이스 캡처", true },
+	{ "compile", "compile", "compile", "C++ 컴파일", ICON_CODE, "UnrealBuildTool로 에디터 대상 빌드, 컴파일 오류·경고 집계. 에디터를 닫고 실행하세요.", true },
+	{ "package", "package", "package", "패키지 빌드", ICON_PACKAGE, "RunUAT BuildCookRun으로 실행 파일 패키징. 결과물은 최근 3개만 보관", true },
 };
 static const int kLineCount = (int)(sizeof(kLines) / sizeof(kLines[0]));
 
@@ -243,6 +245,7 @@ enum class Activity
 	Canvas,
 	History,
 	Tools,
+	Ci,
 	Count
 };
 
@@ -778,6 +781,14 @@ struct App
 		for (auto& c : Arr(Obj(d, "logs"), "crashes"))
 			add("crash:" + Str(c, "folder", Str(c, "dir")), c.value("new", true) ? "fatal" : "warn", "크래시",
 			    Str(c, "error", Str(c, "message", "크래시")), Str(c, "folder", Str(c, "dir")), &c);
+		for (const char* build : { "compile", "package" })
+			for (auto& e : Arr(Obj(d, build), "errors"))
+			{
+				std::string where = Str(e, "file");
+				if (Num(e, "line")) where += "(" + std::to_string(Num(e, "line")) + ")";
+				add(std::string(build) + ":" + Str(e, "code") + ":" + where + ":" + Str(e, "message"), "error",
+				    std::string(build) == "compile" ? "C++ 컴파일" : "패키지 빌드", Str(e, "message"), where.empty() ? Str(e, "code") : where, &e);
+			}
 		for (auto& map : Arr(Obj(d, "smoke"), "maps"))
 			if (Str(map, "verdict") != "pass")
 				add("smoke:" + Str(map, "map"), Str(map, "verdict"), "맵 스모크",
@@ -897,7 +908,9 @@ struct App
 				                 : verb == "canvas-install" ? "DwoCanvas 설치" : verb == "canvas-remove" ? "DwoCanvas 제거"
 				                 : verb == "sm-install" ? "DwoStateMonitor 설치" : verb == "sm-remove" ? "DwoStateMonitor 제거"
 				                 : verb == "status" && migrationStarted ? "dwo-Lens 1.x 이전" : verb == "status" ? "상태 확인"
-				                 : verb == "doctor" ? "환경 점검" : verb == "play" ? "게임 실행" : verb;
+				                 : verb == "doctor" ? "환경 점검" : verb == "play" ? "게임 실행"
+				                 : verb == "ci-install" ? "로컬 CI 설치" : verb == "ci-start" ? "로컬 CI 시작" : verb == "ci-stop" ? "로컬 CI 중지"
+				                 : verb == "ci-remove" ? "로컬 CI 제거" : verb == "ci-job" ? "CI 작업 설정" : verb == "ci-trigger" ? "CI 빌드 요청" : verb;
 				for (int i = 0; i < kLineCount; ++i)
 					if (verb == kLines[i].command) what = kLines[i].name;   // a check that stopped before writing its run
 				std::string body = code == 0 ? "완료" : "실패 (종료 코드 " + std::to_string(code) + ") · " + runner.LastLine();
@@ -947,6 +960,7 @@ struct App
 		case 1: return Activity::Tests;
 		case 2: return Activity::Logs;
 		case 3: return Activity::Tests;
+		case 7: case 8: return Activity::History;
 		default: return Activity::Performance;
 		}
 	}

@@ -1892,9 +1892,13 @@ static std::string WriteBundleReport(App& app, const fs::path& dest)
 		body += std::string("<section><h1>") + kLines[i].name + "</h1><div class='meta'>" + HtmlEscape(r->id) + "</div></section>" + Between(html, "<main>", "</main>");
 		if (mermaid.empty() && html.find("mermaid.min.js") != std::string::npos)
 		{
-			size_t at = html.find("<script src=");
+			// The saved page stands alone (and may be opened on a closed network): inline the bundled Mermaid
+			// instead of the report's relative or CDN reference, then keep the report's initialize call.
+			std::string lib = ReadText(app.home / "tools" / "vendor" / "mermaid.min.js");
+			size_t init = html.find("<script>mermaid.initialize");
 			size_t end = html.rfind("</script>");
-			if (at != std::string::npos && end != std::string::npos) mermaid = html.substr(at, end + 9 - at);
+			if (!lib.empty() && init != std::string::npos && end != std::string::npos)
+				mermaid = "<script>" + lib + "</script>" + html.substr(init, end + 9 - init);
 		}
 	}
 	if (!parts) return "묶을 실행 기록이 없습니다.";

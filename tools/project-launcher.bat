@@ -8,6 +8,8 @@ rem    Lens            analyze^|verify^|logs^|smoke^|perf^|sizes^|trace^|play
 rem    DwoStateMonitor sm-install [--runtime]^|sm-remove [--force]
 rem    DwoCanvas       canvas-install^|canvas-remove [--force]^|canvas-validate ^<file^>
 rem                    canvas-import ^<file^> [--reset] [--doc Name]
+rem    build           compile^|package
+rem    local CI        ci-job [--remove]^|ci-trigger [--reason text] [--stages compile,lens,package]^|ci-status
 rem    status^|doctor^|update^|tools^|uninstall [--keep-data^|--delete-data] [--force]
 rem ============================================================================
 setlocal EnableExtensions

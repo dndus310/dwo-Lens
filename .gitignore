@@ -8,3 +8,6 @@ __pycache__/
 # QA scratch (package checks, stress data)
 .qa/
 .qa-*.txt
+
+# Local CI offline bundles (large; made with ci-bundle)
+bundles/

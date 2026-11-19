@@ -73,6 +73,23 @@ def mermaid_label(text: str) -> str:
     return text.replace("\n", " ").replace('"', "#quot;").replace("<", "#lt;").replace(">", "#gt;")
 
 
+MERMAID_CDN = "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"
+VENDOR_DIR = Path(__file__).resolve().parent / "vendor"
+
+
+def vendor_mermaid(dest: Path) -> None:
+    """Reports load Mermaid from <data>/vendor so diagrams render without internet (closed networks);
+    the CDN is only a fallback for a report opened away from its data folder."""
+    src = VENDOR_DIR / "mermaid.min.js"
+    target = dest / "mermaid.min.js"
+    try:
+        if src.exists() and (not target.exists() or target.stat().st_size != src.stat().st_size):
+            dest.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(src.read_bytes())
+    except OSError:
+        pass   # the CDN fallback still works where there is internet
+
+
 def tarjan(graph: dict[str, set[str]]) -> list[list[str]]:
     """Strongly connected components with more than one node (cycles), sorted."""
     return [sorted(c) for c in strongly_connected(graph) if len(c) > 1]
@@ -758,11 +775,13 @@ def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, dia
 <h3>실행 흐름</h3>{''.join(flows_html) or "<p class='meta'>실행 흐름 없음</p>"}</section>
 <section class="meta">결과 파일: graph.json · index.db · class_uml.puml · class_uml.mmd · class_uml.xmi (Visual Paradigm 등 UML 도구용) · findings.json · quality.json · statemonitor.json · flows/*.mmd</section>
 </main>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script src="../../../vendor/mermaid.min.js"></script>
+<script>if(!window.mermaid)document.write('<script src="{MERMAID_CDN}"><\\/script>')</script>
 <script>mermaid.initialize({{startOnLoad:true,securityLevel:'strict',maxTextSize:200000,
 theme:matchMedia('(prefers-color-scheme: dark)').matches?'dark':'neutral'}});</script>
 </body></html>"""
     (out / "report.html").write_text(doc, encoding="utf-8")
+    vendor_mermaid(out.parent.parent.parent / "vendor")
 
 
 # --------------------------------------------------------------------------- main

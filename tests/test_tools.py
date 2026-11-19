@@ -543,7 +543,7 @@ class CatalogAndConfigTests(unittest.TestCase):
         for t in catalog["tools"]:
             self.assertIn(t["kind"], ("build", "wrap", "ai"))
             self.assertIn(t["status"], ("ready", "planned"))
-            self.assertRegex(t["station"], r"^(ST-[1-5]|OPS|UI)$")
+            self.assertRegex(t["station"], r"^(ST-[1-5]|BUILD|OPS|UI)$")
             self.assertIn(t["tool"], ("lens", "statemonitor", "canvas", "forge"))
         tools = {t["tool"] for t in catalog["tools"]}
         self.assertEqual(tools, {"lens", "statemonitor", "canvas", "forge"}, "every dwo-Forge tool group has catalog entries")

@@ -265,7 +265,7 @@ A/
 
 ## 로컬 CI (Jenkins, 폐쇄망 지원)
 
-내 PC에서만 쓰는 Jenkins를 설치해, git 이벤트나 외부 요청이 들어오면 **C++ 컴파일 → Lens 검사 → 패키지 빌드**를 자동으로 실행합니다. DwoStateMonitor처럼 설치·제거하지만, Jenkins는 프로젝트가 아니라 PC에 하나(`%LOCALAPPDATA%\dwo-Forge\ci`)만 설치되고 프로젝트마다 작업(job)이 하나씩 생깁니다. 프로젝트 폴더에는 아무것도 추가되지 않습니다(git 훅은 `.git/hooks`에 들어갑니다).
+내 PC에서만 쓰는 Jenkins를 설치해, git 이벤트나 외부 요청이 들어오면 **C++ 컴파일 → Lens 검사 → 패키지 빌드**를 자동으로 실행합니다. DwoStateMonitor처럼 설치·제거하지만, Jenkins는 프로젝트가 아니라 PC에 하나(`%LOCALAPPDATA%\dwo-Forge\ci`)만 설치되고 프로젝트마다 작업(job)이 하나씩 생깁니다. 프로젝트 폴더에는 아무것도 추가되지 않습니다(git 훅은 `.git/hooks`에 들어갑니다). 빌드 기록이 커질 수 있으므로 다른 디스크에 두려면 사용자 환경 변수 `DWO_FORGE_CI_HOME`(예: `setx DWO_FORGE_CI_HOME D:\dwo-forge-ci`)을 설정한 뒤 설치합니다.
 
 | 단계 | 하는 일 |
 |---|---|
@@ -285,15 +285,15 @@ A/
 
 - push는 내 PC의 `pre-push` 기록과 원격 추적 브랜치 갱신이 일치할 때만 셉니다. 다른 사람의 push를 `fetch`로 받아 온 것은 빌드하지 않습니다.
 - 원격 서버에서 PR을 merge한 것은 내 PC에서 감지할 수 없습니다. 이때는 `ci-trigger`나 HTTP로 빌드를 요청합니다.
-- 외부 이벤트 주입: `__dwo-forge.bat ci-trigger --reason "QA 요청" --stages compile,lens`, 또는 HTTP `POST http://127.0.0.1:8098/job/<작업>/buildWithParameters?REASON=...&COMPILE=true&LENS=true&PACKAGE=false` (기본 인증: `secrets.json`의 사용자와 API 토큰).
+- 외부 이벤트 주입: `__dwo-forge.bat ci-trigger --reason "QA 요청" --stages compile,lens`(단계는 쉼표·공백·`+`로 구분), 또는 HTTP `POST http://127.0.0.1:8098/job/<작업>/buildWithParameters?REASON=...&COMPILE=true&LENS=true&PACKAGE=false` (기본 인증: `secrets.json`의 사용자와 API 토큰).
 - 같은 작업이 이미 대기열에 있으면 새 요청은 그 빌드에 합쳐집니다. 한 번에 한 빌드만 실행합니다.
 - Jenkins가 꺼져 있으면 훅이나 `ci-trigger`가 자동으로 시작합니다. 훅이 무엇을 판단했는지는 `__dwo-forge/ci/hook.log`에 남습니다.
 
-**보관 개수**: Jenkins는 최근 `ci.keepBuilds`(기본 30)개 빌드만 남기고, 넘으면 가장 오래된 빌드부터 하나씩 지웁니다(첨부 결과는 `ci.keepArtifacts`개). 패키지 결과물은 Lens 실행 기록에 최근 `retention.packages`(기본 3)개만 남습니다.
+**보관 개수**: Jenkins는 최근 `ci.keepBuilds`(기본 30)개 빌드만 남기고, 넘으면 가장 오래된 빌드부터 하나씩 지웁니다(첨부 결과는 `ci.keepArtifacts`개). Jenkins 기본값과 달리 마지막 성공 빌드도 예외 없이 이 개수에 포함됩니다. 패키지 결과물은 Lens 실행 기록에 최근 `retention.packages`(기본 3)개만 남습니다.
 
 **결과 보기**: 창의 **로컬 CI** 화면에서 빌드 목록·결과·실시간 로그를 보고, `지금 빌드`로 단계를 골라 실행합니다. 같은 내용을 Jenkins 화면(`http://127.0.0.1:8098/`, 계정은 `계정 복사`)에서도 볼 수 있고, 각 빌드에는 JUnit 추세와 Lens 리포트가 첨부됩니다. Lens 검사가 fail이면 빌드는 UNSTABLE, 컴파일·패키지 실패는 FAILURE입니다.
 
-**보안**: Jenkins는 `127.0.0.1`에서만 열리고, 설치할 때 만든 무작위 비밀번호의 계정으로만 접근합니다. 사용 통계 전송과 업데이트 센터 접속은 꺼 둡니다.
+**보안**: Jenkins는 `127.0.0.1`에서만 열리고, 설치할 때 만든 무작위 비밀번호의 계정으로만 접근합니다. 사용 통계 전송과 업데이트 사이트 접속은 꺼 둡니다(업데이트 사이트를 등록하지 않으므로 Jenkins가 외부로 연결하지 않습니다).
 
 **제거**: `__dwo-forge.bat ci-job --remove`는 그 프로젝트의 작업과 훅만, `dwo-Forge.bat ci-remove`는 Jenkins와 모든 작업·훅을 지웁니다(`--keep-data`면 빌드 기록을 `%LOCALAPPDATA%\dwo-Forge\uninstalled`로 옮김). 프로젝트를 `uninstall`하면 그 프로젝트의 작업과 훅도 함께 지워집니다.
 

@@ -21,7 +21,8 @@ $ErrorActionPreference = 'Stop'
 $Utf8 = New-Object System.Text.UTF8Encoding($false)
 $SystemDir = Split-Path -Parent $PSScriptRoot
 $AppDataDir = Join-Path $env:LOCALAPPDATA 'dwo-Forge'
-$CiDir = Join-Path $AppDataDir 'ci'
+# DWO_FORGE_CI_HOME (user environment variable) moves the whole local CI, e.g. to a larger disk.
+$CiDir = if ($env:DWO_FORGE_CI_HOME) { $env:DWO_FORGE_CI_HOME.TrimEnd('\') } else { Join-Path $AppDataDir 'ci' }
 $Runtime = Join-Path $CiDir 'runtime'
 $JenkinsHome = Join-Path $CiDir 'home'
 $SecretsPath = Join-Path $CiDir 'secrets.json'
@@ -90,7 +91,8 @@ function Invoke-Jenkins([string]$Method, [string]$Path, $Body = $null, [string]$
         if ($resp) { return @{ Status = [int]$resp.StatusCode; Content = ''; Headers = $resp.Headers } }
         return @{ Status = 0; Content = ''; Headers = @{} }
     } catch {
-        if ($_.Exception.Message -match 'redirect') { return @{ Status = 302; Content = ''; Headers = @{} } }
+        # Windows PowerShell reports a 3xx under -MaximumRedirection 0 as this error (message is not about redirects).
+        if ($_.FullyQualifiedErrorId -like 'MaximumRedirectExceeded*') { return @{ Status = 302; Content = ''; Headers = @{} } }
         return @{ Status = 0; Content = ''; Headers = @{} }
     }
 }
@@ -170,8 +172,11 @@ function Invoke-Bundle {
                    createdAt = (Get-Date).ToString('o') } | ConvertTo-Json -Compress
         $infoFile = Join-Path ([IO.Path]::GetTempPath()) 'dwo-forge-bundle-info.json'
         [IO.File]::WriteAllText($infoFile, $info, $Utf8)
-        & python (Join-Path $SystemDir 'tools\forge_ci.py') make-manifest --dir $stage --info (Get-Content -Raw $infoFile)
+        # Pass the JSON as a file: PowerShell 5.1 strips the double quotes from native command arguments.
+        & python (Join-Path $SystemDir 'tools\forge_ci.py') make-manifest --dir $stage --info-file $infoFile
+        $manifestExit = $LASTEXITCODE
         Remove-Item $infoFile -ErrorAction SilentlyContinue
+        if ($manifestExit -ne 0) { Fail 'Could not write the bundle manifest.' }
         $zipPath = Join-Path $outDir "dwo-forge-ci-bundle-$jenkinsVersion.zip"
         if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
         Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -224,10 +229,19 @@ strategy.setAllowAnonymousRead(false)
 j.setAuthorizationStrategy(strategy)
 def u = hudson.model.User.getById(s.user, false)
 def tokens = u.getProperty(ApiTokenProperty.class).tokenStore
-if (!tokens.tokenListSortedByName.any { it.name == 'dwo-forge' }) { tokens.addFixedNewToken('dwo-forge', s.token) }
+if (!tokens.tokenListSortedByName.any { it.name == 'dwo-forge' }) {
+    // Jenkins 2.5xx added an expiration date (null = never expires); older releases take two arguments.
+    if (tokens.metaClass.respondsTo(tokens, 'addFixedNewToken', String, String, java.time.LocalDate)) {
+        tokens.addFixedNewToken('dwo-forge', s.token, (java.time.LocalDate) null)
+    } else {
+        tokens.addFixedNewToken('dwo-forge', s.token)
+    }
+}
 u.save()
 j.setNumExecutors(1)
 j.setNoUsageStatistics(true)
+// Offline: plugins come from the bundle, so there is no update site to contact (tool installers included).
+if (j.updateCenter.sites.size() > 0) { j.updateCenter.sites.replaceBy([]); j.updateCenter.save() }
 j.setInstallState(InstallState.INITIAL_SETUP_COMPLETED)
 JenkinsLocationConfiguration.get().setUrl("http://127.0.0.1:${s.port}/")
 j.save()
@@ -237,8 +251,8 @@ j.save()
 
 function Invoke-Install {
     $bundle = Find-Bundle
-    $wasRunning = Test-Running
-    if ($wasRunning) { Stop-Jenkins }
+    # Always stop: a Jenkins that runs but rejects our account still locks the runtime files.
+    Stop-Jenkins
     $stage = Join-Path $CiDir '_staging'
     Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue
     New-Item -ItemType Directory -Force $stage | Out-Null
@@ -251,6 +265,10 @@ function Invoke-Install {
     Say "bundle ok: Jenkins $($manifest.jenkinsVersion), $($manifest.java), $($manifest.fileCount) files verified"
 
     Remove-Item -Recurse -Force $Runtime -ErrorAction SilentlyContinue
+    if (Test-Path $Runtime) {
+        Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue
+        Fail "Could not replace $Runtime (files in use). Close programs using it (java.exe) and run ci-install again."
+    }
     Move-Item $stage $Runtime
     $pluginHome = Join-Path $JenkinsHome 'plugins'
     New-Item -ItemType Directory -Force $pluginHome, $LogDir | Out-Null
@@ -315,15 +333,19 @@ function Start-Jenkins {
         if ($javaPid -and -not (Get-CimInstance Win32_Process -Filter "ProcessId = $javaPid" -ErrorAction SilentlyContinue)) { break }
     }
     Get-Content $log -Tail 30 -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_ }
+    # Do not leave a half-started Jenkins holding the port.
+    if ($javaPid) { & taskkill /PID $javaPid /T /F 2>$null | Out-Null }
+    Remove-Item (Join-Path $CiDir 'process.json') -ErrorAction SilentlyContinue
     Fail "Jenkins did not come up. Log: $log"
 }
 
 function Stop-Jenkins {
-    if (Test-Running) {
+    $graceful = Test-Running
+    if ($graceful) {
         Say 'stopping Jenkins ...'
         [void](Invoke-Jenkins 'POST' '/exit' -TimeoutSec 10)
     }
-    $deadline = (Get-Date).AddSeconds(60)
+    $deadline = (Get-Date).AddSeconds($(if ($graceful) { 60 } else { 0 }))
     while ((Get-Date) -lt $deadline -and (Get-JenkinsProcess)) { Start-Sleep -Seconds 1 }
     $p = Get-JenkinsProcess
     if ($p) { & taskkill /PID $p.ProcessId /T /F 2>$null | Out-Null }
@@ -533,8 +555,14 @@ function Invoke-Trigger {
     Ensure-Running
     $ci = Get-CiConfig
     $event = Opt '--event' 'external'
-    $stages = Opt '--stages'
-    $list = if ($stages) { @($stages -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }) } else { @($ci.triggers.$event.stages) }
+    # cmd.exe splits %2..%9 at commas, so "--stages compile,lens" can arrive as "--stages compile lens":
+    # take every value up to the next --flag.
+    $a = @($Rest); $parts = @()
+    $i = [array]::IndexOf($a, '--stages')
+    if ($i -ge 0) { for ($j = $i + 1; $j -lt $a.Count -and -not ($a[$j] -like '--*'); $j++) { $parts += $a[$j] } }
+    $list = if ($parts.Count) { @($parts -join ',' -split '[,+\s]+' | Where-Object { $_ }) } else { @($ci.triggers.$event.stages) }
+    $bad = @($list | Where-Object { $_ -notin 'compile', 'lens', 'package' })
+    if ($bad.Count) { Fail "Unknown stage: $($bad -join ', '). Use compile, lens, package." }
     if (-not $list.Count) { $list = @('compile', 'lens', 'package') }
     Send-Trigger (Opt '--reason' 'manual') $list $event
 }

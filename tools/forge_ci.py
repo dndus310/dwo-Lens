@@ -218,6 +218,7 @@ def job_xml(project: str, launcher: str, ci: dict) -> str:
       <strategy class="hudson.tasks.LogRotator">
         <daysToKeep>-1</daysToKeep><numToKeep>{int(ci['keepBuilds'])}</numToKeep>
         <artifactDaysToKeep>-1</artifactDaysToKeep><artifactNumToKeep>{int(ci['keepArtifacts'])}</artifactNumToKeep>
+        <removeLastBuild>true</removeLastBuild>
       </strategy>
     </jenkins.model.BuildDiscarderProperty>
     <hudson.model.ParametersDefinitionProperty><parameterDefinitions>{''.join(param_xml)}</parameterDefinitions></hudson.model.ParametersDefinitionProperty>
@@ -304,7 +305,7 @@ def main() -> int:
     v.add_argument("--dir", type=Path, required=True)
     m = sub.add_parser("make-manifest")
     m.add_argument("--dir", type=Path, required=True)
-    m.add_argument("--info", required=True, help="JSON object merged into the manifest")
+    m.add_argument("--info-file", type=Path, required=True, help="JSON file whose object is merged into the manifest")
     p = sub.add_parser("prune")
     p.add_argument("--runs", type=Path, required=True)
     p.add_argument("--config", nargs="+", type=Path, default=[])
@@ -327,7 +328,7 @@ def main() -> int:
             return 1
         print(json.dumps({k: v for k, v in manifest.items() if k != "files"} | {"fileCount": len(manifest["files"])}))
     elif args.cmd == "make-manifest":
-        manifest = make_manifest(args.dir, json.loads(args.info))
+        manifest = make_manifest(args.dir, json.loads(args.info_file.read_text(encoding="utf-8-sig")))
         print(f"[dwo-forge] manifest: {len(manifest['files'])} files")
     elif args.cmd == "prune":
         r = retention_config(load_config(args.config))

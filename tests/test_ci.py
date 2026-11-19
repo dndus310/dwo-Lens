@@ -179,6 +179,8 @@ class JobXmlTests(unittest.TestCase):
         strategy = root.find("properties/jenkins.model.BuildDiscarderProperty/strategy")
         self.assertEqual(strategy.find("numToKeep").text, "7")
         self.assertEqual(strategy.find("artifactNumToKeep").text, "2")
+        # Strict limit: Jenkins otherwise never deletes the last successful/stable build.
+        self.assertEqual(strategy.find("removeLastBuild").text, "true")
         names = [p.find("name").text for p in root.find("properties/hudson.model.ParametersDefinitionProperty/parameterDefinitions")]
         self.assertEqual(names, ["REASON", "COMPILE", "LENS", "PACKAGE"])
         script = root.find("definition/script").text

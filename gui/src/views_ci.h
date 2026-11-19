@@ -153,7 +153,9 @@ private:
 			project = projectDir;
 		}
 		Snapshot n;
-		fs::path ciDir = fs::path(_wgetenv(L"LOCALAPPDATA") ? _wgetenv(L"LOCALAPPDATA") : L".") / "dwo-Forge" / "ci";
+		const wchar_t* ciHome = _wgetenv(L"DWO_FORGE_CI_HOME");
+		fs::path ciDir = (ciHome && *ciHome) ? fs::path(ciHome)
+			: fs::path(_wgetenv(L"LOCALAPPDATA") ? _wgetenv(L"LOCALAPPDATA") : L".") / "dwo-Forge" / "ci";
 		std::error_code ec;
 		n.installed = fs::exists(ciDir / "runtime" / "jenkins.war", ec);
 		std::string auth;

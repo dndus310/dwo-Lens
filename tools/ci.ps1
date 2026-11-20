@@ -108,6 +108,14 @@ function Test-Running {
     if (-not (Test-Path $SecretsPath)) { return $false }
     return (Invoke-Jenkins 'GET' '/api/json?tree=mode' -TimeoutSec 5).Status -eq 200
 }
+function Get-CiSourceHash {
+    # Same formula as Get-CiSourceHash in forge.ps1: the job and the git hooks are generated from these two files.
+    $sb = New-Object System.Text.StringBuilder
+    foreach ($f in @('tools\forge_ci.py', 'tools\ci.ps1')) { [void]$sb.Append("$f=$((Get-FileHash -Algorithm SHA256 (Join-Path $SystemDir $f)).Hash);") }
+    $bytes = [Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($sb.ToString()))
+    return (($bytes | ForEach-Object { $_.ToString('x2') }) -join '').Substring(0, 12)
+}
+
 function Get-JobName {
     # A registered project keeps its job name.
     $mine = @(Get-Projects | Where-Object { $_.project -eq $Project -and $_.job })
@@ -562,7 +570,10 @@ function Invoke-Job {
     Say "job $name $(if ($exists) { 'updated' } else { 'created' }): $(Get-BaseUrl)/job/$name/"
     $hooks = @(Install-ProjectHooks $Project)
     $ci = Get-CiConfig
-    Write-JsonFile $projCi ([ordered]@{ job = $name; url = "$(Get-BaseUrl)/job/$name/"; hooks = $hooks; registeredAt = (Get-Date).ToString('o') })
+    # version/hash: the launcher compares them with this dwo-Forge to offer an update (forge.ps1 Get-ToolStatus).
+    $version = if (Test-Path (Join-Path $SystemDir 'VERSION')) { (Get-Content -Raw (Join-Path $SystemDir 'VERSION')).Trim() } else { 'dev' }
+    Write-JsonFile $projCi ([ordered]@{ job = $name; url = "$(Get-BaseUrl)/job/$name/"; hooks = $hooks; registeredAt = (Get-Date).ToString('o')
+                                        version = $version; hash = Get-CiSourceHash })
     $list = @(Get-Projects | Where-Object { $_.project -ne $Project })
     $list += [pscustomobject]@{ project = $Project; job = $name }
     Save-Projects $list
@@ -667,3 +678,5 @@ switch ($Command) {
     'ci-hooks'   { Require-Project; if (Has '--remove') { Remove-ProjectHooks $Project } else { $null = Install-ProjectHooks $Project } }
     default      { Fail "Unknown CI command: $Command" }
 }
+# Callers read $LASTEXITCODE; without this it would be whatever the last git or python call returned.
+exit 0

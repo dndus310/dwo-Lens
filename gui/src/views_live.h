@@ -328,9 +328,9 @@ static void LiveGuide(App& app)
 		ImGui::PopTextWrapPos();
 		ImGui::PopID();
 	};
-	step(1, app.stateMonitor != 0, "DwoStateMonitor 설치", "도구 화면이나 아래 버튼으로 설치합니다. 기본 설치는 에디터·PIE 전용이라 패키지 빌드에 영향이 없습니다.");
+	step(1, app.stateMonitor != 0, "DwoStateMonitor 설치", "런처나 아래 버튼으로 설치합니다. 기본 설치는 에디터·PIE 전용이라 패키지 빌드에 영향이 없습니다.");
 	ImGui::BeginDisabled(!app.attached || app.stateMonitor != 0 || app.runner.running);
-	if (ImGui::Button("설치 (에디터·PIE 전용)")) app.Run("sm-install");
+	if (ImGui::Button("설치 (에디터·PIE 전용)")) app.Run("tool install statemonitor");
 	ImGui::EndDisabled();
 	ImGui::Unindent(S(24));
 	ImGui::Spacing();

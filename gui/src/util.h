@@ -496,3 +496,30 @@ static double NowSeconds()
 	static const auto start = std::chrono::steady_clock::now();
 	return std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
 }
+
+// Runs a command without a window and returns its standard output.
+static bool CaptureOutput(std::wstring commandLine, const fs::path& workDir, std::string& out, DWORD& exitCode)
+{
+	SECURITY_ATTRIBUTES sa{ sizeof(sa), nullptr, TRUE };
+	HANDLE readPipe = nullptr, writePipe = nullptr;
+	if (!CreatePipe(&readPipe, &writePipe, &sa, 0)) return false;
+	SetHandleInformation(readPipe, HANDLE_FLAG_INHERIT, 0);
+	STARTUPINFOW si{ sizeof(si) };
+	si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+	si.wShowWindow = SW_HIDE;
+	si.hStdOutput = writePipe;
+	si.hStdError = writePipe;
+	PROCESS_INFORMATION pi{};
+	BOOL ok = CreateProcessW(nullptr, commandLine.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW, nullptr, workDir.wstring().c_str(), &si, &pi);
+	CloseHandle(writePipe);
+	if (!ok) { CloseHandle(readPipe); return false; }
+	char buffer[8192];
+	DWORD read = 0;
+	while (ReadFile(readPipe, buffer, sizeof(buffer), &read, nullptr) && read > 0) out.append(buffer, read);
+	CloseHandle(readPipe);
+	WaitForSingleObject(pi.hProcess, INFINITE);
+	GetExitCodeProcess(pi.hProcess, &exitCode);
+	CloseHandle(pi.hProcess);
+	CloseHandle(pi.hThread);
+	return true;
+}

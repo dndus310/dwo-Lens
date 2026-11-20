@@ -1,23 +1,22 @@
 @echo off
 rem ============================================================================
-rem  dwo-Forge project launcher. Placed in the project root by attach and removed
+rem  dwo-Forge project launcher. Placed in the project root by connect and removed
 rem  by uninstall. It runs dwo-Forge from its install folder (no copy of the system
 rem  lives in the project).
-rem    __dwo-forge.bat                     open the control panel (attach first if needed)
-rem    Lens            analyze^|verify^|logs^|smoke^|perf^|sizes^|trace^|play
-rem    DwoStateMonitor sm-install [--runtime]^|sm-remove [--force]
-rem    DwoCanvas       canvas-install^|canvas-remove [--force]^|canvas-validate ^<file^>
-rem                    canvas-import ^<file^> [--reset] [--doc Name]
-rem    build           compile^|package
-rem    local CI        ci-job [--remove]^|ci-trigger [--reason text] [--stages compile,lens,package]^|ci-status
-rem    status^|doctor^|update^|tools^|uninstall [--keep-data^|--delete-data] [--force]
+rem    __dwo-forge.bat                     open dwo-Forge (connect first if needed)
+rem    tools                   tool versions and updates (--json for scripts)
+rem    tool install^|update^|remove ^<lens^|statemonitor^|canvas^|ci^>   tool update --all
+rem    Lens            analyze^|verify^|logs^|smoke^|perf^|sizes^|trace^|play^|compile^|package
+rem    DwoCanvas       canvas-validate ^<file^>^|canvas-import ^<file^> [--reset] [--doc Name]
+rem    Local CI        ci-trigger [--reason text] [--stages compile,lens,package]^|ci-status
+rem    connect^|status^|doctor^|update^|uninstall [--keep-data^|--delete-data] [--force]
 rem ============================================================================
 setlocal EnableExtensions
 set "PROJ=%~dp0"
 set "PROJ=%PROJ:~0,-1%"
 set "CMD=%~1"
 if "%CMD%"=="" (
-  if exist "%PROJ%\__dwo-forge\state.json" (set "CMD=gui") else (set "CMD=attach")
+  if exist "%PROJ%\__dwo-forge\state.json" (set "CMD=gui") else (set "CMD=connect")
 )
 
 rem ---- find the dwo-Forge install folder: recorded at attach, else DWO_FORGE_HOME (DWO_LENS_HOME before 2.0) ----

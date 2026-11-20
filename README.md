@@ -1,36 +1,39 @@
 # dwo-Forge
 
-언리얼 프로젝트에 붙여 쓰는 도구 모음입니다. 프로젝트에 흔적 없이 연동되고, 세 가지 도구를 제공합니다.
+언리얼 프로젝트용 도구 **런처**입니다. 프로젝트를 흔적 없이 연결하고, 그 프로젝트에 쓸 도구를 골라 설치·업데이트·제거하고 실행합니다. dwo-Forge 폴더를 새 버전으로 바꾸면, 프로젝트에 설치된 도구 중 실제로 바뀐 것만 업데이트하라고 알려 줍니다.
 
 | 도구 | 하는 일 | 프로젝트에 들어가는 것 |
 |---|---|---|
-| **Lens** | 분석·검증·로그 검사: 아키텍처 리포트(`analyze`), 검증(`verify`), 로그(`logs`), 맵 스모크(`smoke`), 성능(`perf`), 콘텐츠 용량(`sizes`), Insights 트레이스(`trace`) | `Plugins/__DwoLensInspector` (숨김, 미리 빌드, 기본 비활성) |
-| **DwoStateMonitor** | 실행 중인 게임의 상태를 실시간으로 보는 런타임 플러그인 (예전 이름 StateMonitor) | `Plugins/__DwoStateMonitor` (숨김, 선택 설치) |
-| **DwoCanvas** | 디자인 파일(`*.dwocanvas.json`)을 UMG 위젯 블루프린트로 가져오는 플러그인 | `Plugins/__DwoCanvas` (숨김, 선택 설치) |
+| **Lens** | 분석·검증·로그 검사: 아키텍처 리포트(`analyze`), 검증(`verify`), 로그(`logs`), 맵 스모크(`smoke`), 성능(`perf`), 콘텐츠 용량(`sizes`), Insights 트레이스(`trace`), 컴파일·패키지 | `Plugins/__DwoLensInspector` (숨김, 미리 빌드, 기본 비활성) |
+| **DwoStateMonitor** | 실행 중인 게임의 상태를 실시간으로 보는 런타임 플러그인 (예전 이름 StateMonitor) | `Plugins/__DwoStateMonitor` (숨김) |
+| **DwoCanvas** | 디자인 파일(`*.dwocanvas.json`)을 UMG 위젯 블루프린트로 가져오는 플러그인 | `Plugins/__DwoCanvas` (숨김) |
+| **로컬 CI** | push·merge·커밋 때 컴파일 → Lens 검사 → 패키지 빌드를 자동 실행 (Jenkins, 폐쇄망 지원) | Jenkins 작업과 `.git/hooks` (Jenkins 자체는 PC에 하나) |
+
+모든 도구는 선택 설치입니다. 프로젝트 연결은 도구와 별개로, `__dwo-forge` 폴더와 실행 파일을 만들고 git에서 숨기는 일만 합니다.
 
 Lens와 DwoStateMonitor는 프로젝트를 읽기만 하며, 언제 떼어 내도 프로젝트는 그대로 동작합니다. DwoCanvas도 같은 방식으로 숨겨 설치하고 떼어 낼 수 있습니다. 다만 DwoCanvas로 만든 위젯이 남아 있는 동안에는 제거를 막습니다(아래 [DwoCanvas](#제공-도구-dwocanvas)).
 
-> dwo-Lens에서 이름이 바뀌었습니다. dwo-Lens 1.x로 연동한 프로젝트는 dwo-Forge 명령을 처음 실행할 때(창에서 열 때 포함) 자동으로 옮겨집니다. 아래 [dwo-Lens에서 옮기기](#dwo-lens-1x에서-옮기기)를 보세요.
+> dwo-Lens에서 이름이 바뀌었습니다. dwo-Lens 1.x로 연결한 프로젝트는 dwo-Forge 명령을 처음 실행할 때(창에서 열 때 포함) 자동으로 옮겨집니다. 아래 [dwo-Lens에서 옮기기](#dwo-lens-1x에서-옮기기)를 보세요.
 
 ## 시작하기 (3단계)
 
-> **실행할 파일은 `dwo-Forge.bat` 하나입니다.** 연동한 프로젝트에는 같은 일을 하는 `__dwo-forge.bat`이 생깁니다. `tools/`, `tests/` 안의 .bat은 직접 실행하지 않습니다(`tests/selftest.bat`은 개발용 검증).
+> **실행할 파일은 `dwo-Forge.bat` 하나입니다.** 연결한 프로젝트에는 같은 일을 하는 `__dwo-forge.bat`이 생깁니다. `tools/`, `tests/` 안의 .bat은 직접 실행하지 않습니다(`tests/selftest.bat`은 개발용 검증).
 
 1. dwo-Forge를 받습니다. GitHub의 **Download ZIP**을 풀어도 되고 `git clone`해도 됩니다. 어느 폴더든 상관없습니다.
 2. 받은 폴더의 **`dwo-Forge.bat`을 더블클릭**합니다. 처음 한 번만 폴더를 등록하고 창을 빌드합니다(약 1분). 별도 설치 단계는 없습니다.
-3. 창에서 프로젝트를 엽니다(`파일 > 프로젝트 열기`, 또는 프로젝트 폴더나 `.uproject`를 창에 **끌어다 놓기**). 대시보드의 **프로젝트 연동** 버튼을 누르면 끝입니다.
+3. 창(런처)에서 프로젝트를 엽니다(`프로젝트 열기...`, 또는 프로젝트 폴더나 `.uproject`를 창에 **끌어다 놓기**). 함께 설치할 도구를 체크하고 **연결**을 누르면 끝입니다(Lens가 기본으로 체크되어 있습니다).
 
-`dwo-Forge.bat`에 프로젝트 폴더나 `.uproject`를 끌어다 놓아도 그 프로젝트로 바로 열립니다. 이미 연동된 프로젝트는 프로젝트 안의 `__dwo-forge.bat`을 더블클릭해도 창이 열립니다.
+`dwo-Forge.bat`에 프로젝트 폴더나 `.uproject`를 끌어다 놓아도 그 프로젝트로 바로 열립니다. 이미 연결된 프로젝트는 프로젝트 안의 `__dwo-forge.bat`을 더블클릭해도 창이 열립니다.
 
 ### 제거 (Uninstall)
 
-창에서 `도구 > 제거`(또는 명령 팔레트 `Ctrl+K` → 제거)를 누르거나 `__dwo-forge.bat uninstall`을 실행합니다. **플러그인을 먼저 따로 지울 필요가 없습니다.** 먼저 프로젝트를 검사해 dwo-Forge가 남긴 것을 모두 보여 주고, 사용자가 정할 것만 물은 뒤 한 번에 지웁니다.
+도구 하나만 지우려면 런처의 도구 줄에서 `제거`(또는 `__dwo-forge.bat tool remove <도구>`)를 누릅니다. 프로젝트에서 dwo-Forge를 모두 떼어 내려면 런처의 `연결 해제...`(또는 명령 팔레트 `Ctrl+K` → 연결 해제)를 누르거나 `__dwo-forge.bat uninstall`을 실행합니다. **플러그인을 먼저 따로 지울 필요가 없습니다.** 먼저 프로젝트를 검사해 dwo-Forge가 남긴 것을 모두 보여 주고, 사용자가 정할 것만 물은 뒤 한 번에 지웁니다.
 
 | 구분 | 내용 | 처리 |
 |---|---|---|
 | 플러그인 | `Plugins/__DwoLensInspector`, `__DwoStateMonitor`, `__DwoCanvas` (dwo-Lens 1.x의 `__StateMonitor` 포함) | 항상 지움 |
-| 실행 파일·연동 정보 | `__dwo-forge.bat`, `__dwo-forge/` (dwo-Lens 1.x의 `__dwo-lens.bat`, `__dwo-lens/` 포함) | 항상 지움 |
-| git exclude | 연동할 때 넣은 dwo-Forge 블록 | 항상 지움 (다른 내용은 그대로) |
+| 실행 파일·연결 정보 | `__dwo-forge.bat`, `__dwo-forge/` (dwo-Lens 1.x의 `__dwo-lens.bat`, `__dwo-lens/` 포함) | 항상 지움 |
+| git exclude | 연결할 때 넣은 dwo-Forge 블록 | 항상 지움 (다른 내용은 그대로) |
 | 테스트 잔여물 | `Content/DwoCanvasTests`, `Saved/DwoCanvasTests` (DwoCanvas 자동화 테스트가 남긴 빈 폴더·파일) | 항상 지움 |
 | 프로젝트 파일 등록 | `.uproject`의 `Plugins` 항목(DwoStateMonitor, DwoCanvas), `Build.cs` 의존성(`DwoStateMonitor`, `DwoCanvasRuntime`, `DwoCanvasEditor`), `Config/DefaultDwoCanvas.ini`, 에디터 개인 설정의 모듈 기록 줄 | 원본을 백업한 뒤 해당 항목만 지움. 나머지 내용과 서식은 그대로 (`--keep-references`로 건너뜀) |
 | DwoCanvas로 만든 위젯 | `canvas-import`가 만든 위젯 블루프린트·이미지(`T_DB_…`)와 가져오기 기록(`DwoCanvas/Records`) | **선택**: 삭제(`--delete-generated`) 또는 남김(`--keep-generated`). DwoCanvas 없이 열면 깨지므로 묻습니다 |
@@ -40,15 +43,22 @@ Lens와 DwoStateMonitor는 프로젝트를 읽기만 하며, 언제 떼어 내�
 - 편집한 프로젝트 파일의 원본은 `%LOCALAPPDATA%\dwo-Forge\uninstalled\<프로젝트>-<시각>\backup`에 남습니다.
 - 명령줄에서 선택 플래그를 주지 않으면 콘솔에서 묻습니다. 묻을 수 없는 환경(스크립트)에서 위젯 처리 방법이나 코드 사용 확인이 빠지면, 아무것도 바꾸지 않고 멈춥니다.
 - `__dwo-forge.bat uninstall --plan-json`은 바꾸지 않고 검사 결과만 JSON으로 출력합니다(창의 제거 대화상자가 사용).
-- 제거 뒤 다시 검사해 남은 것이 있으면 알립니다. git 프로젝트는 `git status`가 연동 전과 같은지도 확인합니다. `Saved/`, `Intermediate/`, `DerivedDataCache/`처럼 에디터가 원래 쓰는 폴더는 dwo-Forge 파일만 지웁니다.
+- 제거 뒤 다시 검사해 남은 것이 있으면 알립니다. git 프로젝트는 `git status`가 연결 전과 같은지도 확인합니다. `Saved/`, `Intermediate/`, `DerivedDataCache/`처럼 에디터가 원래 쓰는 폴더는 dwo-Forge 파일만 지웁니다.
 
 ### 명령줄
 
-창 없이 쓰려면 받은 폴더의 `dwo-Forge.bat <명령> <프로젝트 폴더>`, 또는 연동된 프로젝트 안의 `__dwo-forge.bat <명령>`을 씁니다.
+창 없이 쓰려면 받은 폴더의 `dwo-Forge.bat <명령> <프로젝트 폴더>`, 또는 연결된 프로젝트 안의 `__dwo-forge.bat <명령>`을 씁니다.
 
 ```bat
-dwo-Forge.bat attach "C:\Projects\MyGame"   :: 연동 (엔진 버전별 첫 회만 플러그인 빌드로 몇 분 걸림)
-__dwo-forge.bat                     :: 제어판 창 열기 (연동 전이면 연동)
+dwo-Forge.bat connect "C:\Projects\MyGame"  :: 프로젝트 연결 (도구는 설치하지 않음)
+__dwo-forge.bat                     :: 창 열기 (연결 전이면 연결)
+
+:: 도구 (lens, statemonitor, canvas, ci). 플러그인 도구는 엔진 버전별 첫 설치 때만 빌드로 몇 분 걸림
+__dwo-forge.bat tools [--json]      :: 도구별 상태: 설치 안 됨 / 최신 / 업데이트 있음 / 프로젝트 자체 포함 / 이전 형식, PC 구성요소
+__dwo-forge.bat tool install lens   :: 설치 (statemonitor는 --runtime으로 패키지 게임 포함)
+__dwo-forge.bat tool update ci      :: 업데이트.  tool update --all = 업데이트가 있는 도구 모두
+__dwo-forge.bat tool remove canvas  :: 제거 (프로젝트가 아직 쓰고 있으면 거부, --force)
+dwo-Forge.bat attach "C:\Projects\MyGame"   :: dwo-Lens 방식: 연결 + Lens 설치
 
 :: Lens
 __dwo-forge.bat analyze             :: 아키텍처 리포트 + 품질 점검
@@ -63,55 +73,66 @@ __dwo-forge.bat compile            :: C++ 컴파일 (UnrealBuildTool, 에디터 
 __dwo-forge.bat package            :: 패키지 빌드 (RunUAT BuildCookRun). 결과물은 최근 3개만 보관
 
 :: DwoStateMonitor
-__dwo-forge.bat sm-install [--runtime]   :: 설치 (아래 '제공 도구: DwoStateMonitor')
-__dwo-forge.bat sm-remove [--force]
+__dwo-forge.bat sm-install [--runtime] | sm-remove [--force]   :: tool install|remove statemonitor와 같음
 
 :: DwoCanvas
-__dwo-forge.bat canvas-install                         :: Plugins/__DwoCanvas에 설치 (git에서 숨김)
 __dwo-forge.bat canvas-validate <파일>                  :: 디자인 파일 검사
 __dwo-forge.bat canvas-import <파일> [--reset] [--doc 이름]  :: 위젯 블루프린트로 가져오기
-__dwo-forge.bat canvas-remove [--force]                :: 제거 (생성된 위젯이 쓰고 있으면 거부)
+:: canvas-install | canvas-remove [--force] 은 tool install|remove canvas와 같음
 
 :: 로컬 CI (아래 '로컬 CI')
 dwo-Forge.bat ci-bundle                     :: (인터넷 PC) Jenkins·Java·플러그인 오프라인 번들 만들기
 dwo-Forge.bat ci-install [--bundle <zip>] [--port N]   :: 번들로 설치 (네트워크 불필요). ci-start / ci-stop / ci-status / ci-remove
-__dwo-forge.bat ci-job [--remove]           :: 이 프로젝트의 CI 작업과 git 훅 등록 (해제)
+__dwo-forge.bat ci-job [--remove]           :: 이 프로젝트의 CI 작업과 git 훅 등록 (해제) = tool install|remove ci
 __dwo-forge.bat ci-hooks [--remove]         :: git 훅만 다시 설치 (clone·reset 뒤) 또는 제거
 __dwo-forge.bat ci-trigger [--reason 내용] [--stages compile,lens,package]   :: 빌드 요청 (외부 이벤트 주입)
 
 :: 관리
-__dwo-forge.bat status | doctor     :: 연동 정보와 세 도구 상태 · 환경 점검
-__dwo-forge.bat update              :: dwo-Forge를 새 버전으로 바꾼 뒤 플러그인·실행 파일 갱신
-__dwo-forge.bat tools               :: 도구 카탈로그
+__dwo-forge.bat status | doctor     :: 연결 정보와 도구 상태 · 환경 점검
+__dwo-forge.bat update              :: 연결 새로 고침(실행 파일, git 숨김) + 업데이트가 있는 도구 모두 업데이트
+__dwo-forge.bat tools --catalog     :: 도구 카탈로그
 __dwo-forge.bat uninstall           :: 한 번에 완전 제거. 기록·생성 위젯 처리를 물음 (--keep-data/--delete-data, --keep-generated/--delete-generated, --force)
 ```
 
 창에서 실행한 명령의 출력은 하단 **실행 로그** 패널에 표시되고, `%LOCALAPPDATA%\dwo-Forge\logs`에 파일로도 저장됩니다(최근 50개). 실패 알림의 **로그 파일 열기**로 바로 열 수 있습니다.
 
-## 제어판 (GUI)
+## 창 (런처)
 
 명령어 대신 창에서 쓰려면 둘 중 하나를 실행합니다.
 
-- dwo-Forge 폴더의 **`dwo-Forge.bat`을 더블클릭** → 프로젝트를 열거나 창에 끌어다 놓기. 연동되지 않은 프로젝트는 대시보드의 `프로젝트 연동` 버튼으로 연동합니다.
-- 연동된 프로젝트의 `__dwo-forge.bat`을 더블클릭
+- dwo-Forge 폴더의 **`dwo-Forge.bat`을 더블클릭** → 런처에서 프로젝트를 열거나 창에 끌어다 놓기
+- 연결된 프로젝트의 `__dwo-forge.bat`을 더블클릭
 
-화면은 IDE·프로파일러 형식입니다. 왼쪽 **액티비티 바**는 세 도구별로 묶여 있고(**LENS · STATE · CANVAS · FORGE**), 각 화면은 **탐색(왼쪽) · 본문(가운데) · 속성(오른쪽) · 하단 패널**로 나뉩니다. 패널은 끌어서 다시 배치할 수 있고 `보기 > 레이아웃 초기화`로 되돌립니다.
+창은 **런처**로 열립니다(JetBrains Toolbox, Epic Games Launcher와 같은 방식).
 
-| 묶음 | 화면 (단축키) | 내용 |
+| 영역 | 내용 |
+|---|---|
+| 왼쪽: 프로젝트 | 최근 프로젝트 목록(업데이트가 있으면 표시), `프로젝트 열기...` |
+| 왼쪽: PC 구성요소 | **Jenkins (로컬 CI)**: 설치(오프라인 번들)·시작·중지·업데이트·제거, 계정, 이 Jenkins를 쓰는 프로젝트. **언리얼 엔진**: 이 PC의 엔진 목록 |
+| 왼쪽: dwo-Forge | 버전, 문서, 도구 카탈로그 |
+| 가운데: 도구 라이브러리 | 선택한 프로젝트의 도구 네 개. 줄마다 상태(설치 안 됨·최신·업데이트 있음·프로젝트에 포함·이전 형식), 설치 버전과 최신 버전, `설치`·`업데이트`·`열기`·`제거`. 업데이트가 있으면 위에 `모두 업데이트`, 엔진이 바뀌었으면 `연결 새로 고침` |
+| 오른쪽: 속성 | 선택한 도구의 설치 버전·빌드 엔진·설치 일시·위치와 같은 일을 하는 명령줄 |
+
+연결되지 않은 프로젝트를 열면 연결 패널이 나옵니다. 함께 설치할 도구를 고르고 `연결`을 누릅니다.
+
+**도구 작업 화면**: 도구 줄의 `열기`(또는 줄 두 번 클릭)를 누르면 그 도구의 화면으로 들어갑니다. 왼쪽 활동 바에는 **런처(맨 위)와 설치된 도구만** 보이고, 지금 연 도구는 자기 화면들을 아래로 펼칩니다. 각 화면은 **탐색(왼쪽) · 본문(가운데) · 속성(오른쪽) · 하단 패널**로 나뉩니다. 패널은 끌어서 다시 배치할 수 있고 `보기 > 레이아웃 초기화`로 되돌립니다.
+
+| 도구 | 화면 (단축키) | 내용 |
 |---|---|---|
+| - | 런처 (Ctrl+9) | 위 표 |
 | Lens | 대시보드 (Ctrl+1) | 프로젝트 상태 배너, KPI 카드(새 문제, 아키텍처 문제, BP 복잡도, 테스트 통과율, 로그 오류, 맵 스모크, 프레임 p95, 콘텐츠 용량, DwoStateMonitor)와 실행별 추세선, 검사별 최근 10회 결과, 주요 문제, 시작하기 체크리스트 |
 | Lens | 아키텍처 (Ctrl+2) | 클래스 계층·BP 실행 흐름·BP 호출·에셋 참조·모듈 의존성을 **노드 그래프**로 표시(이동·확대·미니맵·F 전체 보기), 품질 점검 표 |
 | Lens | 문제 (Ctrl+3) | 모든 검사의 최신 실행에서 모은 문제. 심각도·범주 필터, 묶기, **NEW**(이전 실행 대비), 무시(기준선) |
 | Lens | 검증 (Ctrl+4) | 단계 카드, 자동화 테스트 트리, 최근 10회 결과 띠, **새 실패·불안정(flaky) 테스트**, 맵 스모크 결과 |
 | Lens | 로그 (Ctrl+5) | 지문으로 묶은 로그 그룹, 횟수 추세, 처음·마지막 발생, 콜스택, 크래시 |
 | Lens | 성능·용량 (Ctrl+6) | 프레임 시간 차트(예산선·스레드별), p95 추세, 히치 / 폴더별 용량 트리맵, 큰 에셋, 함께 로드되는 용량 / Insights 트레이스 열기 |
+| Lens | 실행 기록 (Ctrl+8) | 실행별 단계 띠, 두 실행 **비교**(지표 변화, 새로 생긴·해결된 문제, 결과가 바뀐 테스트), 결과 파일 |
 | DwoStateMonitor | DwoStateMonitor (Ctrl+7) | 실행 중인 게임의 상태를 실시간으로 표시 (아래 '제공 도구: DwoStateMonitor') |
-| DwoCanvas | DwoCanvas (Ctrl+0) | 설치·제거 카드, 디자인 파일 고르기(열기 대화상자 또는 `*.dwocanvas.json` 끌어다 놓기), 검사·가져오기·초기화하고 가져오기, 최신 리포트 요약 (아래 '제공 도구: DwoCanvas') |
-| dwo-Forge | 실행 기록 (Ctrl+8) | 실행별 단계 띠, 두 실행 **비교**(지표 변화, 새로 생긴·해결된 문제, 결과가 바뀐 테스트), 결과 파일 |
-| dwo-Forge | 로컬 CI | Jenkins 설치·시작·중지·제거, 이 프로젝트의 CI 작업 등록, 빌드 목록·결과·실시간 로그, `지금 빌드`(단계 선택) |
-| dwo-Forge | 도구 (Ctrl+9) | 세 도구 카드(상태·설치·제거), Lens 검사 카드, 도구별로 묶은 카탈로그, 관리(점검·업데이트·제거) |
+| DwoCanvas | DwoCanvas (Ctrl+0) | 디자인 파일 고르기(열기 대화상자 또는 `*.dwocanvas.json` 끌어다 놓기), 검사·가져오기·초기화하고 가져오기, 최신 리포트 요약 (아래 '제공 도구: DwoCanvas') |
+| 로컬 CI | 로컬 CI | 빌드 목록·결과·실시간 로그, `지금 빌드`(단계 선택), 이 프로젝트의 작업 설정 다시 적용. Jenkins 관리는 런처의 PC 구성요소 |
 
-- **명령 팔레트 (Ctrl+K)**: 모든 화면 이동, 검사 실행, 설치, DwoCanvas 검사·가져오기, 리포트 저장을 검색해서 실행합니다.
+- **명령 팔레트 (Ctrl+K)**: 화면 이동, 검사 실행, 도구 설치·업데이트·제거, DwoCanvas 검사·가져오기, 리포트 저장을 검색해서 실행합니다.
+- **도구 메뉴**: 도구마다 열기·설치·업데이트·제거, `모든 도구 업데이트`, 프로젝트 연결·새로 고침·연결 해제.
 - **상태 표시줄**: 실행 중인 명령과 진행 상황(취소), 오류·경고 수, DwoStateMonitor 연결 상태.
 - **대기열**: 실행 중에 다른 명령을 누르면 대기열에 들어가 차례로 실행됩니다. 끝나면 알림이 뜨고 결과로 이동할 수 있습니다.
 
@@ -130,15 +151,15 @@ __dwo-forge.bat uninstall           :: 한 번에 완전 제거. 기록·생성 
 실행 중인 게임의 상태를 dwo-Forge 창으로 실시간 전송하는 런타임 플러그인입니다. **프로젝트 코드 없이** 동작합니다.
 
 ```bat
-__dwo-forge.bat sm-install            :: 에디터·PIE 전용 (기본). 패키지 빌드에 영향 없음
-__dwo-forge.bat sm-install --runtime  :: 패키지 게임에도 포함. .uproject(BP 전용) 또는 Build.cs(C++)에 DwoStateMonitor 등록 필요
+__dwo-forge.bat tool install statemonitor            :: 에디터·PIE 전용 (기본). 패키지 빌드에 영향 없음
+__dwo-forge.bat tool install statemonitor --runtime  :: 패키지 게임에도 포함. .uproject(BP 전용) 또는 Build.cs(C++)에 DwoStateMonitor 등록 필요
 __dwo-forge.bat sm-remove             :: 제거. 프로젝트 코드가 참조 중이면 거부 (--force로 강제)
 __dwo-forge.bat play [맵]              :: 게임 창을 띄움 (DwoStateMonitor가 자동 연결)
 ```
 
 ### 사용 순서
 
-1. `sm-install`로 설치합니다(GUI: 도구 화면 또는 DwoStateMonitor 화면의 안내). `.uproject`는 수정하지 않으며 `Plugins/__DwoStateMonitor`는 git에서 숨겨집니다.
+1. 런처의 도구 목록에서 설치합니다(`tool install statemonitor`, 예전 명령 `sm-install`도 동작). `.uproject`는 수정하지 않으며 `Plugins/__DwoStateMonitor`는 git에서 숨겨집니다.
 2. dwo-Forge 창을 열고 **DwoStateMonitor** 화면(Ctrl+7)으로 갑니다. 창은 `127.0.0.1:47731`에서 기다립니다.
 3. 에디터에서 **Play(PIE)** 하거나, `게임 실행` 버튼(`play`)으로 게임을 띄웁니다. 게임이 시작되면 자동으로 연결됩니다(PIE 클라이언트가 여럿이면 각각 세션으로 표시).
 4. GameMode, GameState, PlayerController, PlayerState, Pawn과 컴포넌트가 노드로 나타나고, 값이 바뀌면 깜빡입니다. 기본은 프로젝트(BP·C++)가 선언한 프로퍼티만 보내며, `엔진 프로퍼티 포함`을 켜면 전체를 보냅니다.
@@ -189,7 +210,7 @@ dwo-Forge 2.0은 dwo-Lens 1.x가 남긴 것을 스스로 옮깁니다. 프로젝
 
 | dwo-Lens 1.x | dwo-Forge |
 |---|---|
-| `__dwo-lens/` (실행 기록, 설정, 연동 정보) | `__dwo-forge/` 로 이름 변경, 내용 유지 |
+| `__dwo-lens/` (실행 기록, 설정, 연결 정보) | `__dwo-forge/` 로 이름 변경, 내용 유지 |
 | `__dwo-lens.bat` | `__dwo-forge.bat` 설치. 옛 실행 파일이 실행 중이면 한 번만 새 실행 파일로 넘겨 주는 파일로 바뀐 뒤 스스로 지워짐 |
 | git exclude의 `dwo-lens managed` 블록 | `dwo-forge managed` 블록으로 교체 |
 | `%LOCALAPPDATA%\dwo-Lens` (캐시, 창 설정, 보존한 실행 기록) | `%LOCALAPPDATA%\dwo-Forge` |
@@ -217,25 +238,30 @@ powershell -File tests\package_check.ps1 -Source <폴더> -Name pkg -Config Ship
 - 창(GUI)을 쓰려면 Visual Studio 2022(C++ 데스크톱 개발 워크로드). UE C++ 개발 환경이면 이미 있습니다.
 - C++ 프로젝트는 에디터 바이너리가 빌드된 상태여야 Commandlet이 실행됩니다.
 
-## 연동 시 프로젝트에 생기는 것
+## 프로젝트에 생기는 것
+
+연결만 하면 `__dwo-forge.bat`과 `__dwo-forge/`만 생기고, 도구를 설치할 때마다 그 도구의 것이 추가됩니다.
 
 ```
 A/
 ├─ __dwo-forge.bat                # 실행 파일 (dwo-Forge 설치 폴더의 도구를 실행)
 ├─ __dwo-forge/
 │  ├─ home.txt                    # dwo-Forge 설치 폴더 위치
+│  ├─ state.json                  # 연결 정보 (버전, 형상관리 방식, 연결 전 git 상태)와 도구별 설치 기록 (tools)
+│  ├─ ci.json                     # (로컬 CI 설치 시) Jenkins 작업, 훅, 설치 버전
 │  ├─ data/runs/<id>/             # Lens 실행별 raw · out · run.json · 로그
 │  ├─ data/canvas/                # canvas-import 엔진 로그, 마지막 가져오기 (last.json)
 │  ├─ created-files.txt           # dwo-Forge 실행이 프로젝트에 남긴 파일 (제거 때 처리)
 │  ├─ config.json                 # (선택) 프로젝트별 규칙 덮어쓰기
-│  ├─ gui.json                    # 화면 설정 (무시한 문제)
-│  └─ state.json                  # 연동 정보 (버전, 형상관리 방식, 연동 전 git 상태)
-├─ Plugins/__DwoLensInspector/    # Lens: 미리 빌드된 에디터 전용 플러그인 (Source 없음, 기본 비활성)
-├─ Plugins/__DwoStateMonitor/     # (sm-install 했을 때) 숨김
-└─ Plugins/__DwoCanvas/           # (canvas-install 했을 때) 숨김
+│  └─ gui.json                    # 화면 설정 (무시한 문제)
+├─ Plugins/__DwoLensInspector/    # (Lens) 미리 빌드된 에디터 전용 플러그인 (Source 없음, 기본 비활성)
+├─ Plugins/__DwoStateMonitor/     # (DwoStateMonitor) 숨김
+└─ Plugins/__DwoCanvas/           # (DwoCanvas) 숨김
 ```
 
-도구 자체는 프로젝트에 복사하지 않고 dwo-Forge 설치 폴더에서 실행합니다. `.uproject`, `Build.cs`, 기존 파일은 건드리지 않습니다. 이전 버전처럼 `__dwo-forge/system` 복사본이 있으면 `update`나 연동 때 지웁니다.
+`state.json`의 `tools`에는 도구마다 설치한 dwo-Forge 버전, 소스 해시, 빌드한 엔진 버전이 기록됩니다. dwo-Forge 폴더를 새 버전으로 바꿨을 때 해시가 다르거나 프로젝트 엔진이 바뀐 도구만 "업데이트 있음"으로 표시됩니다. 3.0 이전에 연결한 프로젝트의 Lens는 예전 기록(`pluginHash`)으로 인식하고, 기록이 없는 DwoStateMonitor·DwoCanvas는 업데이트를 권합니다.
+
+도구 자체는 프로젝트에 복사하지 않고 dwo-Forge 설치 폴더에서 실행합니다. `.uproject`, `Build.cs`, 기존 파일은 건드리지 않습니다. 이전 버전처럼 `__dwo-forge/system` 복사본이 있으면 `update`나 연결 때 지웁니다.
 
 ## Lens 검사와 도구
 
@@ -270,8 +296,8 @@ A/
 | 단계 | 하는 일 |
 |---|---|
 | 1. 번들 만들기 (인터넷 PC, 한 번) | `dwo-Forge.bat ci-bundle` → `bundles/dwo-forge-ci-bundle-<버전>.zip`. Jenkins LTS(war, SHA-256 확인), Eclipse Temurin 21 JRE(체크섬 확인), 플러그인(`workflow-aggregator`, `junit`과 의존성)을 묶고 파일마다 SHA-256을 `manifest.json`에 기록 |
-| 2. 설치 (폐쇄망 PC) | 번들을 `bundles/`에 두거나 `dwo-Forge.bat ci-install --bundle <zip>`. 체크섬을 확인한 뒤 설치하고 시작합니다. 네트워크에 접속하지 않고 관리자 권한도 필요 없습니다. 창에서는 **로컬 CI** 화면의 `설치 (오프라인 번들)` |
-| 3. 프로젝트 등록 | `__dwo-forge.bat ci-job` 또는 창의 `CI 작업 등록`. Jenkins 파이프라인 작업과 git 훅(`post-commit`, `post-merge`, `pre-push`, `reference-transaction`)을 설치합니다. 기존 훅(git-lfs 등)은 `<훅>.dwo-forge-orig`로 보존되어 먼저 실행됩니다. 프로젝트 이름이 한글이거나 같은 프로젝트를 두 곳에 받아 둔 경우 작업 이름 뒤에 경로 기반 8자리 식별자가 붙어 서로 겹치지 않습니다 |
+| 2. 설치 (폐쇄망 PC) | 번들을 `bundles/`에 두거나 `dwo-Forge.bat ci-install --bundle <zip>`. 체크섬을 확인한 뒤 설치하고 시작합니다. 네트워크에 접속하지 않고 관리자 권한도 필요 없습니다. 창에서는 런처의 **PC 구성요소 > Jenkins (로컬 CI)** `설치`. 프로젝트에 로컬 CI 도구를 설치할 때 Jenkins가 없으면 자동으로 함께 설치합니다 |
+| 3. 프로젝트에 설치 | 런처의 도구 목록에서 **로컬 CI** `설치` (`__dwo-forge.bat tool install ci`, 예전 명령 `ci-job`). Jenkins 파이프라인 작업과 git 훅(`post-commit`, `post-merge`, `pre-push`, `reference-transaction`)을 설치합니다. 기존 훅(git-lfs 등)은 `<훅>.dwo-forge-orig`로 보존되어 먼저 실행됩니다. 프로젝트 이름이 한글이거나 같은 프로젝트를 두 곳에 받아 둔 경우 작업 이름 뒤에 경로 기반 8자리 식별자가 붙어 서로 겹치지 않습니다 |
 
 **트리거** (기본값, `ci.triggers`에서 변경)
 
@@ -291,7 +317,7 @@ A/
 
 **보관 개수**: Jenkins는 최근 `ci.keepBuilds`(기본 30)개 빌드만 남기고, 넘으면 가장 오래된 빌드부터 하나씩 지웁니다(첨부 결과는 `ci.keepArtifacts`개). Jenkins 기본값과 달리 마지막 성공 빌드도 예외 없이 이 개수에 포함됩니다. 패키지 결과물은 Lens 실행 기록에 최근 `retention.packages`(기본 3)개만 남습니다.
 
-**결과 보기**: 창의 **로컬 CI** 화면에서 빌드 목록·결과·실시간 로그를 보고, `지금 빌드`로 단계를 골라 실행합니다. 같은 내용을 Jenkins 화면(`http://127.0.0.1:8098/`, 계정은 `계정 복사`)에서도 볼 수 있고, 각 빌드에는 JUnit 추세와 Lens 리포트가 첨부됩니다. Lens 검사가 fail이면 빌드는 UNSTABLE, 컴파일·패키지 실패는 FAILURE입니다.
+**결과 보기**: 런처에서 로컬 CI를 `열기`하면 나오는 화면에서 빌드 목록·결과·실시간 로그를 보고, `지금 빌드`로 단계를 골라 실행합니다. 같은 내용을 Jenkins 화면(`http://127.0.0.1:8098/`, 계정은 `계정 복사`)에서도 볼 수 있고, 각 빌드에는 JUnit 추세와 Lens 리포트가 첨부됩니다. Lens 검사가 fail이면 빌드는 UNSTABLE, 컴파일·패키지 실패는 FAILURE입니다.
 
 **다른 PC에 설치할 때**: 따로 설치하거나 설정할 것은 Python 3.10 이상(dwo-Forge 공통 요구 사항)뿐입니다. Java·Jenkins·플러그인은 번들에 들어 있고, 관리자 권한·서비스 등록·방화벽 허용·인터넷이 필요 없습니다. Python이 없거나 Microsoft Store 바로 가기만 있으면 설치 전에 그렇게 알려 줍니다. 8098 포트를 다른 프로그램이 쓰고 있으면 `ci-install --port 8099`처럼 다른 포트로 설치합니다. 한국어 Windows(코드 페이지 949)에서 사용자 이름·dwo-Forge 폴더·프로젝트 경로에 한글이나 공백이 있어도 동작합니다(Jenkins 단계는 경로를 스크립트에 넣지 않고 환경 변수로 넘깁니다).
 
@@ -319,7 +345,7 @@ A/
 | 경로 | 역할 |
 |---|---|
 | `dwo-Forge.bat` | 시작점: 폴더 등록(`DWO_FORGE_HOME`), 창 열기, 끌어다 놓은 프로젝트 열기, 명령줄 실행 |
-| `tools/project-launcher.bat` | 연동할 때 프로젝트에 `__dwo-forge.bat`으로 복사되는 원본. `home.txt`의 설치 폴더에서 `forge.ps1` 실행, 제거되면 스스로 삭제 |
+| `tools/project-launcher.bat` | 연결할 때 프로젝트에 `__dwo-forge.bat`으로 복사되는 원본. `home.txt`의 설치 폴더에서 `forge.ps1` 실행, 제거되면 스스로 삭제 |
 | `tests/selftest.bat` | 개발용 전체 검증 |
 | `tools/forge.ps1` | 명령 실행, 엔진 호출, 실행 기록 (`run.json`), dwo-Lens 1.x 이전 |
 | `tools/lens.ps1`, `tools/legacy-project-launcher.bat` | dwo-Lens 1.x 실행 파일 호환 (forge.ps1로 넘김) |

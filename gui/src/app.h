@@ -244,7 +244,7 @@ enum class Activity
 	Live,
 	Canvas,
 	History,
-	Tools,
+	Launcher,   // the launcher home: projects, their tools, PC components (not a tool)
 	Ci,
 	Count
 };
@@ -371,6 +371,9 @@ struct App
 	std::vector<CanvasReport> canvasReports;
 	std::string canvasLastCommand;
 	bool legacyAttached = false; // project still has dwo-Lens 1.x __dwo-lens (migrated by the next command)
+	bool lensInstalled = false;  // Plugins/__DwoLensInspector (the Lens tool)
+	bool ciInstalled = false;    // __dwo-forge/ci.json (the Local CI tool)
+	bool toolsDirty = true;      // tool versions must be read again (forge.ps1 tools --json)
 	bool migrationStarted = false;
 	json state;
 	json catalog;
@@ -383,7 +386,7 @@ struct App
 	std::string message;
 	fs::path saved;
 	bool confirmDetach = false;
-	Activity activity = Activity::Overview;
+	Activity activity = Activity::Launcher;
 	Activity requestActivity = Activity::Count;
 	bool showConsole = false;        // focus the run log
 	bool forgetAfterUninstall = false;
@@ -473,6 +476,7 @@ struct App
 		metrics.clear();
 		structureFor.clear();
 		LoadProjectSettings();
+		toolsDirty = true;
 		Refresh();
 	}
 
@@ -535,6 +539,8 @@ struct App
 		attached = st.has_value();
 		state = st ? *st : json::object();
 		legacyAttached = !attached && fs::exists(project / "__dwo-lens" / "state.json", ec);
+		lensInstalled = fs::exists(project / "Plugins" / "__DwoLensInspector" / "DwoLensInspector.uplugin", ec);
+		ciInstalled = attached && fs::exists(ForgeDir() / "ci.json", ec);
 		LoadCanvasReports();
 		if (auto c = ReadJson(home / "tools" / "catalog.json")) catalog = *c;
 		LoadRuns();
@@ -862,10 +868,12 @@ struct App
 		SetEnvironmentVariableW(L"DWO_LENS_FROM_BAT", nullptr);
 		std::string verb = command.substr(0, command.find(' '));
 		std::string rest = command.size() > verb.size() ? command.substr(verb.size()) : "";
+		// PC-wide commands (the local CI's Jenkins) also run with no project open: against the install folder.
+		fs::path target = project.empty() ? home : project;
 		std::wstring ps = L"powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"" + (home / "tools" / "forge.ps1").wstring() +
-		                  L"\" -Command " + ToWide(verb) + L" -Project \"" + project.wstring() + L"\"" + ToWide(rest);
+		                  L"\" -Command " + ToWide(verb) + L" -Project \"" + target.wstring() + L"\"" + ToWide(rest);
 		runner.logDir = settingsDir / "logs";
-		if (runner.Start(ps, project, "dwo-forge " + command))
+		if (runner.Start(ps, target, "dwo-forge " + command))
 		{
 			message.clear();
 			lastCommand = command;
@@ -886,6 +894,7 @@ struct App
 		{
 			std::string done = lastCommand;
 			int code = runner.exitCode;
+			toolsDirty = true;
 			Refresh();
 			int line = -1;
 			for (int i = 0; i < kLineCount; ++i)
@@ -903,7 +912,8 @@ struct App
 			{
 				fs::path logFile = runner.logFile;
 				std::string verb = done.substr(0, done.find(' '));
-				std::string what = verb == "attach" ? "프로젝트 연동" : verb == "uninstall" ? "dwo-Forge 제거" : verb == "update" ? "dwo-Forge 업데이트"
+				std::string what = verb == "connect" ? "프로젝트 연결" : verb == "attach" ? "프로젝트 연결 (Lens 포함)" : verb == "uninstall" ? "연결 해제"
+				                 : verb == "update" ? "연결 새로 고침과 도구 업데이트" : verb == "tool" ? ToolCommandName(done)
 				                 : verb == "canvas-import" ? "DwoCanvas 가져오기" : verb == "canvas-validate" ? "디자인 파일 검사"
 				                 : verb == "canvas-install" ? "DwoCanvas 설치" : verb == "canvas-remove" ? "DwoCanvas 제거"
 				                 : verb == "sm-install" ? "DwoStateMonitor 설치" : verb == "sm-remove" ? "DwoStateMonitor 제거"
@@ -950,6 +960,16 @@ struct App
 			bool hello = store.Apply(m);
 			if (hello || m.connected) SendLiveSettings(m.client);
 		}
+	}
+
+	// "tool install lens" -> "Lens 설치"
+	static std::string ToolCommandName(const std::string& command)
+	{
+		std::istringstream in(command);
+		std::string verb, action, id;
+		in >> verb >> action >> id;
+		std::string name = id == "lens" ? "Lens" : id == "statemonitor" ? "DwoStateMonitor" : id == "canvas" ? "DwoCanvas" : id == "ci" ? "로컬 CI" : id == "--all" ? "모든 도구" : id;
+		return name + (action == "install" ? " 설치" : action == "update" ? " 업데이트" : action == "remove" ? " 제거" : " " + action);
 	}
 
 	static Activity ActivityOfLine(int line)

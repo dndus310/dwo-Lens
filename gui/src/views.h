@@ -109,7 +109,7 @@ static void RunLineButton(App& app, int line, bool primary = true, const char* l
 	ImGui::BeginDisabled(!app.attached);
 	bool clicked = primary ? PrimaryButton(text.c_str()) : ImGui::Button(text.c_str());
 	ImGui::EndDisabled();
-	Tooltip(app.attached ? kLines[line].desc : "먼저 프로젝트를 연동하세요.");
+	Tooltip(app.attached ? kLines[line].desc : "먼저 런처에서 프로젝트를 연결하세요.");
 	if (clicked) app.Run(kLines[line].command);
 }
 
@@ -153,7 +153,7 @@ static void DrawOverviewNav(App& app)
 	TextBold(app.projectName);
 	TextDim(app.isCodeProject ? "C++ 프로젝트" : "Blueprint 전용 프로젝트");
 	ImGui::Spacing();
-	KeyValue("상태", app.attached ? "연동됨" : app.legacyAttached ? "dwo-Lens 1.x 연동 · 이전 중" : "연동 안 됨", 70);
+	KeyValue("상태", app.attached ? (app.lensInstalled ? "연결됨 · Lens 설치됨" : "연결됨 · Lens 설치 안 됨") : app.legacyAttached ? "dwo-Lens 1.x · 이전 중" : "연결 안 됨", 70);
 	if (app.attached)
 	{
 		KeyValue("엔진", "UE " + app.Engine(), 70);
@@ -161,15 +161,15 @@ static void DrawOverviewNav(App& app)
 		{
 			std::string at = Str(app.state, "attachedAt").substr(0, 16);
 			if (at.size() > 10 && at[10] == 'T') at[10] = ' ';
-			KeyValue("연동 일시", at, 70);
+			KeyValue("연결 일시", at, 70);
 		}
 	}
 	KeyValue("경로", PathUtf8(app.project), 70);
 	ImGui::Spacing();
 	if (!app.attached)
 	{
-		if (PrimaryButton((std::string(ICON_LINK) + "  이 프로젝트에 연동").c_str(), ImVec2(-FLT_MIN, 0))) app.Run("attach");
-		Tooltip("Lens 검사 플러그인과 __dwo-forge 폴더를 넣습니다. .uproject와 기존 파일은 건드리지 않고, 도구 > 제거로 모두 지울 수 있습니다.");
+		if (PrimaryButton((std::string(ICON_HOME) + "  런처에서 연결").c_str(), ImVec2(-FLT_MIN, 0))) app.requestActivity = Activity::Launcher;
+		Tooltip("런처에서 프로젝트를 연결하고 설치할 도구를 고릅니다.");
 	}
 	SectionHeader("최근 프로젝트");
 	for (auto& r : app.recent)
@@ -191,7 +191,7 @@ static void DrawOverviewMain(App& app)
 {
 	if (!app.hasUProject)
 	{
-		if (EmptyState(ICON_FOLDER, "프로젝트를 여세요", "언리얼 프로젝트 폴더(.uproject가 있는 폴더)를 고르거나 이 창으로 끌어다 놓으세요. 연동은 버튼 하나면 됩니다.", "프로젝트 열기..."))
+		if (EmptyState(ICON_FOLDER, "프로젝트를 여세요", "언리얼 프로젝트 폴더(.uproject가 있는 폴더)를 고르거나 이 창으로 끌어다 놓으세요.", "프로젝트 열기..."))
 		{
 			fs::path p;
 			if (PickOpen(g_hwnd, true, L".uproject가 있는 프로젝트 폴더 선택", p)) app.SetProject(p);
@@ -202,7 +202,7 @@ static void DrawOverviewMain(App& app)
 	ImGui::PushFont(g_fonts.big);
 	ImGui::TextUnformatted(app.projectName.c_str());
 	ImGui::PopFont();
-	std::string sub = (app.attached ? "UE " + app.Engine() + "  ·  " : std::string("연동되지 않음  ·  ")) +
+	std::string sub = (app.attached ? "UE " + app.Engine() + "  ·  " : std::string("연결되지 않음  ·  ")) +
 	                  (app.isCodeProject ? "C++" : "Blueprint 전용") + (app.attached ? "  ·  dwo-Forge " + app.SystemCommit() : "");
 	TextDim(sub);
 	float right = ImGui::GetWindowContentRegionMax().x;
@@ -225,8 +225,14 @@ static void DrawOverviewMain(App& app)
 	}
 	if (!app.attached)
 	{
-		if (EmptyState(ICON_LINK, "아직 연동되지 않은 프로젝트입니다", "연동하면 프로젝트 폴더에 __dwo-forge 폴더, __dwo-forge.bat, 미리 빌드된 검사 플러그인이 추가됩니다. git 프로젝트에서는 변경 목록에 나타나지 않으며, 도구 > dwo-Forge 제거로 흔적 없이 지울 수 있습니다.", "연동"))
-			app.Run("attach");
+		if (EmptyState(ICON_LINK, "dwo-Forge에 연결되지 않은 프로젝트입니다", "런처에서 프로젝트를 연결하고 Lens를 설치하면 검사를 실행할 수 있습니다.", "런처 열기"))
+			app.requestActivity = Activity::Launcher;
+		return;
+	}
+	if (!app.lensInstalled && app.runs.empty())
+	{
+		if (EmptyState(ICON_LAYERS, "Lens가 설치되지 않았습니다", "Lens는 프로젝트의 아키텍처·문제·검증·로그·성능을 검사하는 도구입니다. 설치하면 편집기에서만 쓰이는 숨김 플러그인 Plugins/__DwoLensInspector가 추가됩니다.", "Lens 설치"))
+			app.Run("tool install lens");
 		return;
 	}
 
@@ -407,10 +413,10 @@ static void DrawOverviewInspector(App& app)
 	bool connected = false;
 	for (auto& s : app.store.sessions) connected |= !s.sources.empty();
 	Step steps[] = {
-		{ "프로젝트 연동", app.attached, "연동", [&] { app.Run("attach"); } },
+		{ "Lens 설치", app.lensInstalled, "설치", [&] { if (app.attached) app.Run("tool install lens"); else app.requestActivity = Activity::Launcher; } },
 		{ "아키텍처 분석 실행", analyzed, "실행", [&] { app.Run("analyze"); } },
 		{ "검증 실행 (에디터 닫고)", verified, "실행", [&] { app.Run("verify"); } },
-		{ "DwoStateMonitor 설치", app.stateMonitor != 0, "설치", [&] { app.Run("sm-install"); } },
+		{ "DwoStateMonitor 설치", app.stateMonitor != 0, "설치", [&] { app.Run("tool install statemonitor"); } },
 		{ "게임을 실행해 상태 받기", connected, "열기", [&] { app.requestActivity = Activity::Live; } },
 	};
 	for (int i = 0; i < 5; ++i)
@@ -2159,7 +2165,7 @@ static void DrawHistoryInspector(App& app)
 
 // ============================================================================ tools
 
-// The three tools dwo-Forge provides, in the order the activity bar shows them.
+// Catalog groups (the "tool" values in tools/catalog.json).
 struct ForgeToolDef
 {
 	const char* key;        // catalog "tool" value
@@ -2172,7 +2178,7 @@ static const ForgeToolDef kForgeTools[] = {
 	{ "lens", ICON_LAYERS, "Lens", "분석·검증 검사: 아키텍처, 문제, 검증, 로그, 성능·용량 (DwoLensInspector)" },
 	{ "statemonitor", ICON_EYE, "DwoStateMonitor", "실행 중인 게임의 상태를 실시간으로 보는 런타임 플러그인" },
 	{ "canvas", ICON_CANVAS, "DwoCanvas", "디자인 파일(*.dwocanvas.json)을 UMG 위젯 블루프린트로 가져오는 플러그인" },
-	{ "forge", ICON_FORGE, "dwo-Forge", "프로젝트 연동, 업데이트, 제어판, 자체 검증" },
+	{ "forge", ICON_FORGE, "dwo-Forge", "프로젝트 연결, 도구 설치·업데이트, 런처, 자체 검증" },
 };
 
 static const char* ToolNameOf(const std::string& key)
@@ -2182,179 +2188,22 @@ static const char* ToolNameOf(const std::string& key)
 	return "기타";
 }
 
-static void DrawToolsNav(App& app)
+// The tool catalog (tools/catalog.json): every check and integration the tools provide, shown in the launcher.
+static void DrawCatalogTable(App& app)
 {
-	SectionHeader("도구");
-	std::map<std::string, int> counts;
-	for (auto& t : Arr(app.catalog, "tools")) ++counts[Str(t, "tool", "lens")];
-	if (ImGui::Selectable(Fmt("전체  (%d)", (int)Arr(app.catalog, "tools").size()).c_str(), ui.toolCategory.empty())) ui.toolCategory.clear();
-	for (auto& def : kForgeTools)
-	{
-		std::string label = Fmt("%s  %s  (%d)", def.icon, def.name, counts[def.key]);
-		if (ImGui::Selectable(label.c_str(), ui.toolCategory == def.key)) ui.toolCategory = def.key;
-		Tooltip(def.tagline);
-	}
-	SectionHeader("관리");
-	bool idle = !app.runner.running;
-	ImGui::BeginDisabled(!idle || !app.hasUProject);
-	float w = -FLT_MIN;
-	if (!app.attached)
-	{
-		if (PrimaryButton((std::string(ICON_LINK) + "  프로젝트 연동").c_str(), ImVec2(w, 0))) app.Run("attach");
-	}
-	else
-	{
-		if (ImGui::Button((std::string(ICON_SETTINGS) + "  환경 점검").c_str(), ImVec2(w, 0))) app.Run("doctor");
-		if (ImGui::Button((std::string(ICON_INFO) + "  상태 확인").c_str(), ImVec2(w, 0))) app.Run("status");
-		if (ImGui::Button((std::string(ICON_SYNC) + "  dwo-Forge 업데이트").c_str(), ImVec2(w, 0))) app.Run("update");
-		Tooltip("프로젝트에 설치된 플러그인과 실행 파일을 이 dwo-Forge 버전으로 맞춥니다. dwo-Lens 1.x의 StateMonitor도 DwoStateMonitor로 옮깁니다.");
-		if (DangerButton((std::string(ICON_DELETE) + "  dwo-Forge 제거").c_str(), ImVec2(w, 0))) app.confirmDetach = true;
-	}
-	ImGui::EndDisabled();
-}
-
-// Card frame shared by the three tool cards: icon + name + state pill, description, then the caller's buttons.
-static bool BeginToolCard(const char* id, const char* icon, const char* name, float width, float height)
-{
-	ImGui::BeginChild(id, ImVec2(width, height), ImGuiChildFlags_Borders, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
-	ImGui::PushFont(g_fonts.title);
-	ImGui::TextUnformatted((std::string(icon) + "  " + name).c_str());
-	ImGui::PopFont();
+	static const char* const kinds[] = { "전체", "Lens", "DwoStateMonitor", "DwoCanvas", "dwo-Forge" };
+	static const char* const keys[] = { "", "lens", "statemonitor", "canvas", "forge" };
+	int kind = 0;
+	for (int i = 0; i < 5; ++i) if (ui.toolCategory == keys[i]) kind = i;
+	if (Segmented("##catkind", kinds, 5, kind)) ui.toolCategory = keys[kind];
 	ImGui::SameLine();
-	return true;
-}
-
-static void LensCard(App& app, float width, float height)
-{
-	BeginToolCard("lenscard", ICON_LAYERS, "Lens", width, height);
-	if (app.attached) Pill("연동됨", col::Pass);
-	else if (app.legacyAttached) Pill("dwo-Lens 1.x · 이전 중", col::Warn);
-	else Pill("연동 안 됨", col::Muted);
-	ImGui::PushTextWrapPos(0);
-	TextDim("analyze · verify · logs · smoke · perf · sizes · trace. 숨김 플러그인 DwoLensInspector가 커맨드릿으로 리플렉션·BP·에셋을 수집합니다.");
-	ImGui::PopTextWrapPos();
-	int done = 0, failed = 0;
-	for (int i = 0; i < kLineCount; ++i)
-		if (const RunInfo* r = app.Latest(i)) { ++done; failed += r->verdict == "fail"; }
-	TextDim(Fmt("검사 %d개 중 %d개 실행함 · 실패 %d", kLineCount, done, failed));
-	ImGui::SetCursorPosY(ImGui::GetWindowHeight() - ImGui::GetFrameHeight() - S(10));
-	ImGui::BeginDisabled(app.runner.running || !app.hasUProject);
-	if (!app.attached) { if (PrimaryButton("연동")) app.Run("attach"); }
-	else if (PrimaryButton("기본 검사 실행")) app.RunAll();
-	ImGui::EndDisabled();
-	ImGui::SameLine();
-	if (ImGui::Button("대시보드")) app.requestActivity = Activity::Overview;
-	ImGui::EndChild();
-}
-
-static void StateMonitorCard(App& app, float width, float height)
-{
-	BeginToolCard("smcard", ICON_EYE, "DwoStateMonitor", width, height);
-	if (app.stateMonitor == 1 && app.stateMonitorLegacy) Pill("dwo-Lens 1.x 설치 · 업데이트 필요", col::Warn);
-	else if (app.stateMonitor == 1) Pill(app.stateMonitorMode == "runtime" ? "설치됨 · 런타임" : "설치됨 · 에디터 전용", col::Pass);
-	else if (app.stateMonitor == 2) Pill("프로젝트에 포함", col::Info);
-	else Pill("설치 안 됨", col::Muted);
-	ImGui::PushTextWrapPos(0);
-	TextDim("실행 중인 게임의 상태(GameMode, GameState, 플레이어, Pawn, 컴포넌트, 제출한 USTRUCT)를 실시간으로 받아 그래프·상태 전이·타임라인으로 봅니다. "
-	        "코드 없이 동작하며 Plugins/__DwoStateMonitor에 숨겨 설치됩니다.");
-	ImGui::PopTextWrapPos();
-	ImGui::SetCursorPosY(ImGui::GetWindowHeight() - ImGui::GetFrameHeight() - S(10));
-	bool idle = !app.runner.running;
-	ImGui::BeginDisabled(!idle || !app.attached || app.stateMonitor == 2);
-	if (app.stateMonitor == 1 && app.stateMonitorLegacy)
-	{
-		if (PrimaryButton("DwoStateMonitor로 옮기기")) app.Run("update");
-		Tooltip("Plugins/__StateMonitor(dwo-Lens 1.x)를 같은 모드의 Plugins/__DwoStateMonitor로 바꿉니다. 저장된 BP는 CoreRedirects로 그대로 열립니다.");
-	}
-	else if (app.stateMonitor == 1)
-	{
-		if (ImGui::Button("제거")) app.Run("sm-remove");
-		ImGui::SameLine();
-		if (app.stateMonitorMode != "runtime" && ImGui::Button("런타임 모드로")) { app.Run("sm-remove"); app.Run("sm-install --runtime"); }
-	}
-	else
-	{
-		if (PrimaryButton("설치 (에디터·PIE)")) app.Run("sm-install");
-		Tooltip("에디터와 PIE, 에디터에서 띄운 독립 실행 게임에서 동작합니다. 패키지 빌드에는 영향이 없습니다.");
-		ImGui::SameLine();
-		if (ImGui::Button("설치 (패키지 포함)")) app.Run("sm-install --runtime");
-		Tooltip("패키지 게임에서도 동작합니다. .uproject(BP 전용) 또는 Build.cs(C++)에 DwoStateMonitor를 등록해야 합니다.");
-	}
-	ImGui::EndDisabled();
-	ImGui::SameLine();
-	if (ImGui::Button("열기##sm")) app.requestActivity = Activity::Live;
-	ImGui::EndChild();
-}
-
-static void CanvasCard(App& app, float width, float height)
-{
-	BeginToolCard("canvascard", ICON_CANVAS, "DwoCanvas", width, height);
-	if (app.canvas == 1) Pill("설치됨" + (app.canvasVersion.empty() ? std::string() : " · " + app.canvasVersion), col::Pass);
-	else if (app.canvas == 2) Pill("프로젝트에 포함", col::Info);
-	else Pill("설치 안 됨", col::Muted);
-	ImGui::PushTextWrapPos(0);
-	TextDim("Figma·HTML 등에서 내보낸 *.dwocanvas.json을 위젯 블루프린트 디자이너 트리로 가져옵니다. 다시 가져와도 UE에서 고친 내용은 유지됩니다. "
-	        "Plugins/__DwoCanvas에 숨겨 설치되며, DwoCanvas나 dwo-Forge를 제거하면 함께 지워집니다.");
-	ImGui::PopTextWrapPos();
-	ImGui::SetCursorPosY(ImGui::GetWindowHeight() - ImGui::GetFrameHeight() - S(10));
-	if (app.canvas == 0)
-	{
-		ImGui::BeginDisabled(app.runner.running || !app.attached);
-		if (PrimaryButton("설치")) app.Run("canvas-install");
-		ImGui::EndDisabled();
-		Tooltip(app.attached ? "Plugins/__DwoCanvas에 설치합니다 (git에서 숨김)." : "먼저 프로젝트를 연동하세요.");
-		ImGui::SameLine();
-	}
-	if (ImGui::Button("열기##canvas")) app.requestActivity = Activity::Canvas;
-	ImGui::EndChild();
-}
-
-static void DrawToolsMain(App& app)
-{
-	ViewHeader(ICON_PUZZLE, "도구", "dwo-Forge가 제공하는 세 도구와 Lens 검사, 도구 카탈로그");
-	SectionHeader("제공 도구");
-	{
-		float avail = ImGui::GetContentRegionAvail().x;
-		int columns = avail > S(760) ? 3 : 1;
-		float w = (avail - (columns - 1) * ImGui::GetStyle().ItemSpacing.x) / columns;
-		float h = columns > 1 ? S(196) : S(128);
-		LensCard(app, w, h);
-		if (columns > 1) ImGui::SameLine();
-		StateMonitorCard(app, w, h);
-		if (columns > 1) ImGui::SameLine();
-		CanvasCard(app, w, h);
-	}
-	SectionHeader("Lens 검사");
-	float avail = ImGui::GetContentRegionAvail().x;
-	int columns = ImMax(1, (int)(avail / S(300)));
-	float w = (avail - (columns - 1) * ImGui::GetStyle().ItemSpacing.x) / columns;
-	for (int i = 0; i < kLineCount; ++i)
-	{
-		if (i % columns) ImGui::SameLine();
-		ImGui::PushID(i);
-		ImGui::BeginChild("line", ImVec2(w, S(118)), ImGuiChildFlags_Borders);
-		TextBold(std::string(kLines[i].icon) + "  " + kLines[i].name);
-		ImGui::SameLine();
-		TextDim(kLines[i].command);
-		ImGui::PushTextWrapPos(0);
-		TextDim(kLines[i].desc);
-		ImGui::PopTextWrapPos();
-		ImGui::SetCursorPosY(ImGui::GetWindowHeight() - ImGui::GetFrameHeight() - S(10));
-		ImGui::BeginDisabled(!app.attached);
-		if (ImGui::SmallButton((std::string(ICON_PLAY) + " 실행").c_str())) app.Run(kLines[i].command);
-		ImGui::EndDisabled();
-		if (const RunInfo* r = app.Latest(i)) { ImGui::SameLine(); VerdictPill(r->verdict); ImGui::SameLine(); TextDim(StampOf(r->id)); }
-		ImGui::EndChild();
-		ImGui::PopID();
-	}
-	SectionHeader("도구 카탈로그", "tools/catalog.json");
-	SearchBox("##toolfilter", ui.filter, sizeof(ui.filter), ICON_SEARCH "  도구 검색", S(300));
+	SearchBox("##toolfilter", ui.filter, sizeof(ui.filter), ICON_SEARCH "  검색", S(240));
 	if (ImGui::BeginTable("catalog", 4, kTable))
 	{
 		ImGui::TableSetupScrollFreeze(0, 1);
 		ImGui::TableSetupColumn("상태", ImGuiTableColumnFlags_WidthFixed, S(70));
-		ImGui::TableSetupColumn("도구", ImGuiTableColumnFlags_WidthStretch, 1.2f);
-		ImGui::TableSetupColumn("소속", ImGuiTableColumnFlags_WidthFixed, S(130));
+		ImGui::TableSetupColumn("항목", ImGuiTableColumnFlags_WidthStretch, 1.2f);
+		ImGui::TableSetupColumn("도구", ImGuiTableColumnFlags_WidthFixed, S(150));
 		ImGui::TableSetupColumn("설명", ImGuiTableColumnFlags_WidthStretch, 2.5f);
 		ImGui::TableHeadersRow();
 		for (auto& t : Arr(app.catalog, "tools"))
@@ -2369,40 +2218,11 @@ static void DrawToolsMain(App& app)
 			std::string status = Str(t, "status");
 			Pill(status == "ready" ? "사용 가능" : status == "planned" ? "계획" : status, status == "ready" ? col::Pass : col::Muted);
 			ImGui::TableNextColumn();
-			if (ImGui::Selectable(Str(t, "name", id).c_str(), ui.toolSel == id, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowOverlap)) ui.toolSel = id;
+			ImGui::TextUnformatted(Str(t, "name", id).c_str());
 			ImGui::TableNextColumn(); TextDim(std::string(ToolNameOf(tool)) + " · " + Str(t, "category", Str(t, "station")));
 			ImGui::TableNextColumn(); ImGui::TextWrapped("%s", Str(t, "description", Str(t, "invocation")).c_str());
 			ImGui::PopID();
 		}
 		ImGui::EndTable();
 	}
-}
-
-static void DrawToolsInspector(App& app)
-{
-	for (auto& t : Arr(app.catalog, "tools"))
-		if (Str(t, "id") == ui.toolSel)
-		{
-			Title(Str(t, "name", ui.toolSel));
-			TextDim(std::string(ToolNameOf(Str(t, "tool", "lens"))) + " · " + ui.toolSel);
-			ImGui::Spacing();
-			DetailJson(t);
-			return;
-		}
-	SectionHeader("dwo-Forge");
-	KeyValue("저장소", PathUtf8(app.home), 70);
-	KeyValue("버전", app.SystemCommit(), 70);
-	KeyValue("카탈로그", std::to_string(Arr(app.catalog, "tools").size()) + "개 도구", 70);
-	SectionHeader("제공 도구");
-	for (auto& def : kForgeTools)
-	{
-		if (std::string(def.key) == "forge") continue;
-		TextBold(std::string(def.icon) + "  " + def.name);
-		ImGui::PushTextWrapPos(0);
-		TextDim(def.tagline);
-		ImGui::PopTextWrapPos();
-	}
-	ImGui::Spacing();
-	if (ImGui::Button("가이드 문서 열기")) OpenWithShell(app.home / "docs" / "guide.html");
-	if (ImGui::Button("README 열기")) OpenWithShell(app.home / "README.md");
 }

@@ -272,53 +272,42 @@ static Ui& State()
 }
 } // namespace ci
 
+// Set to a launcher page (1 = Jenkins) to open it from a tool screen; the launcher consumes it.
+static int g_launcherPageRequest = -1;
+
 static void DrawCiNav(App& app)
 {
 	ci::Client& c = ci::Instance();
 	c.Ensure(app.hasUProject ? app.project : fs::path());
 	ci::Snapshot s = c.Get();
-	SectionHeader("로컬 CI (Jenkins)");
+	float w = ImGui::GetContentRegionAvail().x;
+	bool idle = !app.runner.running;
+	SectionHeader("Jenkins (PC)");
 	if (!s.installed) Pill("설치 안 됨", col::Muted);
 	else if (s.running) Pill(Fmt("실행 중 · :%d", s.port), col::Pass, true);
 	else Pill("중지됨", col::Warn);
 	if (!s.version.empty()) { ImGui::SameLine(); TextDim("Jenkins " + s.version); }
 	ImGui::Spacing();
-	bool idle = !app.runner.running;
-	ImGui::BeginDisabled(!app.hasUProject);
-	float w = ImGui::GetContentRegionAvail().x;
-	if (!s.installed)
-	{
-		if (PrimaryButton((std::string(ICON_DOWNLOAD) + "  설치 (오프라인 번들)").c_str(), ImVec2(w, 0)))
-		{
-			fs::path p;
-			if (PickOpen(g_hwnd, false, L"dwo-Forge CI 번들 선택", p, L"dwo-Forge CI 번들 (dwo-forge-ci-bundle-*.zip)", L"dwo-forge-ci-bundle-*.zip;*.zip"))
-				app.Run("ci-install --bundle \"" + PathUtf8(p) + "\"");
-		}
-		Tooltip("인터넷이 되는 PC에서 dwo-Forge.bat ci-bundle로 만든 zip을 고릅니다. 설치할 때 네트워크에 접속하지 않습니다.");
-	}
-	else
-	{
-		if (s.running)
-		{
-			if (ImGui::Button((std::string(ICON_STOP) + "  중지").c_str(), ImVec2(w * 0.5f - S(4), 0))) app.Run("ci-stop");
-			ImGui::SameLine();
-			if (ImGui::Button((std::string(ICON_OPEN) + "  Jenkins 열기").c_str(), ImVec2(-FLT_MIN, 0)))
-				ShellExecuteW(nullptr, L"open", ToWide(Fmt("http://127.0.0.1:%d/", s.port)).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-			Tooltip("Jenkins 화면은 선택 사항입니다. 계정은 아래 '계정 복사'로 복사합니다.");
-		}
-		else if (PrimaryButton((std::string(ICON_PLAY) + "  시작").c_str(), ImVec2(w, 0))) app.Run("ci-start");
-	}
+	ImGui::BeginDisabled(!idle);
+	if (s.installed && !s.running && PrimaryButton((std::string(ICON_PLAY) + "  시작").c_str(), ImVec2(w, 0))) app.Run("ci-start");
 	ImGui::EndDisabled();
-	if (!app.hasUProject) TextDim("프로젝트를 열면 로컬 CI를 설치하고 쓸 수 있습니다.");
+	if (s.installed && s.running && ImGui::Button((std::string(ICON_OPEN) + "  Jenkins 화면 열기").c_str(), ImVec2(w, 0)))
+		ShellExecuteW(nullptr, L"open", ToWide(Fmt("http://127.0.0.1:%d/", s.port)).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+	if (ImGui::Button((std::string(ICON_SETTINGS) + "  Jenkins 관리 (런처)").c_str(), ImVec2(w, 0)))
+	{
+		g_launcherPageRequest = 1;
+		app.requestActivity = Activity::Launcher;
+	}
+	Tooltip("설치·업데이트·제거, 계정, 이 Jenkins를 쓰는 프로젝트 목록은 런처의 PC 구성요소에 있습니다.");
 
 	SectionHeader("이 프로젝트");
 	if (s.job.empty())
 	{
-		TextDim("CI 작업이 없습니다.");
-		ImGui::BeginDisabled(!s.installed || !app.attached || !idle);
-		if (PrimaryButton((std::string(ICON_ADD) + "  CI 작업 등록").c_str(), ImVec2(w, 0))) app.Run("ci-job");
+		TextDim("로컬 CI가 설치되지 않았습니다.");
+		ImGui::BeginDisabled(!app.attached || !idle);
+		if (PrimaryButton((std::string(ICON_ADD) + "  로컬 CI 설치").c_str(), ImVec2(w, 0))) app.Run("tool install ci");
 		ImGui::EndDisabled();
-		Tooltip("Jenkins에 이 프로젝트의 파이프라인(컴파일 → Lens 검사 → 패키지)을 만들고, git 훅으로 push·merge·브랜치 생성·커밋 때 자동 빌드합니다.");
+		Tooltip("Jenkins에 이 프로젝트의 파이프라인(컴파일 → Lens 검사 → 패키지)을 만들고, git 훅으로 push·merge·브랜치 생성·커밋 때 자동 빌드합니다. PC에 Jenkins가 없으면 오프라인 번들로 먼저 설치합니다.");
 	}
 	else
 	{
@@ -326,31 +315,14 @@ static void DrawCiNav(App& app)
 		KeyValue("보관", s.keepBuilds ? Fmt("최근 %d개 (넘으면 오래된 것부터 삭제)", s.keepBuilds) : std::string("-"), 60);
 		KeyValue("git 훅", s.hooks.empty() ? std::string("없음 (git 저장소 아님)") : std::to_string(s.hooks.size()) + "개", 60);
 		ImGui::BeginDisabled(!idle);
-		if (ImGui::Button((std::string(ICON_SYNC) + "  설정 다시 적용").c_str(), ImVec2(w, 0))) app.Run("ci-job");
-		Tooltip("__dwo-forge/config.json의 \"ci\" 설정(트리거, 보관 개수, Lens 검사 목록)을 작업과 훅에 다시 적용합니다.");
-		if (ImGui::Button((std::string(ICON_DELETE) + "  CI 작업 해제").c_str(), ImVec2(w, 0))) app.Run("ci-job --remove");
-		Tooltip("Jenkins 작업과 git 훅을 지웁니다. Jenkins 자체는 그대로 둡니다.");
+		if (ImGui::Button((std::string(ICON_SYNC) + "  설정 다시 적용").c_str(), ImVec2(w, 0))) app.Run("tool update ci");
+		Tooltip("__dwo-forge/config.json의 \"ci\" 설정(트리거, 보관 개수, Lens 검사 목록)과 이 dwo-Forge의 파이프라인을 작업과 훅에 다시 적용합니다.");
 		ImGui::EndDisabled();
-	}
-
-	if (s.installed)
-	{
-		SectionHeader("관리");
 		if (!s.user.empty() && ImGui::Button((std::string(ICON_COPY) + "  계정 복사").c_str(), ImVec2(w, 0)))
 		{
 			ImGui::SetClipboardText((s.user + " / " + s.password).c_str());
 			PushToast("복사함", "Jenkins 계정과 비밀번호를 클립보드에 복사했습니다.", col::Info);
 		}
-		ImGui::BeginDisabled(!idle || !app.hasUProject);
-		if (ImGui::Button((std::string(ICON_DOWNLOAD) + "  번들로 업데이트").c_str(), ImVec2(w, 0)))
-		{
-			fs::path p;
-			if (PickOpen(g_hwnd, false, L"dwo-Forge CI 번들 선택", p, L"dwo-Forge CI 번들 (dwo-forge-ci-bundle-*.zip)", L"dwo-forge-ci-bundle-*.zip;*.zip"))
-				app.Run("ci-install --bundle \"" + PathUtf8(p) + "\"");
-		}
-		if (DangerButton((std::string(ICON_DELETE) + "  로컬 CI 제거").c_str(), ImVec2(w, 0))) app.Run("ci-remove --keep-data");
-		Tooltip("Jenkins, 모든 프로젝트의 CI 작업과 git 훅을 지웁니다. 빌드 기록은 %LOCALAPPDATA%\\dwo-Forge\\uninstalled로 옮겨 둡니다.");
-		ImGui::EndDisabled();
 	}
 }
 

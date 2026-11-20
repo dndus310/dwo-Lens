@@ -69,10 +69,10 @@ static void DrawCanvasNav(App& app)
 	if (app.canvas == 0)
 	{
 		ImGui::BeginDisabled(!idle || !app.attached);
-		if (PrimaryButton((std::string(ICON_DOWNLOAD) + "  설치").c_str(), ImVec2(-FLT_MIN, 0))) app.Run("canvas-install");
+		if (PrimaryButton((std::string(ICON_DOWNLOAD) + "  설치").c_str(), ImVec2(-FLT_MIN, 0))) app.Run("tool install canvas");
 		ImGui::EndDisabled();
 		Tooltip(app.attached ? "미리 빌드한 에디터 바이너리와 소스를 Plugins/__DwoCanvas에 복사합니다. git 변경 목록에 나타나지 않으며, DwoCanvas나 dwo-Forge를 제거하면 함께 지워집니다."
-		                     : "먼저 프로젝트를 연동하세요.");
+		                     : "먼저 런처에서 프로젝트를 연결하세요.");
 	}
 	else
 	{

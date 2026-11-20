@@ -2,13 +2,15 @@
 # invoked by dwo-Forge.bat, the GUI, or the project's __dwo-forge.bat launcher.
 # Windows PowerShell 5.1 compatible. Never modifies tracked project files.
 #
-# dwo-Forge offers three tools for an Unreal project:
-#   Lens            analysis lines (analyze, verify, logs, smoke, perf, sizes, trace) + DwoLensInspector commandlet
-#   DwoStateMonitor live runtime state viewer plugin (sm-install, sm-remove)
-#   DwoCanvas       design file -> UMG Widget Blueprint importer (canvas-install, canvas-remove, canvas-import, canvas-validate)
+# dwo-Forge is a launcher: 'connect' prepares a project, then tools are installed, updated and removed one by one
+# ('tool install|update|remove <id>', 'tools' lists versions and updates):
+#   lens          Lens: analysis lines (analyze, verify, logs, smoke, perf, sizes, trace) + DwoLensInspector commandlet
+#   statemonitor  DwoStateMonitor: live runtime state viewer plugin (also sm-install, sm-remove)
+#   canvas        DwoCanvas: design file -> UMG Widget Blueprint importer (also canvas-install, canvas-remove, canvas-import)
+#   ci            Local CI: Jenkins job + git hooks for this project (tools\ci.ps1; the Jenkins itself is PC-wide)
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('attach', 'update', 'status', 'analyze', 'verify', 'logs', 'smoke', 'perf', 'sizes', 'trace', 'play', 'tools', 'gui',
+    [ValidateSet('connect', 'tool', 'attach', 'update', 'status', 'analyze', 'verify', 'logs', 'smoke', 'perf', 'sizes', 'trace', 'play', 'tools', 'gui',
                  'sm-install', 'sm-remove', 'canvas-install', 'canvas-remove', 'canvas-import', 'canvas-validate',
                  'doctor', 'uninstall', 'detach', 'compile', 'package',
                  'ci-job', 'ci-trigger', 'ci-hook', 'ci-hooks', 'ci-status', 'ci-install', 'ci-start', 'ci-stop', 'ci-remove', 'ci-bundle')]
@@ -72,6 +74,35 @@ function Get-UProject {
 }
 
 function Resolve-Engine([string]$Association) {
+    $e = Find-Engine $Association
+    if (-not $e) { Fail "Cannot find the engine for EngineAssociation '$Association'." }
+    return $e
+}
+
+function Get-InstalledEngines {
+    # Every engine this PC knows: launcher installs and source builds registered by UnrealVersionSelector.
+    $list = @()
+    $dat = Join-Path $env:ProgramData 'Epic\UnrealEngineLauncher\LauncherInstalled.dat'
+    if (Test-Path $dat) {
+        foreach ($i in @((Get-Content -Raw $dat | ConvertFrom-Json).InstallationList | Where-Object { $_.AppName -like 'UE_*' })) {
+            $list += [ordered]@{ association = $i.AppName.Substring(3); root = $i.InstallLocation }
+        }
+    }
+    $key = 'HKCU:\Software\Epic Games\Unreal Engine\Builds'
+    if (Test-Path $key) {
+        foreach ($p in (Get-ItemProperty $key).PSObject.Properties | Where-Object { $_.Name -match '^\{.+\}$' }) {
+            $list += [ordered]@{ association = $p.Name; root = "$($p.Value)" }
+        }
+    }
+    foreach ($e in $list) {
+        $f = Join-Path $e.root 'Engine\Build\Build.version'
+        $e['version'] = $(if (Test-Path $f) { $v = Get-Content -Raw $f | ConvertFrom-Json; "$($v.MajorVersion).$($v.MinorVersion).$($v.PatchVersion)" } else { '' })
+    }
+    return @($list | Where-Object { $_.version })
+}
+
+function Find-Engine([string]$Association) {
+    # Like Resolve-Engine, but $null instead of stopping (status and tool listings must work without an engine).
     $root = $null
     if ($Association -match '^\{.+\}$') {
         $key = 'HKCU:\Software\Epic Games\Unreal Engine\Builds'
@@ -88,9 +119,10 @@ function Resolve-Engine([string]$Association) {
             if (Test-Path $key) { $root = (Get-ItemProperty $key).InstalledDirectory }
         }
     }
-    if (-not $root -or -not (Test-Path $root)) { Fail "Cannot find the engine for EngineAssociation '$Association'." }
+    if (-not $root -or -not (Test-Path $root)) { return $null }
     $root = (Resolve-Path $root).Path
     $versionFile = Join-Path $root 'Engine\Build\Build.version'
+    if (-not (Test-Path $versionFile)) { return $null }
     $v = Get-Content -Raw $versionFile | ConvertFrom-Json
     return [pscustomobject]@{
         Root    = $root
@@ -435,6 +467,7 @@ function Install-StateMonitor($Engine, [bool]$Runtime) {
     }
     [IO.File]::WriteAllText($upluginPath, ($uplugin | ConvertTo-Json -Depth 10), $Utf8)
     [IO.File]::WriteAllText((Join-Path $SmDest $Marker), "DwoStateMonitor installed by dwo-Forge. Remove with '__dwo-forge.bat sm-remove'.`n", $Utf8)
+    Set-ToolInstalled 'statemonitor' @{ engine = $Engine.Version; mode = $(if ($Runtime) { 'runtime' } else { 'editor' }) }
 }
 
 function Move-LegacyStateMonitor($Engine) {
@@ -452,7 +485,7 @@ function Move-LegacyStateMonitor($Engine) {
 }
 
 function Invoke-SmInstall {
-    if (-not (Read-State)) { Fail 'Not attached. Run attach first.' }
+    if (-not (Read-State)) { Fail 'Not connected. Connect the project first: __dwo-forge.bat connect' }
     $own = Find-OwnStateMonitor
     if ($own) { Fail "The project already contains a state monitor plugin ($($own.FullName.Substring($Project.Length + 1))). Nothing to install." }
     $uproject = Get-UProject
@@ -491,6 +524,7 @@ function Remove-StateMonitor([bool]$Force) {
     }
     foreach ($dir in $installed) { Remove-Folder $dir (Split-Path -Leaf $dir) }
     Remove-EmptyPluginsFolder
+    Save-ToolRecord 'statemonitor' $null
     Say 'DwoStateMonitor removed.'
     return $true
 }
@@ -537,7 +571,7 @@ function Get-CanvasUsers {
 }
 
 function Invoke-CanvasInstall {
-    if (-not (Read-State)) { Fail 'Not attached. Run attach first.' }
+    if (-not (Read-State)) { Fail 'Not connected. Connect the project first: __dwo-forge.bat connect' }
     $state = Get-CanvasState
     if ($state -eq 'own') { Fail 'The project already contains its own DwoCanvas plugin. Nothing to install.' }
     $src = Join-Path $SystemDir 'plugin\DwoCanvas\DwoCanvas.uplugin'
@@ -559,6 +593,7 @@ function Invoke-CanvasInstall {
     [IO.File]::WriteAllText($upluginPath, ($uplugin | ConvertTo-Json -Depth 10), $Utf8)
     [IO.File]::WriteAllText((Join-Path $CanvasDest $Marker),
         "DwoCanvas $($uplugin.VersionName) installed by dwo-Forge ($(Get-SystemCommit)). Removed by '__dwo-forge.bat canvas-remove' or uninstall.`n", $Utf8)
+    Set-ToolInstalled 'canvas' @{ engine = $engine.Version }
     Say "DwoCanvas installed: Plugins\__DwoCanvas (UE $($engine.Version)), hidden from git like the other dwo-Forge plugins."
     if (-not $uproject.IsCode) { Say 'Blueprint-only project: prebuilt editor binaries are included, so the editor opens without compiling.' }
     Say 'Widget Blueprints made by canvas-import use DwoCanvasRuntime: anyone opening them needs DwoCanvas installed too.'
@@ -590,6 +625,7 @@ function Remove-Canvas([bool]$Force) {
     }
     foreach ($dir in $dirs) { Remove-Folder $dir (Split-Path -Leaf $dir) }
     Remove-EmptyPluginsFolder
+    Save-ToolRecord 'canvas' $null
     Say 'DwoCanvas removed.'
     if ($Command -ne 'uninstall') { Say 'Generated widgets, import records (DwoCanvas\Records) and reports (Saved\DwoCanvas) stay; uninstall removes them on request.' }
     return $true
@@ -820,19 +856,17 @@ function Invoke-Attach([string]$Mode) {
     [IO.File]::WriteAllText((Join-Path $ForgeDir 'home.txt'), $SystemDir, $Utf8)
     Install-Launcher
 
-    $build = Get-PluginBuild $engine
-    Install-Plugin $build
-    if ($Mode -eq 'update') { $null = Move-LegacyStateMonitor $engine }
-
+    # Connecting prepares the project only; tools are installed separately ('tool install <id>').
+    # attach (dwo-Lens compatible) = connect + Lens; update = connect again + update every installed tool.
+    $records = Get-ToolRecords
     $state = [ordered]@{
-        schema                = 'forge.state/0.3'
+        schema                = 'forge.state/0.4'
         project               = $uproject.Name
         projectType           = $(if ($uproject.IsCode) { 'code' } else { 'blueprint-only' })
         engineVersion         = $engine.Version
         engineRoot            = $engine.Root
         systemCommit          = Get-SystemCommit
         systemHome            = $SystemDir
-        pluginHash            = $build.Hash
         vcs                   = $vcs.Kind
         vcsRoot               = $vcs.Top
         excludeFile           = $vcs.Exclude
@@ -840,11 +874,292 @@ function Invoke-Attach([string]$Mode) {
         attachedAt            = $(if ($previous) { $previous.attachedAt } else { (Get-Date).ToString('o') })
         updatedAt             = (Get-Date).ToString('o')
         gitStatusBeforeAttach = $baseline
+        tools                 = [pscustomobject]$records
     }
     Write-Json $StatePath $state
-    Say "$Mode complete: $($uproject.Name) / UE $($engine.Version) / dwo-Forge $($state.systemCommit)"
-    Say "Open the control panel: dwo-Forge.bat (or __dwo-forge.bat in the project). Remove everything: __dwo-forge.bat uninstall"
+    Say "$(if ($Mode -eq 'update') { 'Connection refreshed' } else { 'Connected' }): $($uproject.Name) / UE $($engine.Version) / dwo-Forge $($state.systemCommit)"
+    if ($Mode -eq 'attach') { Install-Lens $engine }
+    elseif ($Mode -eq 'update') { Update-AllTools }
+    else { Say 'Install tools from the dwo-Forge window or: __dwo-forge.bat tool install <lens|statemonitor|canvas|ci>' }
+    Say "Open the control panel: dwo-Forge.bat (or __dwo-forge.bat in the project). Disconnect and remove everything: __dwo-forge.bat uninstall"
     Invoke-Doctor | Out-Null
+}
+
+# ---------------------------------------------------------------- tools (dwo-Forge is their launcher)
+# Each tool is installed, updated and removed on its own. state.json 'tools' records, per tool, the dwo-Forge
+# version, the source hash and the engine it was installed from; a different hash or engine means "update".
+# Local CI keeps its record in __dwo-forge\ci.json (written by ci.ps1).
+$ToolDefs = [ordered]@{
+    lens         = @{ Name = 'Lens';            Scope = 'project' }
+    statemonitor = @{ Name = 'DwoStateMonitor'; Scope = 'project' }
+    canvas       = @{ Name = 'DwoCanvas';       Scope = 'project' }
+    ci           = @{ Name = 'Local CI';        Scope = 'project+pc' }
+}
+
+function Get-SystemVersion {
+    $f = Join-Path $SystemDir 'VERSION'
+    if (Test-Path $f) { return (Get-Content -Raw $f).Trim() }
+    return 'dev'
+}
+
+function Get-TextHash([string]$Text) {
+    $bytes = [Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($Text))
+    return (($bytes | ForEach-Object { $_.ToString('x2') }) -join '').Substring(0, 12)
+}
+
+function Get-CiSourceHash {
+    # Same formula as Get-CiSourceHash in ci.ps1: the CI job and git hooks are generated from these two files.
+    $sb = New-Object System.Text.StringBuilder
+    foreach ($f in @('tools\forge_ci.py', 'tools\ci.ps1')) { [void]$sb.Append("$f=$((Get-FileHash -Algorithm SHA256 (Join-Path $SystemDir $f)).Hash);") }
+    return Get-TextHash $sb.ToString()
+}
+
+function Get-ToolSourceHash([string]$Id) {
+    switch ($Id) {
+        'lens'         { return Get-PluginSourceHash 'DwoLensInspector' }
+        'statemonitor' { return Get-PluginSourceHash 'DwoStateMonitor' }
+        'canvas'       { return Get-PluginSourceHash 'DwoCanvas' }
+        'ci'           { return Get-CiSourceHash }
+    }
+}
+
+function Test-ToolSource([string]$Id) {
+    switch ($Id) {
+        'lens'         { return Test-Path (Join-Path $SystemDir 'plugin\DwoLensInspector\DwoLensInspector.uplugin') }
+        'statemonitor' { return Test-Path (Join-Path $SystemDir 'plugin\DwoStateMonitor\DwoStateMonitor.uplugin') }
+        'canvas'       { return Test-Path (Join-Path $SystemDir 'plugin\DwoCanvas\DwoCanvas.uplugin') }
+        'ci'           { return Test-Path (Join-Path $SystemDir 'tools\ci.ps1') }
+    }
+    return $false
+}
+
+function Get-ToolRecords {
+    $s = Read-State
+    $r = [ordered]@{}
+    if ($s -and $s.PSObject.Properties['tools'] -and $s.tools) { foreach ($p in $s.tools.PSObject.Properties) { $r[$p.Name] = $p.Value } }
+    # Projects connected before 3.0 recorded only the Lens inspector hash.
+    if (-not $r.Contains('lens') -and $s -and $s.PSObject.Properties['pluginHash'] -and (Test-Path $PluginDest)) {
+        $r['lens'] = [pscustomobject]@{ version = "$($s.systemCommit)"; hash = "$($s.pluginHash)"; engine = "$($s.engineVersion)" }
+    }
+    return $r
+}
+
+function Save-ToolRecord([string]$Id, $Record) {
+    # $Record $null forgets the tool. Not connected: nothing to record.
+    $s = Read-State
+    if (-not $s) { return }
+    $tools = [ordered]@{}
+    $current = Get-ToolRecords
+    foreach ($k in $current.Keys) { if ($k -ne $Id) { $tools[$k] = $current[$k] } }
+    if ($Record) { $tools[$Id] = $Record }
+    $s | Add-Member -NotePropertyName tools -NotePropertyValue ([pscustomobject]$tools) -Force
+    if ($s.PSObject.Properties['pluginHash']) { $s.PSObject.Properties.Remove('pluginHash') }
+    Write-Json $StatePath $s
+}
+
+function Set-ToolInstalled([string]$Id, [hashtable]$Extra = @{}) {
+    $rec = [ordered]@{ version = Get-SystemVersion; hash = Get-ToolSourceHash $Id; installedAt = (Get-Date).ToString('o') }
+    foreach ($k in $Extra.Keys) { $rec[$k] = $Extra[$k] }
+    Save-ToolRecord $Id ([pscustomobject]$rec)
+}
+
+function Get-CiHome {
+    # Same rule as ci.ps1: DWO_FORGE_CI_HOME, else %LOCALAPPDATA%\dwo-Forge\ci.
+    if ($env:DWO_FORGE_CI_HOME) { return $env:DWO_FORGE_CI_HOME.TrimEnd('\') }
+    return Join-Path $AppDataDir 'ci'
+}
+
+function Get-PcStatus {
+    # Machine-wide parts the tools use: the local Jenkins (Local CI), its offline bundle, the installed engines.
+    $ciHome = Get-CiHome
+    $st = $null
+    $f = Join-Path $ciHome 'ci.json'
+    if (Test-Path $f) { $st = Get-Content -Raw -Encoding UTF8 $f | ConvertFrom-Json }
+    $bundle = Get-ChildItem (Join-Path $SystemDir 'bundles') -Filter 'dwo-forge-ci-bundle-*.zip' -File -ErrorAction SilentlyContinue |
+              Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $bundleVersion = if ($bundle -and $bundle.BaseName -match 'bundle-(.+)$') { $Matches[1] } else { '' }
+    return [ordered]@{
+        jenkins = [ordered]@{ installed = [bool](Test-Path (Join-Path $ciHome 'runtime\jenkins.war'))
+                              version = $(if ($st) { "$($st.jenkinsVersion)" } else { '' })
+                              port = $(if ($st -and $st.port) { [int]$st.port } else { 0 })
+                              home = $ciHome }
+        bundle  = [ordered]@{ file = $(if ($bundle) { $bundle.Name } else { '' }); version = $bundleVersion }
+        engines = @(Get-InstalledEngines)
+    }
+}
+
+function Get-ToolStatus([string]$Id, $EngineVersion) {
+    # state: none | installed (up to date) | update | own (part of the project, never touched) | legacy (dwo-Lens 1.x install)
+    $records = Get-ToolRecords
+    $rec = $records[$Id]
+    $state = 'none'
+    $detail = ''
+    switch ($Id) {
+        'lens' {
+            if (Test-Path (Join-Path $PluginDest 'DwoLensInspector.uplugin')) { $state = $(if (Test-Managed $PluginDest) { 'installed' } else { 'own' }) }
+        }
+        'statemonitor' {
+            $sm = Get-InstalledStateMonitor
+            if ($sm -and $sm.Legacy) { $state = 'legacy' }
+            elseif ($sm) { $state = 'installed'; $detail = $(if (Test-RuntimeMode $sm.Uplugin) { 'runtime' } else { 'editor' }) }
+            elseif (Find-OwnStateMonitor) { $state = 'own' }
+        }
+        'canvas' {
+            switch (Get-CanvasState) { 'managed' { $state = 'installed' } 'own' { $state = 'own' } }
+        }
+        'ci' {
+            $ciFile = Join-Path $ForgeDir 'ci.json'
+            if (Test-Path $ciFile) { $state = 'installed'; $rec = Get-Content -Raw -Encoding UTF8 $ciFile | ConvertFrom-Json; $detail = "$($rec.job)" }
+        }
+    }
+    $source = Test-ToolSource $Id
+    $availableHash = if ($source) { Get-ToolSourceHash $Id } else { '' }
+    $reason = ''
+    if ($state -eq 'installed') {
+        $hash = if ($rec -and $rec.PSObject.Properties['hash']) { "$($rec.hash)" } else { '' }
+        $engine = if ($rec -and $rec.PSObject.Properties['engine']) { "$($rec.engine)" } else { '' }
+        if (-not $hash) { $state = 'update'; $reason = 'unknown-version' }
+        elseif ($source -and $hash -ne $availableHash) { $state = 'update'; $reason = 'new-version' }
+        elseif ($engine -and $EngineVersion -and $engine -ne $EngineVersion) { $state = 'update'; $reason = 'engine-changed' }
+    }
+    return [ordered]@{
+        id = $Id; name = $ToolDefs[$Id].Name; scope = $ToolDefs[$Id].Scope; state = $state; reason = $reason; detail = $detail
+        installedVersion = $(if ($rec -and $rec.PSObject.Properties['version']) { "$($rec.version)" } else { '' })
+        availableVersion = Get-SystemVersion
+        availableHash = $availableHash
+        installedHash = $(if ($rec -and $rec.PSObject.Properties['hash']) { "$($rec.hash)" } else { '' })
+        installedEngine = $(if ($rec -and $rec.PSObject.Properties['engine']) { "$($rec.engine)" } else { '' })
+        installedAt = $(if ($rec -and $rec.PSObject.Properties['installedAt']) { "$($rec.installedAt)" } elseif ($rec -and $rec.PSObject.Properties['registeredAt']) { "$($rec.registeredAt)" } else { '' })
+        available = $source
+    }
+}
+
+function Get-ToolsDocument {
+    $state = Read-State
+    $files = @(Get-ChildItem -Path $Project -Filter *.uproject -File -ErrorAction SilentlyContinue)
+    $association = ''
+    if ($files.Count -eq 1) { $association = "$((Get-Content -Raw -Encoding UTF8 $files[0].FullName | ConvertFrom-Json).EngineAssociation)" }
+    $engine = if ($association) { Find-Engine $association } else { $null }
+    $engineVersion = if ($engine) { $engine.Version } else { '' }
+    return [ordered]@{
+        schema  = 'forge.tools/1'
+        forge   = [ordered]@{ version = Get-SystemVersion; commit = Get-SystemCommit; home = $SystemDir }
+        project = [ordered]@{
+            name = $(if ($files.Count -eq 1) { $files[0].BaseName } else { '' }); path = $Project; connected = [bool]$state
+            legacy = [bool](Test-Path (Join-Path $LegacyDir 'state.json'))
+            type = $(if (Test-Path (Join-Path $Project 'Source')) { 'code' } else { 'blueprint-only' })
+            engineAssociation = $association; engine = $engineVersion
+            connectedEngine = $(if ($state) { "$($state.engineVersion)" } else { '' })
+            vcs = $(if ($state) { "$($state.vcs)" } else { '' })
+            connectedAt = $(if ($state) { "$($state.attachedAt)" } else { '' })
+            connectedWith = $(if ($state) { "$($state.systemCommit)" } else { '' })
+        }
+        tools   = @($ToolDefs.Keys | ForEach-Object { Get-ToolStatus $_ $engineVersion })
+        pc      = Get-PcStatus
+    }
+}
+
+function Install-Lens($Engine) {
+    $build = Get-PluginBuild $Engine
+    Install-Plugin $build
+    Set-ToolInstalled 'lens' @{ engine = $Engine.Version }
+    Say "Lens installed: Plugins\__DwoLensInspector (UE $($Engine.Version), editor-only, disabled by default)."
+}
+
+function Update-StateMonitor($Engine) {
+    if (Move-LegacyStateMonitor $Engine) { return }
+    $sm = Get-InstalledStateMonitor
+    if (-not $sm) { Fail 'DwoStateMonitor is not installed by dwo-Forge. Install it: __dwo-forge.bat tool install statemonitor' }
+    $runtime = Test-RuntimeMode $sm.Uplugin
+    Install-StateMonitor $Engine $runtime
+    Say "DwoStateMonitor updated ($(if ($runtime) { 'runtime' } else { 'editor and PIE' }), UE $($Engine.Version))."
+}
+
+function Invoke-CiTool([string]$Action) {
+    $ci = Join-Path $SystemDir 'tools\ci.ps1'
+    if ($Action -eq 'install' -and -not (Get-PcStatus).jenkins.installed) {
+        Say 'Local CI needs the PC-wide Jenkins first: installing it from the offline bundle...'
+        & $ci -Command ci-install -Project $Project -Rest @()
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    }
+    $rest = if ($Action -eq 'remove') { @('--remove') } else { @() }
+    & $ci -Command ci-job -Project $Project -Rest $rest
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+
+function Invoke-ToolAction([string]$Action, [string]$Id) {
+    if ($Action -ne 'remove' -and -not (Test-ToolSource $Id)) { Fail "$($ToolDefs[$Id].Name) is not part of this dwo-Forge install." }
+    switch ($Id) {
+        'lens' {
+            if ($Action -eq 'remove') {
+                if (-not (Test-Path $PluginDest)) { Say 'Lens is not installed.'; Save-ToolRecord 'lens' $null; return }
+                Remove-Plugin
+                Save-ToolRecord 'lens' $null
+                Say 'Lens removed (Plugins\__DwoLensInspector). Run history in __dwo-forge\data stays; uninstall removes it.'
+                return
+            }
+            $engine = Resolve-Engine (Get-UProject).Json.EngineAssociation
+            $null = Set-ExcludeBlock
+            Install-Lens $engine
+        }
+        'statemonitor' {
+            switch ($Action) {
+                'install' { Invoke-SmInstall }
+                'update'  { $null = Set-ExcludeBlock; Update-StateMonitor (Resolve-Engine (Get-UProject).Json.EngineAssociation) }
+                'remove'  { Invoke-SmRemove }
+            }
+        }
+        'canvas' {
+            if ($Action -eq 'remove') { Invoke-CanvasRemove } else { Invoke-CanvasInstall }
+        }
+        'ci' { Invoke-CiTool $Action }
+    }
+}
+
+function Update-AllTools {
+    $engine = Find-Engine (Get-UProject).Json.EngineAssociation
+    $done = 0
+    foreach ($id in $ToolDefs.Keys) {
+        $s = Get-ToolStatus $id $(if ($engine) { $engine.Version } else { '' })
+        if ($s.state -in @('update', 'legacy')) { Say "updating $($s.name) ..."; Invoke-ToolAction 'update' $id; $done++ }
+        elseif ($s.state -eq 'installed') { Say "$($s.name): up to date" }
+    }
+    if (-not $done) { Say 'Every installed tool is up to date.' }
+}
+
+function Invoke-Tool {
+    $a = @($Rest)
+    $action = if ($a.Count) { $a[0] } else { '' }
+    $id = if ($a.Count -gt 1) { $a[1] } else { '' }
+    $usage = 'Usage: __dwo-forge.bat tool install|update|remove <lens|statemonitor|canvas|ci>   or   tool update --all'
+    if ($action -notin @('install', 'update', 'remove')) { Fail $usage }
+    if (-not (Read-State)) { Fail 'This project is not connected. Connect it first: __dwo-forge.bat connect' }
+    if ($action -eq 'update' -and $id -eq '--all') { Update-AllTools; return }
+    if (-not $ToolDefs.Contains($id)) { Fail "Unknown tool '$id'. $usage" }
+    Invoke-ToolAction $action $id
+}
+
+function Invoke-ToolList {
+    if ($Rest -contains '--catalog') { Invoke-Tools; return }
+    $doc = Get-ToolsDocument
+    if ($Rest -contains '--json') {
+        [Console]::OutputEncoding = [Text.Encoding]::UTF8
+        Write-Output (ConvertTo-Json -InputObject $doc -Depth 6 -Compress)
+        return
+    }
+    Say "$($doc.project.name): $(if ($doc.project.connected) { "connected (dwo-Forge $($doc.project.connectedWith))" } else { 'not connected' }) - dwo-Forge $($doc.forge.version)"
+    foreach ($t in $doc.tools) {
+        $text = switch ($t.state) {
+            'none'      { 'not installed' }
+            'installed' { "up to date ($($t.installedVersion))" }
+            'update'    { "update available ($(if ($t.installedVersion) { $t.installedVersion } else { 'unknown' }) -> $($t.availableVersion)$(if ($t.reason -eq 'engine-changed') { ', engine changed' }))" }
+            'own'       { 'part of the project itself (not managed)' }
+            'legacy'    { 'dwo-Lens 1.x install (update migrates it)' }
+        }
+        Say ("  {0,-16} {1}{2}" -f $t.name, $text, $(if ($t.detail) { " - $($t.detail)" } else { '' }))
+    }
+    $j = $doc.pc.jenkins
+    Say "  PC: Jenkins $(if ($j.installed) { "$($j.version) (port $($j.port))" } else { 'not installed' }); bundle $(if ($doc.pc.bundle.file) { $doc.pc.bundle.version } else { 'none' }); engines $(@($doc.pc.engines | ForEach-Object { $_.version }) -join ', ')"
 }
 
 function Get-ToolSummary {
@@ -865,7 +1180,7 @@ function Get-ToolSummary {
 function Invoke-Status {
     $state = Read-State
     if (-not $state) {
-        Say 'Not attached.'
+        Say 'Not connected.'
         Say "DwoCanvas      : $((Get-ToolSummary).Canvas)"
         return
     }
@@ -879,9 +1194,11 @@ function Invoke-Status {
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     if ($engine.Version -ne $state.engineVersion) { Say "Engine changed to $($engine.Version). Run __dwo-forge.bat update." }
     Say "Attached at    : $($state.attachedAt)"
-    Say "Lens           : $(if (Test-Path $PluginDest) { 'inspector installed (Plugins\__DwoLensInspector)' } else { 'inspector missing (run update)' })"
+    Say "Lens           : $(if (Test-Path $PluginDest) { 'installed (Plugins\__DwoLensInspector)' } else { 'not installed (optional: tool install lens)' })"
     Say "DwoStateMonitor: $($tools.StateMonitor)"
     Say "DwoCanvas      : $($tools.Canvas)"
+    Say "Local CI       : $(if (Test-Path (Join-Path $ForgeDir 'ci.json')) { 'installed' } else { 'not installed (optional: tool install ci)' })"
+    Say 'Versions and updates: __dwo-forge.bat tools'
     $null = Write-StaleDepsWarning
 }
 
@@ -898,13 +1215,14 @@ function Invoke-Doctor {
     if ($vcs.Kind -eq 'none') { Write-Host '  [info] no version control: exclude not needed' }
     else {
         if ($vcs.Kind -eq 'parent') { Write-Host "  [info] inside the git repository $($vcs.Top) (entries prefixed /$($vcs.Prefix))" }
-        Check 'exclude block present' (Test-BlockPresent) 'run attach again'
+        Check 'exclude block present' (Test-BlockPresent) 'run: __dwo-forge.bat connect'
         Check 'no dwo-Lens 1.x exclude block left' (-not (Test-BlockPresent -Legacy)) 'run update'
         $leaks = Invoke-Git @('status', '--porcelain', '--untracked-files=all', '--', '__dwo-forge', '__dwo-forge.bat', 'Plugins/__DwoLensInspector', 'Plugins/__DwoStateMonitor', 'Plugins/__DwoCanvas', '__dwo-lens', '__dwo-lens.bat', 'Plugins/__StateMonitor')
         Check 'dwo-forge files hidden from git' (-not $leaks) "visible to git: $leaks"
     }
-    Check 'Lens inspector installed' (Test-Path (Join-Path $PluginDest 'Binaries\Win64\UnrealEditor-DwoLensInspector.dll')) 'run attach again'
-    Check 'project launcher' (Test-Path $LauncherPath) 'run attach again'
+    if (Test-Path $PluginDest) { Check 'Lens inspector complete' (Test-Path (Join-Path $PluginDest 'Binaries\Win64\UnrealEditor-DwoLensInspector.dll')) 'run: tool update lens' }
+    else { Write-Host '  [info] Lens: not installed (optional: tool install lens)' }
+    Check 'project launcher' (Test-Path $LauncherPath) 'run: __dwo-forge.bat connect'
     $py = Get-Command python -ErrorAction SilentlyContinue
     Check 'python available' ($py -ne $null) 'install Python 3.10+'
     if ($uproject.IsCode) {
@@ -1032,7 +1350,7 @@ function Invoke-Logged([string]$Exe, [string]$Arguments, [string]$Log, [int]$Tim
 }
 
 function Invoke-Compile {
-    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-forge.bat attach first.' }
+    if (-not (Read-State)) { Fail 'Not connected. Connect the project first: __dwo-forge.bat connect' }
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     $cfg = Get-Config
@@ -1078,7 +1396,7 @@ function Clear-SpaceForPackage($Retention) {
 }
 
 function Invoke-Package {
-    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-forge.bat attach first.' }
+    if (-not (Read-State)) { Fail 'Not connected. Connect the project first: __dwo-forge.bat connect' }
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     $cfg = Get-Config
@@ -1106,7 +1424,7 @@ function Invoke-Package {
 }
 
 function Invoke-Verify {
-    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-forge.bat attach first.' }
+    if (-not (Read-State)) { Fail 'Not connected. Connect the project first: __dwo-forge.bat connect' }
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     $cfg = Get-Config
@@ -1156,7 +1474,7 @@ function Invoke-Verify {
 }
 
 function Invoke-Logs {
-    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-forge.bat attach first.' }
+    if (-not (Read-State)) { Fail 'Not connected. Connect the project first: __dwo-forge.bat connect' }
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     $cfg = Get-Config
@@ -1250,7 +1568,7 @@ function Complete-Line($Run, [string]$Line, $Stations, $Result, $Engine) {
 }
 
 function Invoke-Smoke {
-    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-forge.bat attach first.' }
+    if (-not (Read-State)) { Fail 'Not connected. Connect the project first: __dwo-forge.bat connect' }
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     $cfg = Get-Config
@@ -1291,7 +1609,7 @@ function Invoke-Smoke {
 }
 
 function Invoke-Perf {
-    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-forge.bat attach first.' }
+    if (-not (Read-State)) { Fail 'Not connected. Connect the project first: __dwo-forge.bat connect' }
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     $cfg = Get-Config
@@ -1343,7 +1661,7 @@ function Invoke-Perf {
 
 function Invoke-Sizes {
     $state = Read-State
-    if (-not $state) { Fail 'Not attached. Run __dwo-forge.bat attach first.' }
+    if (-not $state) { Fail 'Not connected. Connect the project first: __dwo-forge.bat connect' }
     $run = New-RunDir 'sizes'
     $sw = [Diagnostics.Stopwatch]::StartNew()
     $pyArgs = @((Join-Path $SystemDir 'tools\lens_runtime.py'), 'sizes', '--run', $run.Dir, '--project', $Project, '--config') + @(Get-ConfigFiles)
@@ -1358,7 +1676,7 @@ function Invoke-Sizes {
 }
 
 function Invoke-Trace {
-    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-forge.bat attach first.' }
+    if (-not (Read-State)) { Fail 'Not connected. Connect the project first: __dwo-forge.bat connect' }
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     $cfg = Get-Config
@@ -1389,7 +1707,7 @@ function Invoke-Trace {
 
 function Invoke-Play {
     # Not a run: starts the game detached (e.g. for the StateMonitor viewer) and returns immediately.
-    if (-not (Read-State)) { Fail 'Not attached. Run __dwo-forge.bat attach first.' }
+    if (-not (Read-State)) { Fail 'Not connected. Connect the project first: __dwo-forge.bat connect' }
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     $map = @($Rest | Where-Object { $_ -and -not $_.StartsWith('--') }) | Select-Object -First 1
@@ -1410,7 +1728,8 @@ function Invoke-Tools {
 
 function Invoke-Analyze {
     $state = Read-State
-    if (-not $state) { Fail 'Not attached. Run __dwo-forge.bat attach first.' }
+    if (-not $state) { Fail 'Not connected. Connect the project first: __dwo-forge.bat connect' }
+    if (-not (Test-Path (Join-Path $PluginDest 'DwoLensInspector.uplugin'))) { Fail 'Lens is not installed in this project. Install it: __dwo-forge.bat tool install lens' }
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     $startedAt = Get-Date
@@ -1881,10 +2200,12 @@ function Invoke-Uninstall {
 }
 
 # Every command first migrates what dwo-Lens 1.x left in the project ('tools' does not touch a project).
-if ($Command -ne 'tools' -and $Command -notlike 'ci-*') { Invoke-Migration }
+if ($Command -notin @('tools', 'tool') -and $Command -notlike 'ci-*') { Invoke-Migration }
 
 switch ($Command) {
+    'connect' { Invoke-Attach 'connect' }
     'attach'  { Invoke-Attach 'attach' }
+    'tool'    { Invoke-Tool }
     'update'  { Invoke-Attach 'update' }
     'status'  { Invoke-Status }
     'doctor'  { if (-not (Invoke-Doctor)) { exit 1 } }
@@ -1903,7 +2224,7 @@ switch ($Command) {
     'sizes'   { Invoke-Sizes }
     'trace'   { Invoke-Trace }
     'play'    { Invoke-Play }
-    'tools'   { Invoke-Tools }
+    'tools'   { Invoke-ToolList }
     'sm-install' { Invoke-SmInstall }
     'sm-remove'  { Invoke-SmRemove }
     'canvas-install'  { Invoke-CanvasInstall }

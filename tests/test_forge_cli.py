@@ -326,6 +326,113 @@ class ForgeCliTests(unittest.TestCase):
             self.assertNotIn("Traceback", out)
             self.assertIn(code, (0, 1), out)
 
+    # ------------------------------------------------------------------ tools (launcher model)
+
+    def connect_fake(self, tools=None, **state):
+        """A connected project without running 'connect' (that needs an engine): state.json as connect writes it."""
+        doc = {"schema": "forge.state/0.4", "project": "Game", "engineVersion": "", "systemCommit": "2.0.0", "vcs": "none",
+               "attachedAt": "2026-01-01T00:00:00", "tools": tools or {}}
+        doc.update(state)
+        write(self.project / "__dwo-forge" / "state.json", json.dumps(doc))
+
+    def tools(self):
+        code, out = self.forge("tools", "--json")
+        self.assertEqual(code, 0, out)
+        doc = json.loads(out[out.index("{"):])
+        return doc, {t["id"]: t for t in doc["tools"]}
+
+    def test_tools_json_on_a_project_that_is_not_connected(self):
+        doc, tools = self.tools()
+        self.assertEqual(doc["schema"], "forge.tools/1")
+        self.assertFalse(doc["project"]["connected"])
+        self.assertEqual(list(tools), ["lens", "statemonitor", "canvas", "ci"])
+        self.assertTrue(all(t["state"] == "none" for t in tools.values()))
+        self.assertFalse((self.project / "__dwo-forge").exists(), "tools never writes into the project")
+        self.assertIn("jenkins", doc["pc"])
+
+    def test_tool_commands_need_a_connected_project(self):
+        code, out = self.forge("tool", "install", "canvas")
+        self.assertNotEqual(code, 0)
+        self.assertIn("connect", out)
+        self.connect_fake()
+        code, out = self.forge("tool", "install", "nothing")
+        self.assertNotEqual(code, 0)
+        self.assertIn("Unknown tool", out)
+        code, out = self.forge("tool", "frobnicate", "lens")
+        self.assertNotEqual(code, 0)
+        self.assertIn("Usage", out)
+
+    def test_installed_tool_is_current_until_its_source_changes(self):
+        self.connect_fake()
+        self.make_canvas()
+        _, tools = self.tools()
+        self.assertEqual(tools["canvas"]["state"], "update", "no record (installed by an older dwo-Forge): offer an update")
+        self.assertEqual(tools["canvas"]["reason"], "unknown-version")
+        current = tools["canvas"]["availableHash"]
+        self.connect_fake(tools={"canvas": {"version": "3.0.0", "hash": current}})
+        _, tools = self.tools()
+        self.assertEqual(tools["canvas"]["state"], "installed")
+        self.connect_fake(tools={"canvas": {"version": "2.0.0", "hash": "000000000000"}})
+        _, tools = self.tools()
+        self.assertEqual(tools["canvas"]["state"], "update")
+        self.assertEqual(tools["canvas"]["reason"], "new-version")
+        self.assertEqual(tools["canvas"]["installedVersion"], "2.0.0")
+
+    def test_lens_installed_before_3_0_is_read_from_plugin_hash(self):
+        lens = self.project / "Plugins" / "__DwoLensInspector"
+        write(lens / "DwoLensInspector.uplugin", "{}")
+        write(lens / ".dwo-forge-managed", "x")
+        _, tools = self.tools()
+        current = tools["lens"]["availableHash"]
+        self.connect_fake(pluginHash=current, systemCommit="2.0.1+abc")
+        _, tools = self.tools()
+        self.assertEqual(tools["lens"]["state"], "installed")
+        self.assertEqual(tools["lens"]["installedVersion"], "2.0.1+abc")
+
+    def test_projects_own_plugins_are_reported_and_left_alone(self):
+        self.connect_fake()
+        self.make_canvas(managed=False)
+        write(self.project / "Plugins" / "Gameplay" / "DwoStateMonitor" / "DwoStateMonitor.uplugin", "{}")
+        _, tools = self.tools()
+        self.assertEqual(tools["canvas"]["state"], "own")
+        self.assertEqual(tools["statemonitor"]["state"], "own")
+        code, out = self.forge("tool", "remove", "canvas")
+        self.assertNotEqual(code, 0, out)
+        self.assertTrue((self.project / "Plugins" / "DwoCanvas").exists())
+
+    def test_tool_remove_forgets_the_record(self):
+        self.make_canvas()
+        self.connect_fake(tools={"canvas": {"version": "3.0.0", "hash": "x"}, "lens": {"version": "3.0.0", "hash": "y"}})
+        code, out = self.forge("tool", "remove", "canvas")
+        self.assertEqual(code, 0, out)
+        self.assertFalse((self.project / "Plugins" / "__DwoCanvas").exists())
+        state = json.loads((self.project / "__dwo-forge" / "state.json").read_text(encoding="utf-8-sig"))
+        self.assertEqual(list(state["tools"]), ["lens"])
+
+    def test_local_ci_record_lives_in_ci_json(self):
+        self.connect_fake()
+        _, tools = self.tools()
+        current = tools["ci"]["availableHash"]
+        write(self.project / "__dwo-forge" / "ci.json", json.dumps({"job": "dwo-forge-Game", "version": "2.1.0", "hash": "old"}))
+        _, tools = self.tools()
+        self.assertEqual(tools["ci"]["state"], "update")
+        self.assertEqual(tools["ci"]["detail"], "dwo-forge-Game")
+        write(self.project / "__dwo-forge" / "ci.json", json.dumps({"job": "dwo-forge-Game", "version": "3.0.0", "hash": current}))
+        _, tools = self.tools()
+        self.assertEqual(tools["ci"]["state"], "installed")
+
+    def test_ci_hash_formula_matches_ci_ps1(self):
+        # forge.ps1 and ci.ps1 each compute the Local CI source hash; they must agree or every CI shows an update.
+        import hashlib
+        parts = "".join(f"{rel}={hashlib.sha256((ROOT / rel.replace(chr(92), '/')).read_bytes()).hexdigest().upper()};"
+                        for rel in ("tools\\forge_ci.py", "tools\\ci.ps1"))
+        expected = hashlib.sha256(parts.encode("utf-8")).hexdigest()[:12]
+        self.connect_fake()
+        _, tools = self.tools()
+        self.assertEqual(tools["ci"]["availableHash"], expected)
+        text = (ROOT / "tools" / "ci.ps1").read_text(encoding="utf-8")
+        self.assertIn("foreach ($f in @('tools\\forge_ci.py', 'tools\\ci.ps1'))", text)
+
 
 if __name__ == "__main__":
     unittest.main()

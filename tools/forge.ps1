@@ -2015,7 +2015,15 @@ function Remove-UprojectEntries([string[]]$Names) {
     $text = [regex]::Replace($text, ',\s*"Plugins"\s*:\s*\[\s*\]', '')
     $text = [regex]::Replace($text, '"Plugins"\s*:\s*\[\s*\]\s*,?', '')
     $null = $text | ConvertFrom-Json   # stop with an error rather than write a broken .uproject
-    [IO.File]::WriteAllText($file.FullName, $text, $Utf8)
+    Write-ProjectText $file.FullName $text
+}
+
+function Write-ProjectText([string]$Path, [string]$Text) {
+    # Project files keep their encoding: the engine writes .uproject with a UTF-8 BOM, and dropping it would show
+    # up as a change in the user's version control.
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    $bom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
+    [IO.File]::WriteAllText($Path, $Text, (New-Object System.Text.UTF8Encoding($bom)))
 }
 
 function Remove-BuildCsDep([string]$Relative, [string]$Module) {
@@ -2028,7 +2036,7 @@ function Remove-BuildCsDep([string]$Relative, [string]$Module) {
     $text = [regex]::Replace($text, '\s*,\s*' + $q, '')                                           # "A", "Module"
     $text = [regex]::Replace($text, $q + '\s*,\s*', '')                                           # "Module", "B"
     $text = [regex]::Replace($text, '\{\s*' + $q + '\s*\}', '{ }')                               # { "Module" }
-    [IO.File]::WriteAllText($path, $text, $Utf8)
+    Write-ProjectText $path $text
 }
 
 function Remove-EditorIniLines($Hits) {
@@ -2036,7 +2044,7 @@ function Remove-EditorIniLines($Hits) {
     foreach ($h in $Hits) {
         $path = Join-Path $Project $h.File
         $lines = @([IO.File]::ReadAllLines($path) | Where-Object { $_ -notmatch $regex })
-        [IO.File]::WriteAllText($path, (($lines -join "`r`n") + "`r`n"), $Utf8)
+        Write-ProjectText $path (($lines -join "`r`n") + "`r`n")
     }
 }
 

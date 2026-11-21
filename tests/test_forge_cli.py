@@ -243,7 +243,7 @@ class ForgeCliTests(unittest.TestCase):
             '{\n\t"FileVersion": 3,\n\t"EngineAssociation": "5.7",\n\t"Plugins": [\n'
             '\t\t{\n\t\t\t"Name": "DwoStateMonitor",\n\t\t\t"Enabled": true\n\t\t},\n'
             '\t\t{\n\t\t\t"Name": "ModelingToolsEditorMode",\n\t\t\t"Enabled": true,\n\t\t\t"TargetAllowList": [\n\t\t\t\t"Editor"\n\t\t\t]\n\t\t},\n'
-            '\t\t{\n\t\t\t"Name": "DwoCanvas",\n\t\t\t"Enabled": true\n\t\t}\n\t]\n}\n', encoding="utf-8")
+            '\t\t{\n\t\t\t"Name": "DwoCanvas",\n\t\t\t"Enabled": true\n\t\t}\n\t]\n}\n', encoding="utf-8-sig")   # the engine writes a BOM
         build = write(self.project / "Source" / "Game" / "Game.Build.cs",
                       'PublicDependencyModuleNames.AddRange(new string[] { "Core", "DwoStateMonitor", "Engine" });\n'
                       'PrivateDependencyModuleNames.AddRange(new string[] {\n\t"Slate",\n\t"DwoCanvasRuntime",\n\t"UMG"\n});\n'
@@ -256,7 +256,8 @@ class ForgeCliTests(unittest.TestCase):
         reports = write(self.project / "Saved" / "DwoCanvas" / "Reports" / "r.txt", "report")
         code, out = self.forge("uninstall", "--delete-data", "--delete-generated")
         self.assertIn(code, (0, 3), out)
-        names = [p["Name"] for p in json.loads(uproject.read_text(encoding="utf-8"))["Plugins"]]
+        self.assertTrue(uproject.read_bytes().startswith(b"\xef\xbb\xbf"), "the .uproject keeps its BOM")
+        names = [p["Name"] for p in json.loads(uproject.read_text(encoding="utf-8-sig"))["Plugins"]]
         self.assertEqual(names, ["ModelingToolsEditorMode"])
         self.assertIn('\t\t\t"TargetAllowList"', uproject.read_text(encoding="utf-8"), "formatting is kept")
         text = build.read_text(encoding="utf-8")

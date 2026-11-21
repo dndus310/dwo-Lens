@@ -63,6 +63,14 @@ if (-not $SkipIntegration -and $Project) {
     Get-ChildItem -Recurse -Directory -Path (Join-Path $copy 'Plugins') -Filter '__*' -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
     # A DwoCanvas copy in the source project is its own; the cycle installs the bundled one.
     if (Test-Path (Join-Path $copy 'Plugins\DwoCanvas')) { Remove-Item -Recurse -Force (Join-Path $copy 'Plugins\DwoCanvas') }
+    # Widgets a DwoCanvas of the project's own made before (they name DwoCanvasRuntime or the older DesignBridgeRuntime,
+    # or are T_DB_ images) belong to that copy: the cycle starts from a project without them, as if DwoCanvas had never
+    # been used.
+    $latin1 = [Text.Encoding]::GetEncoding(28591)
+    Get-ChildItem -Path (Join-Path $copy 'Content') -Recurse -File -Include *.uasset -ErrorAction SilentlyContinue | Where-Object {
+        $_.Name -cmatch '^T_DB_[0-9A-F]{16}\.uasset$' -or ($latin1.GetString([IO.File]::ReadAllBytes($_.FullName)) -match 'DwoCanvasRuntime|DesignBridgeRuntime')
+    } | Remove-Item -Force
+    foreach ($d in @('DwoCanvas', 'DesignBridge')) { if (Test-Path (Join-Path $copy $d)) { Remove-Item -Recurse -Force (Join-Path $copy $d) } }
     & git -C $copy init -q
     # Standard UE ignores so editor work folders do not count as project changes.
     Set-Content -Encoding ASCII (Join-Path $copy '.gitignore') "Saved/`nIntermediate/`nDerivedDataCache/`nBinaries/`n.vs/"
@@ -179,10 +187,12 @@ if (-not $SkipIntegration -and $Project) {
     $uprojectFile = (Get-ChildItem $copy -Filter *.uproject)[0].FullName
     $uprojectBefore = (Get-FileHash $uprojectFile).Hash
     $up = Get-Content -Raw $uprojectFile
-    $entries = "`"Plugins`": [`r`n`t`t{`r`n`t`t`t`"Name`": `"DwoStateMonitor`",`r`n`t`t`t`"Enabled`": true`r`n`t`t},`r`n`t`t{`r`n`t`t`t`"Name`": `"DwoCanvas`",`r`n`t`t`t`"Enabled`": true`r`n`t`t},"
+    $nl = if ($up -match "`r`n") { "`r`n" } else { "`n" }   # the file's own line endings, as the editor would write them
+    $entries = "`"Plugins`": [$nl`t`t{$nl`t`t`t`"Name`": `"DwoStateMonitor`",$nl`t`t`t`"Enabled`": true$nl`t`t},$nl`t`t{$nl`t`t`t`"Name`": `"DwoCanvas`",$nl`t`t`t`"Enabled`": true$nl`t`t},"
     if ($up -match '"Plugins"\s*:\s*\[') { $up = $up -replace '"Plugins"\s*:\s*\[', $entries }
-    else { $up = $up.TrimEnd().TrimEnd('}').TrimEnd() + ",`r`n`t" + $entries.TrimEnd(',') + "`r`n`t]`r`n}`r`n" }
-    [IO.File]::WriteAllText($uprojectFile, $up)
+    else { $up = $up.TrimEnd().TrimEnd('}').TrimEnd() + ",$nl`t" + $entries.TrimEnd(',') + "$nl`t]$nl}$nl" }
+    $hasBom = ([IO.File]::ReadAllBytes($uprojectFile)[0] -eq 0xEF)
+    [IO.File]::WriteAllText($uprojectFile, $up, (New-Object System.Text.UTF8Encoding($hasBom)))
     $probeDir = Join-Path $copy 'Source\Probe'
     New-Item -ItemType Directory -Force $probeDir | Out-Null
     Set-Content -Encoding UTF8 (Join-Path $probeDir 'Probe.Build.cs') 'PublicDependencyModuleNames.AddRange(new string[] { "Core", "DwoStateMonitor", "DwoCanvasRuntime" });'
@@ -195,10 +205,14 @@ if (-not $SkipIntegration -and $Project) {
     Check 'cycle' 'one-step uninstall cleans project files' ((Get-FileHash $uprojectFile).Hash -eq $uprojectBefore -and $buildCs -notmatch 'Dwo' -and $r.Out -match 'edit them before building') '.uproject restored, Build.cs cleaned, code uses reported'
     Remove-Item -Recurse -Force $probeDir   # the user's own code, not dwo-Forge's
     if (-not (Get-ChildItem (Join-Path $copy 'Source') -ErrorAction SilentlyContinue)) { Remove-Item -Force (Join-Path $copy 'Source') -ErrorAction SilentlyContinue }
+    # Plugins that are git repositories of their own (submodule-like) report their own state; both sides skip them.
     $after = (@(& git -C $copy status --porcelain) | Where-Object { $_ -notmatch 'Plugins/' }) -join "`n"
+    $beforeOutsidePlugins = (@($before -split "`n") | Where-Object { $_ -and $_ -notmatch 'Plugins/' }) -join "`n"
     $exclude = Get-Content -Raw (Join-Path $copy '.git\info\exclude')
-    Check 'cycle' 'uninstall leaves no trace' ($r.Code -eq 0 -and $leftovers.Count -eq 0 -and $after -eq $before -and $exclude -notmatch 'dwo-(forge|lens) managed') "leftovers $($leftovers.Count) $($leftovers -join ',')" $r.Seconds
-    Check 'canvas' 'uninstall removes DwoCanvas and its widgets' (-not (Test-Path $canvasDir) -and -not (Test-Path (Join-Path $copy 'Content\UI\Generated'))) ''
+    Check 'cycle' 'uninstall leaves no trace' ($r.Code -eq 0 -and $leftovers.Count -eq 0 -and $after -eq $beforeOutsidePlugins -and $exclude -notmatch 'dwo-(forge|lens) managed') "leftovers $($leftovers.Count) $($leftovers -join ',')" $r.Seconds
+    # The folder can hold the project's own widgets; what the imports made (widgets, T_DB_ images) must be gone.
+    $madeByImport = @(Get-ChildItem -Path (Join-Path $copy 'Content') -Recurse -File -Include 'WBP_Settings.uasset', 'WBP_SettingRow.uasset', 'T_DB_*.uasset' -ErrorAction SilentlyContinue)
+    Check 'canvas' 'uninstall removes DwoCanvas and its widgets' (-not (Test-Path $canvasDir) -and $madeByImport.Count -eq 0) "left $($madeByImport.Count)"
 }
 
 # ---------------------------------------------------------------- 5. projects without their own repository

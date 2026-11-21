@@ -11,6 +11,33 @@ struct GraphRow
 	ImU32 color = 0;         // optional value color
 };
 
+static float g_forceGraphZoom = 0;   // --graph-zoom (screenshots): every graph is shown at this zoom, centred
+
+// Font for text drawn at 'px' in a zoomable graph: past 100% the 2x fonts keep glyphs sharp. Falls back to the regular
+// font when the 2x font lacks a character of the text (it only carries the Hangul the window uses).
+static ImFont* ZoomFont(ImFont* base, ImFont* large, float px, const std::string& text)
+{
+	if (!large || px <= base->FontSize * 1.05f) return base;
+	static std::unordered_map<std::string, bool> covered[2];
+	auto& cache = covered[large == g_fonts.graphBold ? 1 : 0];
+	auto it = cache.find(text);
+	if (it == cache.end())
+	{
+		bool ok = true;
+		const char* c = text.c_str();
+		const char* e = c + text.size();
+		while (c < e)
+		{
+			unsigned int cp = 0;
+			c += ImTextCharFromUtf8(&cp, c, e);
+			if (cp >= 0x80 && !large->FindGlyphNoFallback((ImWchar)cp)) { ok = false; break; }
+		}
+		if (cache.size() > 8192) cache.clear();
+		it = cache.emplace(text, ok).first;
+	}
+	return it->second ? large : base;
+}
+
 struct GraphNode
 {
 	std::string id;
@@ -124,6 +151,11 @@ public:
 		if (!interacted && (ImAbs(size.x - lastSize.x) > 1 || ImAbs(size.y - lastSize.y) > 1)) needFrame = true;
 		lastSize = size;
 		if (needFrame && !nodes.empty()) { Frame(size); needFrame = false; }
+		if (g_forceGraphZoom > 0 && zoom != g_forceGraphZoom)
+		{
+			pan += (size * 0.5f - pan) * (1.0f - g_forceGraphZoom / zoom);
+			zoom = g_forceGraphZoom;
+		}
 
 		// grid
 		float step = 24.0f * zoom * g_scale;
@@ -494,7 +526,7 @@ private:
 			ImVec2 a = mid - ts * 0.5f - ImVec2(5, 2), b = mid + ts * 0.5f + ImVec2(5, 2);
 			dl->AddRectFilled(a, b, IM_COL32(0x22, 0x24, 0x27, 235), 4);
 			dl->AddRect(a, b, WithAlpha(color, 0.6f), 4);
-			dl->AddText(g_fonts.body, fs, mid - ts * 0.5f, l.flash > 0 ? col::Pass : col::Text, l.label.c_str());
+			dl->AddText(ZoomFont(g_fonts.body, g_fonts.graph, fs, l.label), fs, mid - ts * 0.5f, l.flash > 0 ? col::Pass : col::Text, l.label.c_str());
 		}
 	}
 
@@ -526,11 +558,11 @@ private:
 			cur.x += fsTitle + 4 * z;
 		}
 		dl->PushClipRect(a, b, true);
-		dl->AddText(g_fonts.bold, fsTitle, cur, WithAlpha(IM_COL32(255, 255, 255, 255), alpha), n.title.c_str());
+		dl->AddText(ZoomFont(g_fonts.bold, g_fonts.graphBold, fsTitle, n.title), fsTitle, cur, WithAlpha(IM_COL32(255, 255, 255, 255), alpha), n.title.c_str());
 		float y = a.y + kHeader * z + 4 * z;
 		if (!n.subtitle.empty())
 		{
-			dl->AddText(g_fonts.body, fs * 0.92f, ImVec2(a.x + 10 * z, y), col::Dim, n.subtitle.c_str());
+			dl->AddText(ZoomFont(g_fonts.body, g_fonts.graph, fs * 0.92f, n.subtitle), fs * 0.92f, ImVec2(a.x + 10 * z, y), col::Dim, n.subtitle.c_str());
 			y += 16 * z;
 		}
 		if (zoom >= 0.45f)
@@ -541,21 +573,21 @@ private:
 				if (shown >= (int)rowLimit) break;
 				if (row.flash > 0)
 					dl->AddRectFilled(ImVec2(a.x + 2, y), ImVec2(b.x - 2, y + kRow * z), WithAlpha(col::Warn, 0.25f * row.flash), 2);
-				dl->AddText(g_fonts.body, fs, ImVec2(a.x + 10 * z, y + 1 * z), col::Dim, row.key.c_str());
+				dl->AddText(ZoomFont(g_fonts.body, g_fonts.graph, fs, row.key), fs, ImVec2(a.x + 10 * z, y + 1 * z), col::Dim, row.key.c_str());
 				ImVec2 vs = g_fonts.body->CalcTextSizeA(fs, FLT_MAX, 0, row.value.c_str());
 				float vx = ImMax(b.x - 10 * z - vs.x, a.x + (n.size.x * 0.45f) * z);
-				dl->AddText(g_fonts.body, fs, ImVec2(vx, y + 1 * z), row.color ? row.color : col::Text, row.value.c_str());
+				dl->AddText(ZoomFont(g_fonts.body, g_fonts.graph, fs, row.value), fs, ImVec2(vx, y + 1 * z), row.color ? row.color : col::Text, row.value.c_str());
 				y += kRow * z;
 				++shown;
 			}
 			if (n.rows.size() > (size_t)rowLimit)
 			{
 				std::string more = "+" + std::to_string(n.rows.size() - (size_t)rowLimit) + "개 더";
-				dl->AddText(g_fonts.body, fs, ImVec2(a.x + 10 * z, y + 1 * z), col::Muted, more.c_str());
+				dl->AddText(ZoomFont(g_fonts.body, g_fonts.graph, fs, more), fs, ImVec2(a.x + 10 * z, y + 1 * z), col::Muted, more.c_str());
 				y += kRow * z;
 			}
 			if (!n.footer.empty())
-				dl->AddText(g_fonts.body, fs * 0.92f, ImVec2(a.x + 10 * z, y + 3 * z), col::Dim, n.footer.c_str());
+				dl->AddText(ZoomFont(g_fonts.body, g_fonts.graph, fs * 0.92f, n.footer), fs * 0.92f, ImVec2(a.x + 10 * z, y + 3 * z), col::Dim, n.footer.c_str());
 		}
 		dl->PopClipRect();
 		if (n.progress >= 0)

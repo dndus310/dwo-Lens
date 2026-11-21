@@ -140,6 +140,8 @@ struct Fonts
 	ImFont* mono = nullptr;
 	ImFont* icon = nullptr;     // icons only, larger, for the sidebar
 	ImFont* iconLarge = nullptr; // the few tool glyphs drawn on launcher thumbnails, at full size (not scaled up)
+	ImFont* graph = nullptr;     // 2x text for zoomed graphs (Latin + the Hangul the window uses)
+	ImFont* graphBold = nullptr;
 };
 static Fonts g_fonts;
 static float g_scale = 1.0f;
@@ -199,6 +201,33 @@ static void LoadFonts(float scale)
 		// search (DwoLens), canvas (DwoCanvas), eye (DwoStateMonitor), package (DwoBuilder)
 		static const ImWchar thumbRanges[] = { 0xE721, 0xE721, 0xE790, 0xE790, 0xE7B3, 0xE7B3, 0xE7B8, 0xE7B8, 0 };
 		g_fonts.iconLarge = exists(icons) ? io.Fonts->AddFontFromFileTTF(icons, 26.0f * scale, &cfg, thumbRanges) : g_fonts.icon;
+	}
+	{
+		// Graphs zoom up to 250%; drawing the 15 px glyphs that large shows their pixels. These 2x fonts keep zoomed
+		// text sharp. Hangul is limited to what the window itself writes (the full set at this size would make the
+		// atlas huge); text with other Hangul (e.g. Korean Blueprint node titles) stays on the regular font.
+		static const char* kGraphHangul = u8"가각간값강같개객거걸검것게겠겨결경계고골곳공과관교구규균그근금기긴김깁까깜깨꺼께꿉꿔뀌뀐뀜끄끊끌끝끼나난남납내냅너넌널넘넣네넷노녹놓누눈는능니님닙다단닫달대더덮데도돌동되된됨됩두둡뒤듈드든들듭등디따때또띄라란래랜량러런럼레렉렌려력렸령례로록롤롭료루룹류르른를름릅리릭린릴립릿마막만많말맞맨맵머먼멈메며면명몇모목못무묶문물므미밀밋밍바밖받방배백버번범법벤변별보복본볼봅부분불브블비빈빌빡빨빼뺍사삭산상새색샘생서석선설성세셋션소속수순숨스습시식신실심쌓쓰쓸씁씩아안않알았앞앤야약어언얼업없었에엔여연열영예오온올옮옵와완외왼요용우운울움웁웃워원월위유율으은을음읍의이인일읽임입있자작잔잘잠잡장재저적전점접정제젝젯져조존좁종주준줄줍중증지직진질짐집징째쪽차찰참창찾채처청체쳐초최추출춰취츠측층치칙친침카캡커컬컴켓코콘콜크큰클키타탈탐태택터테텍텐토통트튼티파팔패퍼편펼평포폴표품프플필하한할함합항해했행향헤혀현형호홈화확환황회획횟후훅휠흐흔히";
+		static ImVector<ImWchar> graphRanges;
+		if (graphRanges.empty())
+		{
+			ImFontGlyphRangesBuilder b;
+			b.AddRanges(io.Fonts->GetGlyphRangesDefault());
+			b.AddText(kGraphHangul);
+			b.BuildRanges(&graphRanges);
+		}
+		auto addGraph = [&](const char* primary, const char* korean) -> ImFont* {
+			ImFontConfig cfg;
+			cfg.OversampleH = 1;
+			if (!exists(primary)) return nullptr;
+			ImFont* f = io.Fonts->AddFontFromFileTTF(primary, 30.0f * scale, &cfg, io.Fonts->GetGlyphRangesDefault());
+			ImFontConfig merge;
+			merge.MergeMode = true;
+			merge.OversampleH = 1;
+			if (exists(korean)) io.Fonts->AddFontFromFileTTF(korean, 30.0f * scale, &merge, graphRanges.Data);
+			return f;
+		};
+		g_fonts.graph = addGraph(latin, hangul);
+		g_fonts.graphBold = addGraph(latinBold, hangulBold);
 	}
 	io.FontDefault = g_fonts.body;
 }

@@ -1272,7 +1272,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 	std::wstring canvasFileArg = ArgValue(argc, argv, L"--canvas-file");
 	// --hover x,y (window pixels): park the mouse there, so --screenshot can capture hover states and tooltips.
 	std::wstring hoverArg = ArgValue(argc, argv, L"--hover");
-	std::wstring sizeArg = ArgValue(argc, argv, L"--size");   // WxH in logical pixels (screenshots of other window sizes)
+	std::wstring sizeArg = ArgValue(argc, argv, L"--size");
+	if (!ArgValue(argc, argv, L"--graph-zoom").empty()) g_forceGraphZoom = (float)_wtof(ArgValue(argc, argv, L"--graph-zoom").c_str());   // WxH in logical pixels (screenshots of other window sizes)
 	int sizeW = 1500, sizeH = 920;
 	if (!sizeArg.empty()) swscanf_s(sizeArg.c_str(), L"%dx%d", &sizeW, &sizeH);
 	float hoverX = -1, hoverY = -1;

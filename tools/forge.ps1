@@ -1168,11 +1168,11 @@ function Get-ToolSummary {
     $smText = if ($sm -and $sm.Legacy) { 'installed by dwo-Lens 1.x as Plugins\__StateMonitor (run update to migrate)' }
               elseif ($sm) { "installed (Plugins\__DwoStateMonitor, $(if (Test-RuntimeMode $sm.Uplugin) { 'runtime' } else { 'editor and PIE' }))" }
               elseif (Find-OwnStateMonitor) { 'part of the project itself' }
-              else { 'not installed (optional: sm-install)' }
+              else { 'not installed (optional: tool install statemonitor)' }
     $canvasText = switch (Get-CanvasState) {
         'managed' { 'installed (Plugins\__DwoCanvas)' }
         'own'     { 'part of the project itself' }
-        default   { 'not installed (optional: canvas-install)' }
+        default   { 'not installed (optional: tool install canvas)' }
     }
     return [pscustomobject]@{ StateMonitor = $smText; Canvas = $canvasText }
 }

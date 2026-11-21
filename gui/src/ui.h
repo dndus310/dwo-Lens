@@ -314,12 +314,19 @@ static void SeverityPill(const std::string& severity)
 	Pill(label, SemanticColor(severity));
 }
 
+// Vertical centre of the text on the current line. After AlignTextToFramePadding() the text sits FramePadding.y
+// lower than the cursor (status bar, toolbars); markers drawn beside it must follow it.
+static float TextCenterY()
+{
+	return ImGui::GetCursorScreenPos().y + ImGui::GetCurrentWindow()->DC.CurrLineTextBaseOffset + ImGui::GetTextLineHeight() * 0.5f;
+}
+
 static void StatusDot(ImU32 color, float radius = 4.0f, bool pulse = false)
 {
 	ImVec2 p = ImGui::GetCursorScreenPos();
 	float h = ImGui::GetTextLineHeight();
 	float r = S(radius);
-	ImVec2 c(p.x + r + S(1), p.y + h * 0.5f);
+	ImVec2 c(p.x + r + S(1), TextCenterY());
 	ImDrawList* dl = ImGui::GetWindowDrawList();
 	if (pulse)
 	{
@@ -603,7 +610,7 @@ static void Spinner(float radius, ImU32 color)
 	ImVec2 p = ImGui::GetCursorScreenPos();
 	float h = ImGui::GetTextLineHeight();
 	float r = S(radius);
-	ImVec2 c(p.x + r, p.y + h * 0.5f);
+	ImVec2 c(p.x + r, TextCenterY());
 	float t = (float)ImGui::GetTime() * 6.0f;
 	ImGui::GetWindowDrawList()->PathArcTo(c, r, t, t + IM_PI * 1.4f, 16);
 	ImGui::GetWindowDrawList()->PathStroke(color, 0, S(2));

@@ -29,6 +29,9 @@ static const LineDef kLines[] = {
 	{ "package", "package", "package", "패키지 빌드", ICON_PACKAGE, "RunUAT BuildCookRun으로 실행 파일 패키징. 결과물은 최근 3개만 보관", true },
 };
 static const int kLineCount = (int)(sizeof(kLines) / sizeof(kLines[0]));
+// The first lines are DwoLens checks; compile and package (the last two) belong to DwoBuilder.
+static const int kLensLineCount = 7;
+static bool IsBuildLine(int line) { return line >= kLensLineCount; }
 
 static int LineIndexOf(const std::string& line, const std::string& id)
 {
@@ -820,7 +823,7 @@ struct App
 	{
 		if (problemsRevision == runsRevision) return;
 		problems.clear();
-		for (int line = 0; line < kLineCount; ++line)
+		for (int line = 0; line < kLensLineCount; ++line)   // DwoLens problems; build errors are on the DwoBuilder screen
 		{
 			const RunInfo* latest = Latest(line);
 			if (!latest) continue;
@@ -980,7 +983,7 @@ struct App
 		case 1: return Activity::Tests;
 		case 2: return Activity::Logs;
 		case 3: return Activity::Tests;
-		case 7: case 8: return Activity::History;
+		case 7: case 8: return Activity::Ci;   // compile, package: DwoBuilder
 		default: return Activity::Performance;
 		}
 	}

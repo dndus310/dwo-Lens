@@ -262,6 +262,8 @@ static std::string When(double ms)
 struct Ui
 {
 	int selected = 0;
+	int tab = -1;              // 0 automatic builds (Jenkins), 1 local builds; -1 = pick from the project's state
+	std::string localRun;      // selected compile/package run (empty = the newest)
 	bool stageCompile = true, stageLens = true, stagePackage = false;
 	char reason[128] = "dwo-Forge 창에서 실행";
 };
@@ -300,7 +302,20 @@ static void DrawCiNav(App& app)
 	}
 	Tooltip("설치·업데이트·제거, 계정, 이 Jenkins를 쓰는 프로젝트 목록은 런처의 PC 구성요소에 있습니다.");
 
-	SectionHeader("이 프로젝트");
+	SectionHeader("로컬 빌드");
+	for (int line = kLensLineCount; line < kLineCount; ++line)
+	{
+		ImGui::BeginDisabled(!app.attached);
+		if (ImGui::Button((std::string(kLines[line].icon) + "  " + kLines[line].name).c_str(), ImVec2(w, 0)))
+		{
+			app.Run(kLines[line].command);
+			ci::State().tab = 1;
+		}
+		ImGui::EndDisabled();
+		Tooltip(kLines[line].desc);
+	}
+
+	SectionHeader("자동 빌드");
 	if (s.job.empty())
 	{
 		TextDim("DwoBuilder가 설치되지 않았습니다.");
@@ -326,18 +341,161 @@ static void DrawCiNav(App& app)
 	}
 }
 
+// Local builds: compile and package run straight on this PC (no Jenkins), the same steps the automatic build runs.
+static const RunInfo* FindRun(App& app, const std::string& id)
+{
+	for (auto& r : app.runs)
+		if (r.id == id) return &r;
+	return nullptr;
+}
+
+static void DrawLocalBuilds(App& app)
+{
+	ci::Ui& u = ci::State();
+	ImGui::PushTextWrapPos(0);
+	TextDim("Jenkins 없이 이 PC에서 바로 실행합니다. 자동 빌드의 컴파일·패키지 단계와 같은 명령(__dwo-forge.bat compile / package)입니다. 에디터를 닫고 실행하세요.");
+	ImGui::PopTextWrapPos();
+	ImGui::Spacing();
+	float avail = ImGui::GetContentRegionAvail().x;
+	float w = (avail - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+	for (int line = kLensLineCount; line < kLineCount; ++line)
+	{
+		if (line > kLensLineCount) ImGui::SameLine();
+		ImGui::PushID(line);
+		ImGui::BeginChild("card", ImVec2(w, S(112)), ImGuiChildFlags_Borders, ImGuiWindowFlags_NoScrollbar);
+		TextBold(std::string(kLines[line].icon) + "  " + kLines[line].name);
+		ImGui::SameLine();
+		TextDim(kLines[line].command);
+		ImGui::PushTextWrapPos(0);
+		TextDim(kLines[line].desc);
+		ImGui::PopTextWrapPos();
+		ImGui::SetCursorPosY(ImGui::GetWindowHeight() - ImGui::GetFrameHeight() - S(10));
+		RunLineButton(app, line, true, (std::string(ICON_PLAY) + "  실행").c_str());
+		if (const RunInfo* r = app.Latest(line))
+		{
+			ImGui::SameLine();
+			ImGui::AlignTextToFramePadding();
+			VerdictPill(r->verdict);
+			ImGui::SameLine();
+			TextDim(StampOf(r->id) + " · " + Duration(r->seconds));
+		}
+		ImGui::EndChild();
+		ImGui::PopID();
+	}
+
+	SectionHeader("최근 실행");
+	std::vector<const RunInfo*> runs;
+	for (auto& r : app.runs)
+		if (IsBuildLine(r.lineIndex)) runs.push_back(&r);
+	if (runs.empty())
+	{
+		TextDim("아직 실행한 적이 없습니다. 위의 실행 버튼을 누르거나 자동 빌드를 기다리세요.");
+		return;
+	}
+	const RunInfo* sel = u.localRun.empty() ? nullptr : FindRun(app, u.localRun);
+	if (!sel) sel = runs.front();
+	float listH = ImMin(S(200), (runs.size() + 1.5f) * ImGui::GetFrameHeightWithSpacing());
+	if (ImGui::BeginTable("local_runs", 5, kTable, ImVec2(0, listH)))
+	{
+		ImGui::TableSetupScrollFreeze(0, 1);
+		ImGui::TableSetupColumn("결과", ImGuiTableColumnFlags_WidthFixed, S(64));
+		ImGui::TableSetupColumn("빌드", ImGuiTableColumnFlags_WidthFixed, S(110));
+		ImGui::TableSetupColumn("실행 ID", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableSetupColumn("소요", ImGuiTableColumnFlags_WidthFixed, S(80));
+		ImGui::TableSetupColumn("오류", ImGuiTableColumnFlags_WidthFixed, S(60));
+		ImGui::TableHeadersRow();
+		for (const RunInfo* r : runs)
+		{
+			const json& res = Obj(app.Outputs(*r), kLines[r->lineIndex].line);
+			int errors = res.contains("errorCount") ? (int)Num(res, "errorCount") : (int)Arr(res, "errors").size();
+			ImGui::PushID(r->id.c_str());
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			VerdictPill(r->verdict);
+			ImGui::TableNextColumn();
+			ImGui::TextUnformatted(kLines[r->lineIndex].name);
+			ImGui::TableNextColumn();
+			if (ImGui::Selectable(r->id.c_str(), r == sel, ImGuiSelectableFlags_SpanAllColumns)) u.localRun = r->id;
+			ImGui::TableNextColumn();
+			TextDim(Duration(r->seconds));
+			ImGui::TableNextColumn();
+			if (errors) TextColored(col::Fail, std::to_string(errors).c_str()); else TextDim("0");
+			ImGui::PopID();
+		}
+		ImGui::EndTable();
+	}
+
+	// the selected run: errors, then what is left of the output when the build stopped without parsable errors
+	const json& res = Obj(app.Outputs(*sel), kLines[sel->lineIndex].line);
+	SectionHeader((std::string(kLines[sel->lineIndex].name) + " · " + sel->id).c_str());
+	if (ImGui::SmallButton("리포트 열기")) OpenWithShell(sel->dir / "out" / "report.html");
+	ImGui::SameLine();
+	if (ImGui::SmallButton("전체 로그")) OpenWithShell(sel->dir / "raw" / (kLines[sel->lineIndex].command + std::string(".log")));
+	std::string archive = Str(res, "archive");
+	if (!archive.empty())
+	{
+		ImGui::SameLine();
+		if (ImGui::SmallButton("결과물 폴더")) OpenWithShell(fs::u8path(archive));
+	}
+	if (!Str(res, "skipped").empty()) { TextDim(Str(res, "skipped")); return; }
+	if (!Str(res, "hint").empty()) TextColored(col::Warn, Str(res, "hint").c_str());
+	const json& errors = Arr(res, "errors");
+	if (!errors.empty() && ImGui::BeginTable("local_errors", 3, kTable, ImVec2(0, 0)))
+	{
+		ImGui::TableSetupScrollFreeze(0, 1);
+		ImGui::TableSetupColumn("코드", ImGuiTableColumnFlags_WidthFixed, S(70));
+		ImGui::TableSetupColumn("위치", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+		ImGui::TableSetupColumn("내용", ImGuiTableColumnFlags_WidthStretch, 1.6f);
+		ImGui::TableHeadersRow();
+		for (auto& e : errors)
+		{
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			TextDim(Str(e, "code"));
+			ImGui::TableNextColumn();
+			std::string file = Str(e, "file");
+			long long ln = (long long)Num(e, "line");
+			std::string where = file.empty() ? "-" : PathUtf8(fs::u8path(file).filename()) + (ln ? ":" + std::to_string(ln) : "");
+			if (!file.empty() && ImGui::Selectable((where + "##" + std::to_string((size_t)&e)).c_str())) OpenWithShell(fs::u8path(file));
+			else if (file.empty()) TextDim(where);
+			if (!file.empty()) Tooltip(file.c_str());
+			ImGui::TableNextColumn();
+			ImGui::TextWrapped("%s", Str(e, "message").c_str());
+		}
+		ImGui::EndTable();
+	}
+	else if (errors.empty())
+	{
+		const json& tail = Arr(res, "tail");
+		if (sel->verdict == "fail" && !tail.empty())
+		{
+			std::string text;
+			for (auto& t : tail) if (t.is_string()) text += t.get<std::string>() + "\n";
+			ImGui::BeginChild("tail", ImVec2(0, 0), ImGuiChildFlags_Borders);
+			ImGui::TextUnformatted(text.c_str());
+			ImGui::EndChild();
+		}
+		else TextDim("오류 없음");
+	}
+}
+
 static void DrawCiMain(App& app)
 {
 	ci::Client& c = ci::Instance();
 	c.Ensure(app.hasUProject ? app.project : fs::path());
 	ci::Snapshot s = c.Get();
 	ci::Ui& ui = ci::State();
-	ViewHeader(ICON_SYNC, "DwoBuilder", "내 PC의 Jenkins에서 컴파일 · DwoLens 검사 · 패키지 빌드를 자동으로 실행");
+	ViewHeader(ICON_SYNC, "DwoBuilder", "컴파일 · DwoLens 검사 · 패키지 빌드. 자동 빌드는 내 PC의 Jenkins에서, 로컬 빌드는 바로 실행");
+	if (ui.tab < 0) ui.tab = s.job.empty() ? 1 : 0;
+	static const char* const tabs[] = { "자동 빌드 (Jenkins)", "로컬 빌드" };
+	Segmented("##buildertab", tabs, 2, ui.tab);
+	ImGui::Spacing();
+	if (ui.tab == 1) { DrawLocalBuilds(app); return; }
 	if (!s.installed)
 	{
-		EmptyState(ICON_DOWNLOAD, "DwoBuilder가 설치되지 않았습니다",
-		           "인터넷이 되는 PC에서 'dwo-Forge.bat ci-bundle'로 오프라인 번들(zip)을 만든 뒤, 왼쪽 '설치 (오프라인 번들)'로 설치합니다. "
-		           "설치와 실행 모두 네트워크 없이 동작하므로 폐쇄망에서도 쓸 수 있습니다. Jenkins는 127.0.0.1에서만 열립니다.");
+		EmptyState(ICON_DOWNLOAD, "자동 빌드를 쓰려면 Jenkins가 필요합니다",
+		           "런처에서 이 프로젝트에 DwoBuilder를 설치하면 PC에 Jenkins가 함께 설치됩니다(오프라인 번들, 네트워크 불필요). "
+		           "Jenkins 없이 컴파일·패키지만 하려면 위의 '로컬 빌드'를 쓰세요.");
 		return;
 	}
 	if (!s.running)
@@ -348,8 +506,8 @@ static void DrawCiMain(App& app)
 	}
 	if (s.job.empty())
 	{
-		if (EmptyState(ICON_ADD, "이 프로젝트의 CI 작업이 없습니다", "등록하면 Jenkins에 파이프라인 작업이 생기고 git 훅이 설치됩니다.", "CI 작업 등록"))
-			app.Run("ci-job");
+		if (EmptyState(ICON_ADD, "이 프로젝트에 DwoBuilder가 설치되지 않았습니다", "설치하면 Jenkins에 이 프로젝트의 파이프라인 작업이 생기고 git 훅이 설치됩니다.", "DwoBuilder 설치"))
+			app.Run("tool install builder");
 		return;
 	}
 
@@ -435,7 +593,7 @@ static void DrawCiInspector(App& app)
 	ImGui::Spacing();
 	ImGui::TextWrapped("외부 요청: __dwo-forge.bat ci-trigger --reason <내용>, 또는 HTTP POST /job/<작업>/buildWithParameters (계정 토큰).");
 	ImGui::Spacing();
-	ImGui::TextWrapped("보관: Jenkins는 최근 빌드만 남기고 오래된 것부터 지웁니다. 패키지 결과물은 DwoLens 실행 기록에 최근 3개만 남깁니다.");
+	ImGui::TextWrapped("보관: Jenkins는 최근 빌드만 남기고 오래된 것부터 지웁니다. 로컬 빌드와 자동 빌드의 패키지 결과물은 프로젝트 실행 기록에 최근 3개만 남깁니다.");
 	if (s.installed)
 	{
 		SectionHeader("설치");

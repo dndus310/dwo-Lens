@@ -21,7 +21,7 @@ static const ToolMeta kToolMeta[] = {
 	{ "lens", "DwoLens", "Ln", col::Accent, "아키텍처·문제·검증·로그·성능·용량 검사와 실행 기록", Activity::Overview, "Plugins/__DwoLensInspector (편집기 전용, 기본 꺼짐)" },
 	{ "statemonitor", "DwoStateMonitor", "SM", col::Pass, "실행 중인 게임의 상태를 실시간으로 보는 플러그인", Activity::Live, "Plugins/__DwoStateMonitor" },
 	{ "canvas", "DwoCanvas", "Cv", col::Purple, "디자인 파일(*.dwocanvas.json)을 UMG 위젯 블루프린트로 가져오기", Activity::Canvas, "Plugins/__DwoCanvas" },
-	{ "ci", "DwoBuilder", "Bd", col::Teal, "push·merge·커밋 때 컴파일 → DwoLens 검사 → 패키지 빌드를 자동 실행", Activity::Ci, "Jenkins 작업, .git/hooks (Jenkins는 PC에 하나)" },
+	{ "ci", "DwoBuilder", "Bd", col::Teal, "C++ 컴파일·패키지 빌드, push·merge·커밋 때 자동 빌드(Jenkins)", Activity::Ci, "Jenkins 작업, .git/hooks (Jenkins는 PC에 하나)" },
 };
 static const int kToolCount = 4;
 
@@ -301,9 +301,9 @@ static std::string ExtraLine(App& app, const ToolView& v)
 	if (v.id == "lens" && ToolPresent(v))
 	{
 		int done = 0, failed = 0;
-		for (int i = 0; i < kLineCount; ++i)
+		for (int i = 0; i < kLensLineCount; ++i)
 			if (const RunInfo* r = app.Latest(i)) { ++done; failed += r->verdict == "fail"; }
-		return Fmt("검사 %d종 중 %d종 실행 · 실패 %d", kLineCount, done, failed);
+		return Fmt("검사 %d종 중 %d종 실행 · 실패 %d", kLensLineCount, done, failed);
 	}
 	if (v.id == "statemonitor" && v.detail == "runtime") return "패키지 게임에도 포함";
 	if (v.id == "statemonitor" && v.detail == "editor") return "에디터·PIE 전용";
@@ -358,7 +358,7 @@ static void DrawToolRow(App& app, const ToolMeta& m, const ToolView& v, const js
 	bool managed = v.state == "installed" || v.state == "update" || v.state == "legacy";
 	if (v.state == "none") buttons.push_back({ "설치", 0 });
 	if (v.state == "update" || v.state == "legacy") buttons.push_back({ v.state == "legacy" ? "옮기기" : "업데이트", 0 });
-	if (present) buttons.push_back({ "열기", v.state == "installed" || v.state == "own" ? 0 : 1 });
+	if (present || m.id == std::string("ci")) buttons.push_back({ "열기", v.state == "installed" || v.state == "own" ? 0 : 1 });   // DwoBuilder: local builds need nothing installed
 	if (m.id == std::string("statemonitor") && v.state == "none") buttons.push_back({ "패키지 포함 설치", 1 });
 	if (managed) buttons.push_back({ "제거", 2 });
 	float x = ImGui::GetWindowContentRegionMax().x;

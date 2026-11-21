@@ -101,7 +101,8 @@ static std::vector<Command> BuildCommands(App& app)
 	for (int i = 0; i < kLineCount; ++i)
 	{
 		std::string cmd = kLines[i].command;
-		list.push_back({ std::string("실행: ") + kLines[i].name, cmd, [&app, cmd] { app.Run(cmd); }, app.attached });
+		std::string owner = IsBuildLine(i) ? "DwoBuilder · " : "DwoLens · ";
+		list.push_back({ "실행: " + owner + kLines[i].name, cmd, [&app, cmd] { app.Run(cmd); }, app.attached });
 	}
 	list.push_back({ "실행: 기본 검사 모두", "analyze, logs, sizes", [&app] { app.RunAll(); }, app.attached && app.lensInstalled });
 	list.push_back({ "게임 실행 (DwoStateMonitor 연결)", "play", [&app] { app.Run("play"); app.requestActivity = Activity::Live; }, app.attached });
@@ -240,8 +241,12 @@ static void DrawMenuBar(App& app, bool& quit)
 	}
 	if (ImGui::BeginMenu("실행"))
 	{
+		ImGui::TextDisabled("DwoLens");
 		for (int i = 0; i < kLineCount; ++i)
+		{
+			if (i == kLensLineCount) { ImGui::Separator(); ImGui::TextDisabled("DwoBuilder"); }
 			if (ImGui::MenuItem((std::string(kLines[i].icon) + "  " + kLines[i].name).c_str(), kLines[i].command, false, app.attached)) app.Run(kLines[i].command);
+		}
 		ImGui::Separator();
 		if (ImGui::MenuItem("기본 검사 모두 실행", nullptr, false, app.attached)) app.RunAll();
 		if (ImGui::MenuItem("게임 실행", nullptr, false, app.attached)) app.Run("play");

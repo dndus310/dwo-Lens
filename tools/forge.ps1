@@ -7,7 +7,8 @@
 #   lens          DwoLens: analysis lines (analyze, verify, logs, smoke, perf, sizes, trace) + DwoLensInspector commandlet
 #   statemonitor  DwoStateMonitor: live runtime state viewer plugin (also sm-install, sm-remove)
 #   canvas        DwoCanvas: design file -> UMG Widget Blueprint importer (also canvas-install, canvas-remove, canvas-import)
-#   ci            DwoBuilder: Jenkins job + git hooks for this project (tools\ci.ps1; the Jenkins itself is PC-wide)
+#   ci            DwoBuilder: compile and package (run here, need nothing installed) + Jenkins job and git hooks for
+#                 automatic builds (tools\ci.ps1; the Jenkins itself is PC-wide)
 param(
     [Parameter(Mandatory = $true)]
     [ValidateSet('connect', 'tool', 'attach', 'update', 'status', 'analyze', 'verify', 'logs', 'smoke', 'perf', 'sizes', 'trace', 'play', 'tools', 'gui',

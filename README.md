@@ -4,10 +4,10 @@
 
 | 도구 | 하는 일 | 프로젝트에 들어가는 것 |
 |---|---|---|
-| **DwoLens** | 분석·검증·로그 검사: 아키텍처 리포트(`analyze`), 검증(`verify`), 로그(`logs`), 맵 스모크(`smoke`), 성능(`perf`), 콘텐츠 용량(`sizes`), Insights 트레이스(`trace`), 컴파일·패키지 | `Plugins/__DwoLensInspector` (숨김, 미리 빌드, 기본 비활성) |
+| **DwoLens** | 분석·검증·로그 검사: 아키텍처 리포트(`analyze`), 검증(`verify`), 로그(`logs`), 맵 스모크(`smoke`), 성능(`perf`), 콘텐츠 용량(`sizes`), Insights 트레이스(`trace`) | `Plugins/__DwoLensInspector` (숨김, 미리 빌드, 기본 비활성) |
 | **DwoStateMonitor** | 실행 중인 게임의 상태를 실시간으로 보는 런타임 플러그인 (예전 이름 StateMonitor) | `Plugins/__DwoStateMonitor` (숨김) |
 | **DwoCanvas** | 디자인 파일(`*.dwocanvas.json`)을 UMG 위젯 블루프린트로 가져오는 플러그인 | `Plugins/__DwoCanvas` (숨김) |
-| **DwoBuilder** | push·merge·커밋 때 컴파일 → DwoLens 검사 → 패키지 빌드를 자동 실행 (Jenkins, 폐쇄망 지원) | Jenkins 작업과 `.git/hooks` (Jenkins 자체는 PC에 하나) |
+| **DwoBuilder** | C++ 컴파일(`compile`)·패키지 빌드(`package`)를 바로 실행하고, push·merge·커밋 때 컴파일 → DwoLens 검사 → 패키지 빌드를 자동 실행 (Jenkins, 폐쇄망 지원) | 설치하면 Jenkins 작업과 `.git/hooks` (Jenkins 자체는 PC에 하나). 컴파일·패키지만 쓸 때는 설치 불필요 |
 
 모든 도구는 선택 설치입니다. 프로젝트 연결은 도구와 별개로, `__dwo-forge` 폴더와 실행 파일을 만들고 git에서 숨기는 일만 합니다.
 
@@ -69,8 +69,6 @@ __dwo-forge.bat perf [맵]           :: CSV 프로파일러로 프레임 캡처,
 __dwo-forge.bat sizes               :: Content 용량, 하드 참조로 함께 로드되는 용량 (엔진 불필요)
 __dwo-forge.bat trace [맵]          :: Unreal Insights 트레이스(.utrace) 기록
 __dwo-forge.bat play [맵]           :: 게임 창 실행 (DwoStateMonitor 연결용)
-__dwo-forge.bat compile            :: C++ 컴파일 (UnrealBuildTool, 에디터 대상). 에디터를 닫고 실행
-__dwo-forge.bat package            :: 패키지 빌드 (RunUAT BuildCookRun). 결과물은 최근 3개만 보관
 
 :: DwoStateMonitor
 __dwo-forge.bat sm-install [--runtime] | sm-remove [--force]   :: tool install|remove statemonitor와 같음
@@ -81,6 +79,8 @@ __dwo-forge.bat canvas-import <파일> [--reset] [--doc 이름]  :: 위젯 블�
 :: canvas-install | canvas-remove [--force] 은 tool install|remove canvas와 같음
 
 :: DwoBuilder (아래 'DwoBuilder')
+__dwo-forge.bat compile            :: C++ 컴파일 (UnrealBuildTool, 에디터 대상). 에디터를 닫고 실행. 설치 불필요
+__dwo-forge.bat package            :: 패키지 빌드 (RunUAT BuildCookRun). 결과물은 최근 3개만 보관. 설치 불필요
 dwo-Forge.bat ci-bundle                     :: (인터넷 PC) Jenkins·Java·플러그인 오프라인 번들 만들기
 dwo-Forge.bat ci-install [--bundle <zip>] [--port N]   :: 번들로 설치 (네트워크 불필요). ci-start / ci-stop / ci-status / ci-remove
 __dwo-forge.bat ci-job [--remove]           :: 이 프로젝트의 CI 작업과 git 훅 등록 (해제) = tool install|remove ci
@@ -129,7 +129,7 @@ __dwo-forge.bat uninstall           :: 한 번에 완전 제거. 기록·생성 
 | DwoLens | 실행 기록 (Ctrl+8) | 실행별 단계 띠, 두 실행 **비교**(지표 변화, 새로 생긴·해결된 문제, 결과가 바뀐 테스트), 결과 파일 |
 | DwoStateMonitor | DwoStateMonitor (Ctrl+7) | 실행 중인 게임의 상태를 실시간으로 표시 (아래 '제공 도구: DwoStateMonitor') |
 | DwoCanvas | DwoCanvas (Ctrl+0) | 디자인 파일 고르기(열기 대화상자 또는 `*.dwocanvas.json` 끌어다 놓기), 검사·가져오기·초기화하고 가져오기, 최신 리포트 요약 (아래 '제공 도구: DwoCanvas') |
-| DwoBuilder | DwoBuilder | 빌드 목록·결과·실시간 로그, `지금 빌드`(단계 선택), 이 프로젝트의 작업 설정 다시 적용. Jenkins 관리는 런처의 PC 구성요소 |
+| DwoBuilder | DwoBuilder | **로컬 빌드**: 컴파일·패키지 실행, 최근 실행, 오류 목록(파일·줄), 리포트·전체 로그·결과물 폴더. **자동 빌드**: Jenkins 빌드 목록·결과·실시간 로그, `지금 빌드`(단계 선택), 작업 설정 다시 적용. Jenkins 관리는 런처의 PC 구성요소. 설치하지 않아도 런처에서 열어 로컬 빌드를 쓸 수 있음 |
 
 - **명령 팔레트 (Ctrl+K)**: 화면 이동, 검사 실행, 도구 설치·업데이트·제거, DwoCanvas 검사·가져오기, 리포트 저장을 검색해서 실행합니다.
 - **도구 메뉴**: 도구마다 열기·설치·업데이트·제거, `모든 도구 업데이트`, 프로젝트 연결·새로 고침·연결 해제.
@@ -277,8 +277,6 @@ A/
 | `perf` | 성능 캡처 | `-ExecCmds="csvprofile frames=N"` + `-ExitAfterCsvProfiling` (CSV 프로파일러, `Saved/Profiling/CSV`), FrameTime·GameThread·RenderThread·RHIThread p50/p95/p99, 히치. fail: p95 > `perf.budgetMs` |
 | `sizes` | 용량 | `.uasset/.umap/.uexp/.ubulk` 합계, 최신 `analyze`의 `graph.json`으로 하드 참조 폐포 용량. warn: 에셋 > `sizes.warnAssetMB` |
 | `trace` | 트레이스 | `-trace=<trace.channels> -tracefile=<run>/out/trace.utrace`, `trace.seconds`초 후 창을 닫음. Unreal Insights로 열기 |
-| `compile` | B1 컴파일 | `Engine/Build/BatchFiles/Build.bat <프로젝트>Editor Win64 Development`. 오류·경고를 파일·줄 단위로 집계. Blueprint 전용 프로젝트는 건너뜀(통과). fail: 종료 코드 ≠ 0 또는 오류 |
-| `package` | P1 패키지 | `RunUAT BuildCookRun -cook -stage -pak -archive` (C++ 프로젝트는 `-build`). 결과물은 실행 폴더의 `build/`. fail: `BUILD SUCCESSFUL` 없음, warn: 쿡 오류가 있지만 결과물 생성 |
 | `play` | (실행 아님) | `UnrealEditor <맵> -game -windowed 1280x720` 분리 실행. GUI에서 DwoStateMonitor 뷰어로 상태를 받을 게임을 띄울 때 사용 |
 
 맵 인수를 생략하면 `perf.map`, 그다음 `Config/DefaultEngine.ini`의 `GameDefaultMap`을 씁니다. 결과가 fail이면 종료 코드 2입니다.
@@ -291,6 +289,14 @@ A/
 
 ## DwoBuilder (Jenkins, 폐쇄망 지원)
 
+**로컬 빌드**: Jenkins 없이, DwoBuilder를 설치하지 않아도 씁니다. 창에서는 DwoBuilder > 로컬 빌드.
+
+| 명령 | 단계 | 내용 |
+|---|---|---|
+| `compile` | B1 컴파일 | `Engine/Build/BatchFiles/Build.bat <프로젝트>Editor Win64 Development`. 오류·경고를 파일·줄 단위로 집계. Blueprint 전용 프로젝트는 건너뜀(통과). fail: 종료 코드 ≠ 0 또는 오류 |
+| `package` | P1 패키지 | `RunUAT BuildCookRun -cook -stage -pak -archive` (C++ 프로젝트는 `-build`). 결과물은 실행 폴더의 `build/`. fail: `BUILD SUCCESSFUL` 없음, warn: 쿡 오류가 있지만 결과물 생성 |
+
+**자동 빌드**: 
 내 PC에서만 쓰는 Jenkins를 설치해, git 이벤트나 외부 요청이 들어오면 **C++ 컴파일 → DwoLens 검사 → 패키지 빌드**를 자동으로 실행합니다. DwoStateMonitor처럼 설치·제거하지만, Jenkins는 프로젝트가 아니라 PC에 하나(`%LOCALAPPDATA%\dwo-Forge\ci`)만 설치되고 프로젝트마다 작업(job)이 하나씩 생깁니다. 프로젝트 폴더에는 아무것도 추가되지 않습니다(git 훅은 `.git/hooks`에 들어갑니다). 빌드 기록이 커질 수 있으므로 다른 디스크에 두려면 사용자 환경 변수 `DWO_FORGE_CI_HOME`(예: `setx DWO_FORGE_CI_HOME D:\dwo-forge-ci`)을 설정한 뒤 설치합니다.
 
 | 단계 | 하는 일 |

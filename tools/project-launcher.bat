@@ -5,10 +5,10 @@ rem  by uninstall. It runs dwo-Forge from its install folder (no copy of the sys
 rem  lives in the project).
 rem    __dwo-forge.bat                     open dwo-Forge (connect first if needed)
 rem    tools                   tool versions and updates (--json for scripts)
-rem    tool install^|update^|remove ^<lens^|statemonitor^|canvas^|ci^>   tool update --all
-rem    Lens            analyze^|verify^|logs^|smoke^|perf^|sizes^|trace^|play^|compile^|package
+rem    tool install^|update^|remove ^<lens^|statemonitor^|canvas^|builder^>   tool update --all
+rem    DwoLens         analyze^|verify^|logs^|smoke^|perf^|sizes^|trace^|play
 rem    DwoCanvas       canvas-validate ^<file^>^|canvas-import ^<file^> [--reset] [--doc Name]
-rem    DwoBuilder      ci-trigger [--reason text] [--stages compile,lens,package]^|ci-status
+rem    DwoBuilder      compile^|package^|ci-trigger [--reason text] [--stages compile,lens,package]^|ci-status
 rem    connect^|status^|doctor^|update^|uninstall [--keep-data^|--delete-data] [--force]
 rem ============================================================================
 setlocal EnableExtensions

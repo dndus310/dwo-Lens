@@ -1,6 +1,6 @@
 {
   "schema": "forge.catalog/0.2",
-  "_comment": "Tool registry of dwo-Forge. tool: lens (analysis lines), statemonitor (DwoStateMonitor), canvas (DwoCanvas), forge (shared operations). kind: build = implemented by dwo-Forge, wrap = Epic/engine tool driven headless, ai = interpretation. status: ready | planned.",
+  "_comment": "Tool registry of dwo-Forge. tool: lens (DwoLens analysis lines), statemonitor (DwoStateMonitor), canvas (DwoCanvas), builder (DwoBuilder: compile, package, local Jenkins), forge (shared operations). kind: build = implemented by dwo-Forge, wrap = Epic/engine tool driven headless, ai = interpretation. status: ready | planned.",
   "tools": [
     {
       "id": "reflection-dump",
@@ -442,7 +442,7 @@
     },
     {
       "id": "ubt-editor-compile",
-      "tool": "lens",
+      "tool": "builder",
       "station": "BUILD",
       "kind": "build",
       "status": "ready",
@@ -452,7 +452,7 @@
     },
     {
       "id": "uat-buildcookrun",
-      "tool": "lens",
+      "tool": "builder",
       "station": "BUILD",
       "kind": "build",
       "status": "ready",
@@ -472,7 +472,7 @@
     },
     {
       "id": "local-jenkins",
-      "tool": "forge",
+      "tool": "builder",
       "station": "OPS",
       "kind": "build",
       "status": "ready",

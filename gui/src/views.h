@@ -239,7 +239,7 @@ static void DrawOverviewMain(App& app)
 	// ---- health banner
 	app.RebuildProblems();
 	int worst = 0, withRuns = 0, failing = 0;
-	for (int i = 0; i < kLineCount; ++i)
+	for (int i = 0; i < kLensLineCount; ++i)
 		if (const RunInfo* r = app.Latest(i))
 		{
 			++withRuns;
@@ -260,7 +260,7 @@ static void DrawOverviewMain(App& app)
 		dl->AddRect(p, p + size, WithAlpha(c, 0.45f), S(6));
 		dl->AddText(g_fonts.icon, g_fonts.icon->FontSize, p + ImVec2(S(16), S(16)), c, worst >= 3 ? ICON_WARNING : ICON_OK);
 		dl->AddText(g_fonts.title, g_fonts.title->FontSize, p + ImVec2(S(48), S(8)), col::Text, state);
-		std::string detail = Fmt("실행한 검사 %d/%d  ·  문제 %d  ·  새 문제 %d  ·  경고 이상 검사 %d", withRuns, kLineCount, openCount, newCount, failing);
+		std::string detail = Fmt("실행한 검사 %d/%d  ·  문제 %d  ·  새 문제 %d  ·  경고 이상 검사 %d", withRuns, kLensLineCount, openCount, newCount, failing);
 		dl->AddText(p + ImVec2(S(48), S(32)), col::Dim, detail.c_str());
 		ImGui::InvisibleButton("health", size);
 		if (ImGui::IsItemClicked()) app.requestActivity = Activity::Problems;
@@ -343,7 +343,7 @@ static void DrawOverviewMain(App& app)
 		ImGui::TableSetupColumn("추세", ImGuiTableColumnFlags_WidthFixed, S(110));
 		ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, S(150));
 		ImGui::TableHeadersRow();
-		for (int i = 0; i < kLineCount; ++i)
+		for (int i = 0; i < kLensLineCount; ++i)
 		{
 			const RunInfo* r = app.Latest(i);
 			ImGui::PushID(i);
@@ -439,6 +439,7 @@ static void DrawOverviewInspector(App& app)
 	int n = 0;
 	for (auto& r : app.runs)
 	{
+		if (IsBuildLine(r.lineIndex)) continue;   // DwoBuilder runs
 		if (n++ >= 10) break;
 		ImGui::PushID(r.id.c_str());
 		StatusDot(SemanticColor(r.verdict));
@@ -1883,7 +1884,7 @@ static std::string WriteBundleReport(App& app, const fs::path& dest)
 	std::string cover = "<section><div class='meta'>dwo-Forge DwoLens 종합 리포트</div><h1>" + HtmlEscape(app.projectName) +
 	                    "</h1><div class='scroll'><table><thead><tr><th>검사</th><th>실행 ID</th><th>결과</th></tr></thead><tbody>";
 	int parts = 0;
-	for (int i = 0; i < kLineCount; ++i)
+	for (int i = 0; i < kLensLineCount; ++i)
 	{
 		const RunInfo* r = app.Latest(i);
 		if (!r)
@@ -2027,8 +2028,10 @@ static void DrawCompare(App& app, const RunInfo& a, const RunInfo& b)
 static void DrawHistoryNav(App& app)
 {
 	SectionHeader("검사");
-	if (ImGui::Selectable(Fmt("전체  (%d)", (int)app.runs.size()).c_str(), ui.historyLine < 0)) ui.historyLine = -1;
-	for (int i = 0; i < kLineCount; ++i)
+	int lensRuns = 0;
+	for (auto& r : app.runs) lensRuns += !IsBuildLine(r.lineIndex);
+	if (ImGui::Selectable(Fmt("전체  (%d)", lensRuns).c_str(), ui.historyLine < 0)) ui.historyLine = -1;
+	for (int i = 0; i < kLensLineCount; ++i)
 	{
 		int n = 0;
 		for (auto& r : app.runs) n += r.lineIndex == i;
@@ -2064,6 +2067,7 @@ static void DrawHistoryMain(App& app)
 		for (auto& r : app.runs)
 		{
 			if (ui.historyLine >= 0 && r.lineIndex != ui.historyLine) continue;
+			if (IsBuildLine(r.lineIndex)) continue;   // compile and package runs are listed by DwoBuilder
 			ImGui::PushID(r.id.c_str());
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
@@ -2182,6 +2186,7 @@ static const ForgeToolDef kForgeTools[] = {
 	{ "lens", ICON_LAYERS, "DwoLens", "분석·검증 검사: 아키텍처, 문제, 검증, 로그, 성능·용량 (DwoLensInspector)" },
 	{ "statemonitor", ICON_EYE, "DwoStateMonitor", "실행 중인 게임의 상태를 실시간으로 보는 런타임 플러그인" },
 	{ "canvas", ICON_CANVAS, "DwoCanvas", "디자인 파일(*.dwocanvas.json)을 UMG 위젯 블루프린트로 가져오는 플러그인" },
+	{ "builder", ICON_SYNC, "DwoBuilder", "C++ 컴파일·패키지 빌드, Jenkins 자동 빌드" },
 	{ "forge", ICON_FORGE, "dwo-Forge", "프로젝트 연결, 도구 설치·업데이트, 런처, 자체 검증" },
 };
 
@@ -2195,11 +2200,11 @@ static const char* ToolNameOf(const std::string& key)
 // The tool catalog (tools/catalog.json): every check and integration the tools provide, shown in the launcher.
 static void DrawCatalogTable(App& app)
 {
-	static const char* const kinds[] = { "전체", "DwoLens", "DwoStateMonitor", "DwoCanvas", "dwo-Forge" };
-	static const char* const keys[] = { "", "lens", "statemonitor", "canvas", "forge" };
+	static const char* const kinds[] = { "전체", "DwoLens", "DwoStateMonitor", "DwoCanvas", "DwoBuilder", "dwo-Forge" };
+	static const char* const keys[] = { "", "lens", "statemonitor", "canvas", "builder", "forge" };
 	int kind = 0;
-	for (int i = 0; i < 5; ++i) if (ui.toolCategory == keys[i]) kind = i;
-	if (Segmented("##catkind", kinds, 5, kind)) ui.toolCategory = keys[kind];
+	for (int i = 0; i < 6; ++i) if (ui.toolCategory == keys[i]) kind = i;
+	if (Segmented("##catkind", kinds, 6, kind)) ui.toolCategory = keys[kind];
 	ImGui::SameLine();
 	SearchBox("##toolfilter", ui.filter, sizeof(ui.filter), ICON_SEARCH "  검색", S(240));
 	if (ImGui::BeginTable("catalog", 4, kTable))

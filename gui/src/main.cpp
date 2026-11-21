@@ -359,7 +359,7 @@ static void DrawActivityBar(App& app)
 	};
 	auto tooltip = [&](ImVec2 p, ImVec2 size, const std::string& title, const std::string& sub) {
 		ImGui::SetNextWindowPos(ImVec2(p.x + size.x + S(4), p.y + S(8)));
-		ImGui::BeginTooltip();
+		BeginTip();
 		ImGui::TextUnformatted(title.c_str());
 		if (!sub.empty()) { ImGui::SameLine(); TextDim(sub); }
 		ImGui::EndTooltip();
@@ -1114,6 +1114,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 	std::wstring modeArg = ArgValue(argc, argv, L"--mode");
 	std::wstring delayArg = ArgValue(argc, argv, L"--screenshot-delay");
 	std::wstring canvasFileArg = ArgValue(argc, argv, L"--canvas-file");
+	// --hover x,y (window pixels): park the mouse there, so --screenshot can capture hover states and tooltips.
+	std::wstring hoverArg = ArgValue(argc, argv, L"--hover");
+	float hoverX = -1, hoverY = -1;
+	if (!hoverArg.empty()) swscanf_s(hoverArg.c_str(), L"%f,%f", &hoverX, &hoverY);
 	double shotDelay = delayArg.empty() ? 0.8 : _wtof(delayArg.c_str());
 	if (modeArg == L"machine") ui.liveMode = 1;
 	bool openUninstall = ArgValue(argc, argv, L"--dialog") == L"uninstall";
@@ -1243,6 +1247,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 		}
 		ImGui_ImplDX11_NewFrame();
 		ImGui_ImplWin32_NewFrame();
+		if (hoverX >= 0) ImGui::GetIO().AddMousePosEvent(hoverX, hoverY);
 		ImGui::NewFrame();
 		bool quit = false;
 		DrawApp(app, quit);

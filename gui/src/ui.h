@@ -385,13 +385,23 @@ static void KeyValue(const char* key, const std::string& value, float keyWidth =
 	ImGui::TextWrapped("%s", value.empty() ? "-" : value.c_str());
 }
 
+// Every tooltip gets the same padding, whatever its parent window pushed: the activity bar draws with no side
+// padding and the status bar with 1px, and a tooltip opened inside them would inherit it.
+static bool BeginTip()
+{
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(10), S(6)));
+	bool open = ImGui::BeginTooltip();
+	ImGui::PopStyleVar();
+	return open;
+}
+
 static void HelpMarker(const char* text)
 {
 	ImGui::SameLine();
 	TextDim(ICON_INFO);
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
 	{
-		ImGui::BeginTooltip();
+		BeginTip();
 		ImGui::PushTextWrapPos(S(380));
 		ImGui::TextUnformatted(text);
 		ImGui::PopTextWrapPos();
@@ -403,7 +413,7 @@ static void Tooltip(const char* text)
 {
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_AllowWhenDisabled))
 	{
-		ImGui::BeginTooltip();
+		BeginTip();
 		ImGui::PushTextWrapPos(S(380));
 		ImGui::TextUnformatted(text);
 		ImGui::PopTextWrapPos();

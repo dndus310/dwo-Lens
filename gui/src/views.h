@@ -1593,7 +1593,7 @@ static void FrameChart(const json& perf, float height)
 		float t = ImClamp((mx - a.x) / (b.x - a.x), 0.f, 1.f);
 		size_t i = (size_t)std::round(t * (frame.size() - 1));
 		dl->AddLine(ImVec2(mx, a.y), ImVec2(mx, b.y), IM_COL32(255, 255, 255, 60));
-		ImGui::BeginTooltip();
+		BeginTip();
 		ImGui::Text("샘플 %d", (int)i);
 		for (const char* k : { "FrameTime", "GameThreadTime", "RenderThreadTime" })
 			if (i < Arr(series, k).size()) ImGui::Text("%s  %.2fms", k, Arr(series, k)[i].get<double>());
@@ -1666,7 +1666,9 @@ static void Treemap(const std::vector<std::pair<std::string, double>>& items, Im
 		}
 		if (hover)
 		{
-			ImGui::SetTooltip("%s\n%s (%.1f%%)", items[k].first.c_str(), Bytes(items[k].second).c_str(), 100.0 * items[k].second / total);
+			BeginTip();
+			ImGui::Text("%s\n%s (%.1f%%)", items[k].first.c_str(), Bytes(items[k].second).c_str(), 100.0 * items[k].second / total);
+			ImGui::EndTooltip();
 			if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) selected = items[k].first;
 		}
 	}
@@ -1956,7 +1958,9 @@ static void StationStrip(const RunInfo& r)
 	if (hoveredIndex >= 0)
 	{
 		const json& st = stations[hoveredIndex];
-		ImGui::SetTooltip("%s %s\n%s · %.1f초", Str(st, "id").c_str(), Str(st, "name").c_str(), Str(st, "verdict").c_str(), Num(st, "ms") / 1000.0);
+		BeginTip();
+		ImGui::Text("%s %s\n%s · %.1f초", Str(st, "id").c_str(), Str(st, "name").c_str(), Str(st, "verdict").c_str(), Num(st, "ms") / 1000.0);
+		ImGui::EndTooltip();
 	}
 }
 

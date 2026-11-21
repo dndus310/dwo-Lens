@@ -211,7 +211,7 @@ public:
 
 		if (hovered >= 0 && dragMode == 0 && !nodes[hovered].rows.empty() && zoom < 0.55f)
 		{
-			ImGui::BeginTooltip();
+			BeginTip();
 			TextBold(nodes[hovered].title);
 			for (auto& r : nodes[hovered].rows) ImGui::Text("%s  %s", r.key.c_str(), r.value.c_str());
 			ImGui::EndTooltip();

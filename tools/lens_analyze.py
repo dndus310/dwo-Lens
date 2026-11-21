@@ -1,4 +1,4 @@
-"""dwo-Forge Lens analyzer: raw extractor JSON -> unified graph, SQLite index, diagrams, gate findings, HTML report.
+"""dwo-Forge DwoLens analyzer: raw extractor JSON -> unified graph, SQLite index, diagrams, gate findings, HTML report.
 
 Standard library only. Deterministic: the same raw input always produces the same output.
 
@@ -599,7 +599,7 @@ def class_xmi(g: Graph, model_name: str) -> str:
     return "\n".join([
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<xmi:XMI xmi:version="2.1" xmlns:xmi="http://schema.omg.org/spec/XMI/2.1" xmlns:uml="http://www.eclipse.org/uml2/3.0.0/UML">',
-        '  <xmi:Documentation exporter="dwo-Forge Lens" exporterVersion="' + q(EXTRACTOR_VERSION) + '"/>',
+        '  <xmi:Documentation exporter="dwo-Forge DwoLens" exporterVersion="' + q(EXTRACTOR_VERSION) + '"/>',
         f'  <uml:Model xmi:id="model" name="{q(model_name)}">',
         *body,
         "  </uml:Model>",
@@ -754,7 +754,7 @@ def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, dia
                        f"<td>{esc(short_name(bp['parent']))}</td><td>{len(bp['graphs'])}</td><td>{esc(targets)}</td></tr>")
 
     doc = f"""<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>dwo-Forge Lens 리포트 · {esc(Path(meta['project']).stem)}</title><style>{REPORT_CSS}</style></head><body><main>
+<title>dwo-Forge DwoLens 리포트 · {esc(Path(meta['project']).stem)}</title><style>{REPORT_CSS}</style></head><body><main>
 <section><div class="meta">{esc(run_id)} · UE {esc(meta['engineVersion'].split('-')[0])} · {esc(meta['extractedAtUtc'])}</div>
 <h1>{esc(Path(meta['project']).stem)} 아키텍처 리포트 <span class="badge {result['verdict']}">{result['verdict']}</span></h1>
 <div class="kpis">

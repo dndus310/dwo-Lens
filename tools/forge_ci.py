@@ -153,7 +153,7 @@ def decide(event: str, stdin: str, ci: dict, state: Path, branch: str = "", remo
 
 def pipeline_script(launcher: str, lens_checks: list[str]) -> str:
     """Declarative pipeline. Runs in the project folder through its __dwo-forge.bat; results are copied into
-    the workspace (DWO_FORGE_CI_OUT) for junit/archiveArtifacts. Lens fail -> UNSTABLE, build errors -> FAILURE.
+    the workspace (DWO_FORGE_CI_OUT) for junit/archiveArtifacts. DwoLens fail -> UNSTABLE, build errors -> FAILURE.
 
     Steps use `powershell`, not `bat`, and keep every path out of the script text: Jenkins writes .bat files as UTF-8
     while cmd reads them in the console code page (949 on Korean Windows), so a non-ASCII workspace or project path
@@ -179,14 +179,14 @@ def pipeline_script(launcher: str, lens_checks: list[str]) -> str:
       when {{ expression {{ params.COMPILE }} }}
       steps {{ powershell '{run.format("compile")}' }}
     }}
-    stage('Lens 검사') {{
+    stage('DwoLens 검사') {{
       when {{ expression {{ params.LENS }} }}
       steps {{
         script {{
           for (check in [{checks}]) {{
             def rc = powershell(returnStatus: true, script: '& $env:DWO_FORGE_LAUNCHER ' + check + '; exit $LASTEXITCODE')
-            if (rc == 2) {{ unstable("Lens ${{check}}: 실패 판정") }}
-            else if (rc != 0) {{ error("Lens ${{check}}: 실행 오류 (종료 코드 ${{rc}})") }}
+            if (rc == 2) {{ unstable("DwoLens ${{check}}: 실패 판정") }}
+            else if (rc != 0) {{ error("DwoLens ${{check}}: 실행 오류 (종료 코드 ${{rc}})") }}
           }}
         }}
       }}

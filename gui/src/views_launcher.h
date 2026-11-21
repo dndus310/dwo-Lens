@@ -18,10 +18,10 @@ struct ToolMeta
 };
 
 static const ToolMeta kToolMeta[] = {
-	{ "lens", "Lens", "Ln", col::Accent, "아키텍처·문제·검증·로그·성능·용량 검사와 실행 기록", Activity::Overview, "Plugins/__DwoLensInspector (편집기 전용, 기본 꺼짐)" },
+	{ "lens", "DwoLens", "Ln", col::Accent, "아키텍처·문제·검증·로그·성능·용량 검사와 실행 기록", Activity::Overview, "Plugins/__DwoLensInspector (편집기 전용, 기본 꺼짐)" },
 	{ "statemonitor", "DwoStateMonitor", "SM", col::Pass, "실행 중인 게임의 상태를 실시간으로 보는 플러그인", Activity::Live, "Plugins/__DwoStateMonitor" },
 	{ "canvas", "DwoCanvas", "Cv", col::Purple, "디자인 파일(*.dwocanvas.json)을 UMG 위젯 블루프린트로 가져오기", Activity::Canvas, "Plugins/__DwoCanvas" },
-	{ "ci", "로컬 CI", "CI", col::Teal, "push·merge·커밋 때 컴파일 → Lens 검사 → 패키지 빌드를 자동 실행", Activity::Ci, "Jenkins 작업, .git/hooks (Jenkins는 PC에 하나)" },
+	{ "ci", "로컬 CI", "CI", col::Teal, "push·merge·커밋 때 컴파일 → DwoLens 검사 → 패키지 빌드를 자동 실행", Activity::Ci, "Jenkins 작업, .git/hooks (Jenkins는 PC에 하나)" },
 };
 static const int kToolCount = 4;
 

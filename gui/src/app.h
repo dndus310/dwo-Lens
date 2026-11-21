@@ -371,7 +371,7 @@ struct App
 	std::vector<CanvasReport> canvasReports;
 	std::string canvasLastCommand;
 	bool legacyAttached = false; // project still has dwo-Lens 1.x __dwo-lens (migrated by the next command)
-	bool lensInstalled = false;  // Plugins/__DwoLensInspector (the Lens tool)
+	bool lensInstalled = false;  // Plugins/__DwoLensInspector (the DwoLens tool)
 	bool ciInstalled = false;    // __dwo-forge/ci.json (the Local CI tool)
 	bool toolsDirty = true;      // tool versions must be read again (forge.ps1 tools --json)
 	bool migrationStarted = false;
@@ -912,7 +912,7 @@ struct App
 			{
 				fs::path logFile = runner.logFile;
 				std::string verb = done.substr(0, done.find(' '));
-				std::string what = verb == "connect" ? "프로젝트 연결" : verb == "attach" ? "프로젝트 연결 (Lens 포함)" : verb == "uninstall" ? "연결 해제"
+				std::string what = verb == "connect" ? "프로젝트 연결" : verb == "attach" ? "프로젝트 연결 (DwoLens 포함)" : verb == "uninstall" ? "연결 해제"
 				                 : verb == "update" ? "연결 새로 고침과 도구 업데이트" : verb == "tool" ? ToolCommandName(done)
 				                 : verb == "canvas-import" ? "DwoCanvas 가져오기" : verb == "canvas-validate" ? "디자인 파일 검사"
 				                 : verb == "canvas-install" ? "DwoCanvas 설치" : verb == "canvas-remove" ? "DwoCanvas 제거"
@@ -962,13 +962,13 @@ struct App
 		}
 	}
 
-	// "tool install lens" -> "Lens 설치"
+	// "tool install lens" -> "DwoLens 설치"
 	static std::string ToolCommandName(const std::string& command)
 	{
 		std::istringstream in(command);
 		std::string verb, action, id;
 		in >> verb >> action >> id;
-		std::string name = id == "lens" ? "Lens" : id == "statemonitor" ? "DwoStateMonitor" : id == "canvas" ? "DwoCanvas" : id == "ci" ? "로컬 CI" : id == "--all" ? "모든 도구" : id;
+		std::string name = id == "lens" ? "DwoLens" : id == "statemonitor" ? "DwoStateMonitor" : id == "canvas" ? "DwoCanvas" : id == "ci" ? "로컬 CI" : id == "--all" ? "모든 도구" : id;
 		return name + (action == "install" ? " 설치" : action == "update" ? " 업데이트" : action == "remove" ? " 제거" : " " + action);
 	}
 

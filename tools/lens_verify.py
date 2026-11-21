@@ -1,4 +1,4 @@
-"""dwo-Forge Lens verify (ST-3) and logs (ST-4) lines: turn wrapped tool outputs into one verdict and report.
+"""dwo-Forge DwoLens verify (ST-3) and logs (ST-4) lines: turn wrapped tool outputs into one verdict and report.
 
     python lens_verify.py verify --run <run dir> [--baseline <previous logs.json>]
     python lens_verify.py logs   --run <run dir> --files <log files...> [--crashes <dir>] [--baseline <json>]

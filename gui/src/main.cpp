@@ -1,7 +1,7 @@
 // dwo-Forge control panel: Dear ImGui (docking) + Win32 + DirectX 11.
 //
 // Runs the same commands as __dwo-forge.bat and reads the same run.json / out/*.json files, so the GUI and the
-// command line always show identical results. Groups the three provided tools: Lens (analysis lines),
+// command line always show identical results. Groups the three provided tools: DwoLens (analysis lines),
 // DwoStateMonitor (live link on 127.0.0.1:47731) and DwoCanvas (design file -> UMG importer).
 //
 //   dwo-forge-gui.exe [--project <folder with .uproject>] [--home <dwo-Forge repository>]
@@ -30,20 +30,20 @@ struct ActivityDef
 	const char* key;    // --view value
 	const char* shortcut;
 	ImGuiKey hotkey;    // with Ctrl
-	const char* group;  // tool the screen belongs to: Lens, DwoStateMonitor, DwoCanvas, CI (Forge = the launcher)
+	const char* group;  // tool the screen belongs to: DwoLens, DwoStateMonitor, DwoCanvas, CI (Forge = the launcher)
 };
 
 // Shortcuts keep their dwo-Lens 1.x numbers (Ctrl+1..8); Ctrl+9 (formerly the tools screen) opens the launcher,
 // DwoCanvas takes Ctrl+0.
 static const ActivityDef kActivities[] = {
 	{ Activity::Launcher, ICON_HOME, "런처", "launcher", "Ctrl+9", ImGuiKey_9, "Forge" },
-	{ Activity::Overview, ICON_DASHBOARD, "대시보드", "overview", "Ctrl+1", ImGuiKey_1, "Lens" },
-	{ Activity::Architecture, ICON_LAYERS, "아키텍처", "architecture", "Ctrl+2", ImGuiKey_2, "Lens" },
-	{ Activity::Problems, ICON_WARNING, "문제", "problems", "Ctrl+3", ImGuiKey_3, "Lens" },
-	{ Activity::Tests, ICON_CHECKLIST, "검증", "tests", "Ctrl+4", ImGuiKey_4, "Lens" },
-	{ Activity::Logs, ICON_LIST, "로그", "logs", "Ctrl+5", ImGuiKey_5, "Lens" },
-	{ Activity::Performance, ICON_SPEED, "성능·용량", "performance", "Ctrl+6", ImGuiKey_6, "Lens" },
-	{ Activity::History, ICON_HISTORY, "실행 기록", "history", "Ctrl+8", ImGuiKey_8, "Lens" },
+	{ Activity::Overview, ICON_DASHBOARD, "대시보드", "overview", "Ctrl+1", ImGuiKey_1, "DwoLens" },
+	{ Activity::Architecture, ICON_LAYERS, "아키텍처", "architecture", "Ctrl+2", ImGuiKey_2, "DwoLens" },
+	{ Activity::Problems, ICON_WARNING, "문제", "problems", "Ctrl+3", ImGuiKey_3, "DwoLens" },
+	{ Activity::Tests, ICON_CHECKLIST, "검증", "tests", "Ctrl+4", ImGuiKey_4, "DwoLens" },
+	{ Activity::Logs, ICON_LIST, "로그", "logs", "Ctrl+5", ImGuiKey_5, "DwoLens" },
+	{ Activity::Performance, ICON_SPEED, "성능·용량", "performance", "Ctrl+6", ImGuiKey_6, "DwoLens" },
+	{ Activity::History, ICON_HISTORY, "실행 기록", "history", "Ctrl+8", ImGuiKey_8, "DwoLens" },
 	{ Activity::Live, ICON_EYE, "DwoStateMonitor", "live", "Ctrl+7", ImGuiKey_7, "DwoStateMonitor" },
 	{ Activity::Canvas, ICON_CANVAS, "DwoCanvas", "canvas", "Ctrl+0", ImGuiKey_0, "DwoCanvas" },
 	{ Activity::Ci, ICON_SYNC, "로컬 CI", "ci", "", ImGuiKey_None, "CI" },
@@ -53,7 +53,7 @@ static const ActivityDef kActivities[] = {
 static const char* GroupCaption(const char* group)
 {
 	std::string g = group;
-	if (g == "Lens") return "LENS";
+	if (g == "DwoLens") return "LENS";
 	if (g == "DwoStateMonitor") return "STATE";
 	if (g == "DwoCanvas") return "CANVAS";
 	return "FORGE";
@@ -62,7 +62,7 @@ static const char* GroupCaption(const char* group)
 static ImU32 GroupColor(const char* group)
 {
 	std::string g = group;
-	if (g == "Lens") return col::Accent;
+	if (g == "DwoLens") return col::Accent;
 	if (g == "DwoStateMonitor") return col::Pass;
 	if (g == "DwoCanvas") return col::Purple;
 	if (g == "CI") return col::Teal;
@@ -96,7 +96,7 @@ static std::vector<Command> BuildCommands(App& app)
 	for (auto& a : kActivities)
 	{
 		Activity id = a.id;
-		list.push_back({ std::string("이동: ") + (std::string(a.group) == "Lens" ? "Lens · " : "") + a.name, a.shortcut, [&app, id] { app.requestActivity = id; } });
+		list.push_back({ std::string("이동: ") + (std::string(a.group) == "DwoLens" ? "DwoLens · " : "") + a.name, a.shortcut, [&app, id] { app.requestActivity = id; } });
 	}
 	for (int i = 0; i < kLineCount; ++i)
 	{
@@ -156,10 +156,16 @@ static void DrawCommandPalette(App& app)
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(10), S(10)));
 	if (ImGui::BeginPopupModal("##palette", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		if (ImGui::IsWindowAppearing()) { g_paletteQuery[0] = 0; g_paletteIndex = 0; ImGui::SetKeyboardFocusHere(); }
+		bool appearing = ImGui::IsWindowAppearing();
+		if (appearing) { g_paletteQuery[0] = 0; g_paletteIndex = 0; ImGui::SetKeyboardFocusHere(); }
+		// A click outside closes the palette and does nothing else (the modal keeps it from reaching the window behind).
+		bool outside = !appearing && (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right)) &&
+		               !ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
 		ImGui::SetNextItemWidth(-FLT_MIN);
 		ImGui::PushFont(g_fonts.title);
-		if (ImGui::InputTextWithHint("##q", ICON_SEARCH "  명령, 화면, 검사 검색", g_paletteQuery, sizeof(g_paletteQuery))) g_paletteIndex = 0;
+		// Follow the selection only when the keyboard moved it, so the mouse wheel can scroll the list freely.
+		bool follow = false;
+		if (ImGui::InputTextWithHint("##q", ICON_SEARCH "  명령, 화면, 검사 검색", g_paletteQuery, sizeof(g_paletteQuery))) { g_paletteIndex = 0; follow = true; }
 		ImGui::PopFont();
 		auto commands = BuildCommands(app);
 		std::vector<std::pair<int, int>> scored;
@@ -169,8 +175,8 @@ static void DrawCommandPalette(App& app)
 			if (sc > 0) scored.push_back({ -sc, i });
 		}
 		std::stable_sort(scored.begin(), scored.end(), [](auto& a, auto& b) { return a.first < b.first; });
-		if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) g_paletteIndex = ImMin(g_paletteIndex + 1, (int)scored.size() - 1);
-		if (ImGui::IsKeyPressed(ImGuiKey_UpArrow)) g_paletteIndex = ImMax(g_paletteIndex - 1, 0);
+		if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) { g_paletteIndex = ImMin(g_paletteIndex + 1, (int)scored.size() - 1); follow = true; }
+		if (ImGui::IsKeyPressed(ImGuiKey_UpArrow)) { g_paletteIndex = ImMax(g_paletteIndex - 1, 0); follow = true; }
 		bool enter = ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter);
 		ImGui::BeginChild("list", ImVec2(0, ImMin(S(380), (scored.size() + 1) * ImGui::GetTextLineHeightWithSpacing() * 1.25f)));
 		std::function<void()> chosen;
@@ -184,14 +190,14 @@ static void DrawCommandPalette(App& app)
 			ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetCursorPosX() - ImGui::CalcTextSize(c.hint.c_str()).x - S(6));
 			TextDim(c.hint);
 			ImGui::EndDisabled();
-			if (selected) ImGui::SetScrollHereY();
+			if (selected && follow) ImGui::SetScrollHereY();
 			if (selected && enter && c.enabled) chosen = c.run;
 			ImGui::PopID();
 		}
 		if (scored.empty()) TextDim("일치하는 명령이 없습니다.");
 		ImGui::EndChild();
 		TextDim("↑↓ 이동  ·  Enter 실행  ·  Esc 닫기");
-		if (ImGui::IsKeyPressed(ImGuiKey_Escape) || chosen)
+		if (ImGui::IsKeyPressed(ImGuiKey_Escape) || chosen || outside)
 		{
 			g_paletteOpen = false;
 			ImGui::CloseCurrentPopup();
@@ -415,7 +421,7 @@ static void DrawActivityBar(App& app)
 			auto last = g_lastToolScreen.find(id);
 			app.requestActivity = last != g_lastToolScreen.end() ? last->second : m.open;
 		}
-		// the active tool unfolds its screens (Lens has seven)
+		// the active tool unfolds its screens (DwoLens has seven)
 		int screens = 0;
 		for (auto& a : kActivities) screens += ToolOfActivity(a.id) == id;
 		if (active && screens > 1)
@@ -1121,6 +1127,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 	double shotDelay = delayArg.empty() ? 0.8 : _wtof(delayArg.c_str());
 	if (modeArg == L"machine") ui.liveMode = 1;
 	bool openUninstall = ArgValue(argc, argv, L"--dialog") == L"uninstall";
+	if (ArgValue(argc, argv, L"--dialog") == L"palette") g_paletteOpen = true;   // screenshots of the command palette
 	LocalFree(argv);
 	if (homeArg.empty())
 	{

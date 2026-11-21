@@ -1,4 +1,4 @@
-"""dwo-Forge Lens runtime lines: map boot smoke test, CSV performance capture, content sizes, Insights trace.
+"""dwo-Forge DwoLens runtime lines: map boot smoke test, CSV performance capture, content sizes, Insights trace.
 
 The engine runs are driven by lens.ps1; this module only enumerates maps, parses what the runs left behind
 and writes out/<line>.json plus out/report.html. Standard library only.

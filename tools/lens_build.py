@@ -1,4 +1,4 @@
-"""Lens build lines: editor C++ compile (UnrealBuildTool) and package build (RunUAT BuildCookRun).
+"""DwoLens build lines: editor C++ compile (UnrealBuildTool) and package build (RunUAT BuildCookRun).
 
 forge.ps1 runs the tools and keeps their console output in the run folder; this script turns that output into
 out/<line>.json and out/report.html like the other lines.

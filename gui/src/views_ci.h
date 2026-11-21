@@ -307,7 +307,7 @@ static void DrawCiNav(App& app)
 		ImGui::BeginDisabled(!app.attached || !idle);
 		if (PrimaryButton((std::string(ICON_ADD) + "  로컬 CI 설치").c_str(), ImVec2(w, 0))) app.Run("tool install ci");
 		ImGui::EndDisabled();
-		Tooltip("Jenkins에 이 프로젝트의 파이프라인(컴파일 → Lens 검사 → 패키지)을 만들고, git 훅으로 push·merge·브랜치 생성·커밋 때 자동 빌드합니다. PC에 Jenkins가 없으면 오프라인 번들로 먼저 설치합니다.");
+		Tooltip("Jenkins에 이 프로젝트의 파이프라인(컴파일 → DwoLens 검사 → 패키지)을 만들고, git 훅으로 push·merge·브랜치 생성·커밋 때 자동 빌드합니다. PC에 Jenkins가 없으면 오프라인 번들로 먼저 설치합니다.");
 	}
 	else
 	{
@@ -316,7 +316,7 @@ static void DrawCiNav(App& app)
 		KeyValue("git 훅", s.hooks.empty() ? std::string("없음 (git 저장소 아님)") : std::to_string(s.hooks.size()) + "개", 60);
 		ImGui::BeginDisabled(!idle);
 		if (ImGui::Button((std::string(ICON_SYNC) + "  설정 다시 적용").c_str(), ImVec2(w, 0))) app.Run("tool update ci");
-		Tooltip("__dwo-forge/config.json의 \"ci\" 설정(트리거, 보관 개수, Lens 검사 목록)과 이 dwo-Forge의 파이프라인을 작업과 훅에 다시 적용합니다.");
+		Tooltip("__dwo-forge/config.json의 \"ci\" 설정(트리거, 보관 개수, DwoLens 검사 목록)과 이 dwo-Forge의 파이프라인을 작업과 훅에 다시 적용합니다.");
 		ImGui::EndDisabled();
 		if (!s.user.empty() && ImGui::Button((std::string(ICON_COPY) + "  계정 복사").c_str(), ImVec2(w, 0)))
 		{
@@ -332,7 +332,7 @@ static void DrawCiMain(App& app)
 	c.Ensure(app.hasUProject ? app.project : fs::path());
 	ci::Snapshot s = c.Get();
 	ci::Ui& ui = ci::State();
-	ViewHeader(ICON_SYNC, "로컬 CI", "내 PC의 Jenkins에서 컴파일 · Lens 검사 · 패키지 빌드를 자동으로 실행");
+	ViewHeader(ICON_SYNC, "로컬 CI", "내 PC의 Jenkins에서 컴파일 · DwoLens 검사 · 패키지 빌드를 자동으로 실행");
 	if (!s.installed)
 	{
 		EmptyState(ICON_DOWNLOAD, "로컬 CI가 설치되지 않았습니다",
@@ -356,7 +356,7 @@ static void DrawCiMain(App& app)
 	// trigger bar
 	ImGui::Checkbox("C++ 컴파일", &ui.stageCompile);
 	ImGui::SameLine();
-	ImGui::Checkbox("Lens 검사", &ui.stageLens);
+	ImGui::Checkbox("DwoLens 검사", &ui.stageLens);
 	ImGui::SameLine();
 	ImGui::Checkbox("패키지 빌드", &ui.stagePackage);
 	ImGui::SameLine();
@@ -435,7 +435,7 @@ static void DrawCiInspector(App& app)
 	ImGui::Spacing();
 	ImGui::TextWrapped("외부 요청: __dwo-forge.bat ci-trigger --reason <내용>, 또는 HTTP POST /job/<작업>/buildWithParameters (계정 토큰).");
 	ImGui::Spacing();
-	ImGui::TextWrapped("보관: Jenkins는 최근 빌드만 남기고 오래된 것부터 지웁니다. 패키지 결과물은 Lens 실행 기록에 최근 3개만 남깁니다.");
+	ImGui::TextWrapped("보관: Jenkins는 최근 빌드만 남기고 오래된 것부터 지웁니다. 패키지 결과물은 DwoLens 실행 기록에 최근 3개만 남깁니다.");
 	if (s.installed)
 	{
 		SectionHeader("설치");

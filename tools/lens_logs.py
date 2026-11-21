@@ -1,4 +1,4 @@
-"""dwo-Forge Lens structured log parser (ST-4).
+"""dwo-Forge DwoLens structured log parser (ST-4).
 
 Turns Unreal log files and crash folders into grouped, fingerprinted events so every wrapped tool
 (commandlets, automation, editor sessions) reports in one shape. Standard library only.

@@ -312,7 +312,7 @@
       "status": "ready",
       "command": "gui",
       "invocation": "dwo-Forge.bat (repository) or __dwo-forge.bat gui; Dear ImGui docking + DirectX 11, built once with MSVC",
-      "output": "Lens (dashboard, architecture, problems, verify, logs, performance), DwoStateMonitor live view, DwoCanvas, history, tools"
+      "output": "DwoLens (dashboard, architecture, problems, verify, logs, performance), DwoStateMonitor live view, DwoCanvas, history, tools"
     },
     {
       "id": "state-monitor-live",

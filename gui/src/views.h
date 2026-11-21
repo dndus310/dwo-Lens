@@ -153,7 +153,7 @@ static void DrawOverviewNav(App& app)
 	TextBold(app.projectName);
 	TextDim(app.isCodeProject ? "C++ 프로젝트" : "Blueprint 전용 프로젝트");
 	ImGui::Spacing();
-	KeyValue("상태", app.attached ? (app.lensInstalled ? "연결됨 · Lens 설치됨" : "연결됨 · Lens 설치 안 됨") : app.legacyAttached ? "dwo-Lens 1.x · 이전 중" : "연결 안 됨", 70);
+	KeyValue("상태", app.attached ? (app.lensInstalled ? "연결됨 · DwoLens 설치됨" : "연결됨 · DwoLens 설치 안 됨") : app.legacyAttached ? "dwo-Lens 1.x · 이전 중" : "연결 안 됨", 70);
 	if (app.attached)
 	{
 		KeyValue("엔진", "UE " + app.Engine(), 70);
@@ -225,13 +225,13 @@ static void DrawOverviewMain(App& app)
 	}
 	if (!app.attached)
 	{
-		if (EmptyState(ICON_LINK, "dwo-Forge에 연결되지 않은 프로젝트입니다", "런처에서 프로젝트를 연결하고 Lens를 설치하면 검사를 실행할 수 있습니다.", "런처 열기"))
+		if (EmptyState(ICON_LINK, "dwo-Forge에 연결되지 않은 프로젝트입니다", "런처에서 프로젝트를 연결하고 DwoLens를 설치하면 검사를 실행할 수 있습니다.", "런처 열기"))
 			app.requestActivity = Activity::Launcher;
 		return;
 	}
 	if (!app.lensInstalled && app.runs.empty())
 	{
-		if (EmptyState(ICON_LAYERS, "Lens가 설치되지 않았습니다", "Lens는 프로젝트의 아키텍처·문제·검증·로그·성능을 검사하는 도구입니다. 설치하면 편집기에서만 쓰이는 숨김 플러그인 Plugins/__DwoLensInspector가 추가됩니다.", "Lens 설치"))
+		if (EmptyState(ICON_LAYERS, "DwoLens가 설치되지 않았습니다", "DwoLens는 프로젝트의 아키텍처·문제·검증·로그·성능을 검사하는 도구입니다. 설치하면 편집기에서만 쓰이는 숨김 플러그인 Plugins/__DwoLensInspector가 추가됩니다.", "DwoLens 설치"))
 			app.Run("tool install lens");
 		return;
 	}
@@ -333,7 +333,7 @@ static void DrawOverviewMain(App& app)
 	ImGui::Spacing();
 
 	// ---- lines
-	SectionHeader("Lens 검사", "최근 10회 결과");
+	SectionHeader("DwoLens 검사", "최근 10회 결과");
 	if (ImGui::BeginTable("lines", 6, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_SizingStretchProp))
 	{
 		ImGui::TableSetupColumn("검사", ImGuiTableColumnFlags_WidthStretch, 2.0f);
@@ -413,7 +413,7 @@ static void DrawOverviewInspector(App& app)
 	bool connected = false;
 	for (auto& s : app.store.sessions) connected |= !s.sources.empty();
 	Step steps[] = {
-		{ "Lens 설치", app.lensInstalled, "설치", [&] { if (app.attached) app.Run("tool install lens"); else app.requestActivity = Activity::Launcher; } },
+		{ "DwoLens 설치", app.lensInstalled, "설치", [&] { if (app.attached) app.Run("tool install lens"); else app.requestActivity = Activity::Launcher; } },
 		{ "아키텍처 분석 실행", analyzed, "실행", [&] { app.Run("analyze"); } },
 		{ "검증 실행 (에디터 닫고)", verified, "실행", [&] { app.Run("verify"); } },
 		{ "DwoStateMonitor 설치", app.stateMonitor != 0, "설치", [&] { app.Run("tool install statemonitor"); } },
@@ -1880,7 +1880,7 @@ static std::string Between(const std::string& s, const std::string& open, const 
 static std::string WriteBundleReport(App& app, const fs::path& dest)
 {
 	std::string style, body, mermaid;
-	std::string cover = "<section><div class='meta'>dwo-Forge Lens 종합 리포트</div><h1>" + HtmlEscape(app.projectName) +
+	std::string cover = "<section><div class='meta'>dwo-Forge DwoLens 종합 리포트</div><h1>" + HtmlEscape(app.projectName) +
 	                    "</h1><div class='scroll'><table><thead><tr><th>검사</th><th>실행 ID</th><th>결과</th></tr></thead><tbody>";
 	int parts = 0;
 	for (int i = 0; i < kLineCount; ++i)
@@ -1912,7 +1912,7 @@ static std::string WriteBundleReport(App& app, const fs::path& dest)
 	if (!parts) return "묶을 실행 기록이 없습니다.";
 	cover += "</tbody></table></div></section>";
 	std::string page = "<!doctype html><html lang='ko'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>"
-	                   "<title>" + HtmlEscape(app.projectName) + " · dwo-Forge Lens 종합 리포트</title><style>" + style +
+	                   "<title>" + HtmlEscape(app.projectName) + " · dwo-Forge DwoLens 종합 리포트</title><style>" + style +
 	                   "</style></head><body><main>" + cover + body + "</main>" + mermaid + "</body></html>";
 	std::ofstream out(dest, std::ios::binary);
 	out << page;
@@ -2179,7 +2179,7 @@ struct ForgeToolDef
 };
 
 static const ForgeToolDef kForgeTools[] = {
-	{ "lens", ICON_LAYERS, "Lens", "분석·검증 검사: 아키텍처, 문제, 검증, 로그, 성능·용량 (DwoLensInspector)" },
+	{ "lens", ICON_LAYERS, "DwoLens", "분석·검증 검사: 아키텍처, 문제, 검증, 로그, 성능·용량 (DwoLensInspector)" },
 	{ "statemonitor", ICON_EYE, "DwoStateMonitor", "실행 중인 게임의 상태를 실시간으로 보는 런타임 플러그인" },
 	{ "canvas", ICON_CANVAS, "DwoCanvas", "디자인 파일(*.dwocanvas.json)을 UMG 위젯 블루프린트로 가져오는 플러그인" },
 	{ "forge", ICON_FORGE, "dwo-Forge", "프로젝트 연결, 도구 설치·업데이트, 런처, 자체 검증" },
@@ -2195,7 +2195,7 @@ static const char* ToolNameOf(const std::string& key)
 // The tool catalog (tools/catalog.json): every check and integration the tools provide, shown in the launcher.
 static void DrawCatalogTable(App& app)
 {
-	static const char* const kinds[] = { "전체", "Lens", "DwoStateMonitor", "DwoCanvas", "dwo-Forge" };
+	static const char* const kinds[] = { "전체", "DwoLens", "DwoStateMonitor", "DwoCanvas", "dwo-Forge" };
 	static const char* const keys[] = { "", "lens", "statemonitor", "canvas", "forge" };
 	int kind = 0;
 	for (int i = 0; i < 5; ++i) if (ui.toolCategory == keys[i]) kind = i;

@@ -1,4 +1,4 @@
-"""CI export of a finished Lens run: out/junit.xml (JUnit) and out/results.sarif (SARIF 2.1.0).
+"""CI export of a finished DwoLens run: out/junit.xml (JUnit) and out/results.sarif (SARIF 2.1.0).
 
 Jenkins, GitHub Actions, GitLab and TeamCity read JUnit for pass/fail trends; SARIF carries every problem with a
 stable fingerprint and baselineState (new / unchanged against the previous run of the same check), so a quality
@@ -112,7 +112,7 @@ def sarif(run: Path, line: str, verdict: str, baseline: dict | None) -> dict:
     return {
         "$schema": SARIF_SCHEMA, "version": "2.1.0",
         "runs": [{
-            "tool": {"driver": {"name": "dwo-Forge Lens", "rules": sorted(rules.values(), key=lambda r: r["id"])}},
+            "tool": {"driver": {"name": "dwo-Forge DwoLens", "rules": sorted(rules.values(), key=lambda r: r["id"])}},
             "automationDetails": {"id": f"{line}/{run.name}"},
             "properties": {"check": line, "verdict": verdict, "newResults": new, "baselineCompared": baseline is not None},
             "results": results,

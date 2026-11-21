@@ -4,14 +4,14 @@
 
 | 도구 | 하는 일 | 프로젝트에 들어가는 것 |
 |---|---|---|
-| **Lens** | 분석·검증·로그 검사: 아키텍처 리포트(`analyze`), 검증(`verify`), 로그(`logs`), 맵 스모크(`smoke`), 성능(`perf`), 콘텐츠 용량(`sizes`), Insights 트레이스(`trace`), 컴파일·패키지 | `Plugins/__DwoLensInspector` (숨김, 미리 빌드, 기본 비활성) |
+| **DwoLens** | 분석·검증·로그 검사: 아키텍처 리포트(`analyze`), 검증(`verify`), 로그(`logs`), 맵 스모크(`smoke`), 성능(`perf`), 콘텐츠 용량(`sizes`), Insights 트레이스(`trace`), 컴파일·패키지 | `Plugins/__DwoLensInspector` (숨김, 미리 빌드, 기본 비활성) |
 | **DwoStateMonitor** | 실행 중인 게임의 상태를 실시간으로 보는 런타임 플러그인 (예전 이름 StateMonitor) | `Plugins/__DwoStateMonitor` (숨김) |
 | **DwoCanvas** | 디자인 파일(`*.dwocanvas.json`)을 UMG 위젯 블루프린트로 가져오는 플러그인 | `Plugins/__DwoCanvas` (숨김) |
-| **로컬 CI** | push·merge·커밋 때 컴파일 → Lens 검사 → 패키지 빌드를 자동 실행 (Jenkins, 폐쇄망 지원) | Jenkins 작업과 `.git/hooks` (Jenkins 자체는 PC에 하나) |
+| **로컬 CI** | push·merge·커밋 때 컴파일 → DwoLens 검사 → 패키지 빌드를 자동 실행 (Jenkins, 폐쇄망 지원) | Jenkins 작업과 `.git/hooks` (Jenkins 자체는 PC에 하나) |
 
 모든 도구는 선택 설치입니다. 프로젝트 연결은 도구와 별개로, `__dwo-forge` 폴더와 실행 파일을 만들고 git에서 숨기는 일만 합니다.
 
-Lens와 DwoStateMonitor는 프로젝트를 읽기만 하며, 언제 떼어 내도 프로젝트는 그대로 동작합니다. DwoCanvas도 같은 방식으로 숨겨 설치하고 떼어 낼 수 있습니다. 다만 DwoCanvas로 만든 위젯이 남아 있는 동안에는 제거를 막습니다(아래 [DwoCanvas](#제공-도구-dwocanvas)).
+DwoLens와 DwoStateMonitor는 프로젝트를 읽기만 하며, 언제 떼어 내도 프로젝트는 그대로 동작합니다. DwoCanvas도 같은 방식으로 숨겨 설치하고 떼어 낼 수 있습니다. 다만 DwoCanvas로 만든 위젯이 남아 있는 동안에는 제거를 막습니다(아래 [DwoCanvas](#제공-도구-dwocanvas)).
 
 > dwo-Lens에서 이름이 바뀌었습니다. dwo-Lens 1.x로 연결한 프로젝트는 dwo-Forge 명령을 처음 실행할 때(창에서 열 때 포함) 자동으로 옮겨집니다. 아래 [dwo-Lens에서 옮기기](#dwo-lens-1x에서-옮기기)를 보세요.
 
@@ -21,7 +21,7 @@ Lens와 DwoStateMonitor는 프로젝트를 읽기만 하며, 언제 떼어 내�
 
 1. dwo-Forge를 받습니다. GitHub의 **Download ZIP**을 풀어도 되고 `git clone`해도 됩니다. 어느 폴더든 상관없습니다.
 2. 받은 폴더의 **`dwo-Forge.bat`을 더블클릭**합니다. 처음 한 번만 폴더를 등록하고 창을 빌드합니다(약 1분). 별도 설치 단계는 없습니다.
-3. 창(런처)에서 프로젝트를 엽니다(`프로젝트 열기...`, 또는 프로젝트 폴더나 `.uproject`를 창에 **끌어다 놓기**). 함께 설치할 도구를 체크하고 **연결**을 누르면 끝입니다(Lens가 기본으로 체크되어 있습니다).
+3. 창(런처)에서 프로젝트를 엽니다(`프로젝트 열기...`, 또는 프로젝트 폴더나 `.uproject`를 창에 **끌어다 놓기**). 함께 설치할 도구를 체크하고 **연결**을 누르면 끝입니다(DwoLens가 기본으로 체크되어 있습니다).
 
 `dwo-Forge.bat`에 프로젝트 폴더나 `.uproject`를 끌어다 놓아도 그 프로젝트로 바로 열립니다. 이미 연결된 프로젝트는 프로젝트 안의 `__dwo-forge.bat`을 더블클릭해도 창이 열립니다.
 
@@ -58,9 +58,9 @@ __dwo-forge.bat tools [--json]      :: 도구별 상태: 설치 안 됨 / 최신
 __dwo-forge.bat tool install lens   :: 설치 (statemonitor는 --runtime으로 패키지 게임 포함)
 __dwo-forge.bat tool update ci      :: 업데이트.  tool update --all = 업데이트가 있는 도구 모두
 __dwo-forge.bat tool remove canvas  :: 제거 (프로젝트가 아직 쓰고 있으면 거부, --force)
-dwo-Forge.bat attach "C:\Projects\MyGame"   :: dwo-Lens 방식: 연결 + Lens 설치
+dwo-Forge.bat attach "C:\Projects\MyGame"   :: dwo-Lens 방식: 연결 + DwoLens 설치
 
-:: Lens
+:: DwoLens
 __dwo-forge.bat analyze             :: 아키텍처 리포트 + 품질 점검
 __dwo-forge.bat verify              :: BP 전체 컴파일, 데이터 검증, 자동화 테스트
 __dwo-forge.bat logs                :: Saved/Logs, Saved/Crashes 분석 (이전 실행 대비 새 오류)
@@ -120,13 +120,13 @@ __dwo-forge.bat uninstall           :: 한 번에 완전 제거. 기록·생성 
 | 도구 | 화면 (단축키) | 내용 |
 |---|---|---|
 | - | 런처 (Ctrl+9) | 위 표 |
-| Lens | 대시보드 (Ctrl+1) | 프로젝트 상태 배너, KPI 카드(새 문제, 아키텍처 문제, BP 복잡도, 테스트 통과율, 로그 오류, 맵 스모크, 프레임 p95, 콘텐츠 용량, DwoStateMonitor)와 실행별 추세선, 검사별 최근 10회 결과, 주요 문제, 시작하기 체크리스트 |
-| Lens | 아키텍처 (Ctrl+2) | 클래스 계층·BP 실행 흐름·BP 호출·에셋 참조·모듈 의존성을 **노드 그래프**로 표시(이동·확대·미니맵·F 전체 보기), 품질 점검 표 |
-| Lens | 문제 (Ctrl+3) | 모든 검사의 최신 실행에서 모은 문제. 심각도·범주 필터, 묶기, **NEW**(이전 실행 대비), 무시(기준선) |
-| Lens | 검증 (Ctrl+4) | 단계 카드, 자동화 테스트 트리, 최근 10회 결과 띠, **새 실패·불안정(flaky) 테스트**, 맵 스모크 결과 |
-| Lens | 로그 (Ctrl+5) | 지문으로 묶은 로그 그룹, 횟수 추세, 처음·마지막 발생, 콜스택, 크래시 |
-| Lens | 성능·용량 (Ctrl+6) | 프레임 시간 차트(예산선·스레드별), p95 추세, 히치 / 폴더별 용량 트리맵, 큰 에셋, 함께 로드되는 용량 / Insights 트레이스 열기 |
-| Lens | 실행 기록 (Ctrl+8) | 실행별 단계 띠, 두 실행 **비교**(지표 변화, 새로 생긴·해결된 문제, 결과가 바뀐 테스트), 결과 파일 |
+| DwoLens | 대시보드 (Ctrl+1) | 프로젝트 상태 배너, KPI 카드(새 문제, 아키텍처 문제, BP 복잡도, 테스트 통과율, 로그 오류, 맵 스모크, 프레임 p95, 콘텐츠 용량, DwoStateMonitor)와 실행별 추세선, 검사별 최근 10회 결과, 주요 문제, 시작하기 체크리스트 |
+| DwoLens | 아키텍처 (Ctrl+2) | 클래스 계층·BP 실행 흐름·BP 호출·에셋 참조·모듈 의존성을 **노드 그래프**로 표시(이동·확대·미니맵·F 전체 보기), 품질 점검 표 |
+| DwoLens | 문제 (Ctrl+3) | 모든 검사의 최신 실행에서 모은 문제. 심각도·범주 필터, 묶기, **NEW**(이전 실행 대비), 무시(기준선) |
+| DwoLens | 검증 (Ctrl+4) | 단계 카드, 자동화 테스트 트리, 최근 10회 결과 띠, **새 실패·불안정(flaky) 테스트**, 맵 스모크 결과 |
+| DwoLens | 로그 (Ctrl+5) | 지문으로 묶은 로그 그룹, 횟수 추세, 처음·마지막 발생, 콜스택, 크래시 |
+| DwoLens | 성능·용량 (Ctrl+6) | 프레임 시간 차트(예산선·스레드별), p95 추세, 히치 / 폴더별 용량 트리맵, 큰 에셋, 함께 로드되는 용량 / Insights 트레이스 열기 |
+| DwoLens | 실행 기록 (Ctrl+8) | 실행별 단계 띠, 두 실행 **비교**(지표 변화, 새로 생긴·해결된 문제, 결과가 바뀐 테스트), 결과 파일 |
 | DwoStateMonitor | DwoStateMonitor (Ctrl+7) | 실행 중인 게임의 상태를 실시간으로 표시 (아래 '제공 도구: DwoStateMonitor') |
 | DwoCanvas | DwoCanvas (Ctrl+0) | 디자인 파일 고르기(열기 대화상자 또는 `*.dwocanvas.json` 끌어다 놓기), 검사·가져오기·초기화하고 가져오기, 최신 리포트 요약 (아래 '제공 도구: DwoCanvas') |
 | 로컬 CI | 로컬 CI | 빌드 목록·결과·실시간 로그, `지금 빌드`(단계 선택), 이 프로젝트의 작업 설정 다시 적용. Jenkins 관리는 런처의 PC 구성요소 |
@@ -141,7 +141,7 @@ __dwo-forge.bat uninstall           :: 한 번에 완전 제거. 기록·생성 
 | 버튼 / 명령 | 결과 |
 |---|---|
 | 실행 기록 > 속성 `HTML 저장` | 선택한 실행의 `report.html`을 원하는 위치에 저장 |
-| `파일 > 종합 리포트 저장...` | Lens 검사마다 최신 실행의 리포트를 표지와 함께 HTML 파일 하나로 저장 (미완료 실행은 제외) |
+| `파일 > 종합 리포트 저장...` | DwoLens 검사마다 최신 실행의 리포트를 표지와 함께 HTML 파일 하나로 저장 (미완료 실행은 제외) |
 | `dwo-forge-gui.exe --project <폴더> --export-report <파일.html>` | 창 없이 종합 리포트 생성 (자동화·CI용) |
 
 처음 실행할 때 Visual Studio C++ 도구로 한 번 빌드합니다(약 1분, `%LOCALAPPDATA%\dwo-Forge\gui-cache`). GUI는 `tools/forge.ps1`을 그대로 실행하고 같은 결과 파일을 읽으므로 명령줄과 결과가 같습니다.
@@ -249,21 +249,21 @@ A/
 │  ├─ home.txt                    # dwo-Forge 설치 폴더 위치
 │  ├─ state.json                  # 연결 정보 (버전, 형상관리 방식, 연결 전 git 상태)와 도구별 설치 기록 (tools)
 │  ├─ ci.json                     # (로컬 CI 설치 시) Jenkins 작업, 훅, 설치 버전
-│  ├─ data/runs/<id>/             # Lens 실행별 raw · out · run.json · 로그
+│  ├─ data/runs/<id>/             # DwoLens 실행별 raw · out · run.json · 로그
 │  ├─ data/canvas/                # canvas-import 엔진 로그, 마지막 가져오기 (last.json)
 │  ├─ created-files.txt           # dwo-Forge 실행이 프로젝트에 남긴 파일 (제거 때 처리)
 │  ├─ config.json                 # (선택) 프로젝트별 규칙 덮어쓰기
 │  └─ gui.json                    # 화면 설정 (무시한 문제)
-├─ Plugins/__DwoLensInspector/    # (Lens) 미리 빌드된 에디터 전용 플러그인 (Source 없음, 기본 비활성)
+├─ Plugins/__DwoLensInspector/    # (DwoLens) 미리 빌드된 에디터 전용 플러그인 (Source 없음, 기본 비활성)
 ├─ Plugins/__DwoStateMonitor/     # (DwoStateMonitor) 숨김
 └─ Plugins/__DwoCanvas/           # (DwoCanvas) 숨김
 ```
 
-`state.json`의 `tools`에는 도구마다 설치한 dwo-Forge 버전, 소스 해시, 빌드한 엔진 버전이 기록됩니다. dwo-Forge 폴더를 새 버전으로 바꿨을 때 해시가 다르거나 프로젝트 엔진이 바뀐 도구만 "업데이트 있음"으로 표시됩니다. 3.0 이전에 연결한 프로젝트의 Lens는 예전 기록(`pluginHash`)으로 인식하고, 기록이 없는 DwoStateMonitor·DwoCanvas는 업데이트를 권합니다.
+`state.json`의 `tools`에는 도구마다 설치한 dwo-Forge 버전, 소스 해시, 빌드한 엔진 버전이 기록됩니다. dwo-Forge 폴더를 새 버전으로 바꿨을 때 해시가 다르거나 프로젝트 엔진이 바뀐 도구만 "업데이트 있음"으로 표시됩니다. 3.0 이전에 연결한 프로젝트의 DwoLens는 예전 기록(`pluginHash`)으로 인식하고, 기록이 없는 DwoStateMonitor·DwoCanvas는 업데이트를 권합니다.
 
 도구 자체는 프로젝트에 복사하지 않고 dwo-Forge 설치 폴더에서 실행합니다. `.uproject`, `Build.cs`, 기존 파일은 건드리지 않습니다. 이전 버전처럼 `__dwo-forge/system` 복사본이 있으면 `update`나 연결 때 지웁니다.
 
-## Lens 검사와 도구
+## DwoLens 검사와 도구
 
 | 검사 | 단계 | 도구 |
 |---|---|---|
@@ -291,7 +291,7 @@ A/
 
 ## 로컬 CI (Jenkins, 폐쇄망 지원)
 
-내 PC에서만 쓰는 Jenkins를 설치해, git 이벤트나 외부 요청이 들어오면 **C++ 컴파일 → Lens 검사 → 패키지 빌드**를 자동으로 실행합니다. DwoStateMonitor처럼 설치·제거하지만, Jenkins는 프로젝트가 아니라 PC에 하나(`%LOCALAPPDATA%\dwo-Forge\ci`)만 설치되고 프로젝트마다 작업(job)이 하나씩 생깁니다. 프로젝트 폴더에는 아무것도 추가되지 않습니다(git 훅은 `.git/hooks`에 들어갑니다). 빌드 기록이 커질 수 있으므로 다른 디스크에 두려면 사용자 환경 변수 `DWO_FORGE_CI_HOME`(예: `setx DWO_FORGE_CI_HOME D:\dwo-forge-ci`)을 설정한 뒤 설치합니다.
+내 PC에서만 쓰는 Jenkins를 설치해, git 이벤트나 외부 요청이 들어오면 **C++ 컴파일 → DwoLens 검사 → 패키지 빌드**를 자동으로 실행합니다. DwoStateMonitor처럼 설치·제거하지만, Jenkins는 프로젝트가 아니라 PC에 하나(`%LOCALAPPDATA%\dwo-Forge\ci`)만 설치되고 프로젝트마다 작업(job)이 하나씩 생깁니다. 프로젝트 폴더에는 아무것도 추가되지 않습니다(git 훅은 `.git/hooks`에 들어갑니다). 빌드 기록이 커질 수 있으므로 다른 디스크에 두려면 사용자 환경 변수 `DWO_FORGE_CI_HOME`(예: `setx DWO_FORGE_CI_HOME D:\dwo-forge-ci`)을 설정한 뒤 설치합니다.
 
 | 단계 | 하는 일 |
 |---|---|
@@ -303,11 +303,11 @@ A/
 
 | 이벤트 | 기본 브랜치 | 단계 |
 |---|---|---|
-| 내가 원격으로 push | `develop` | 컴파일 + Lens + 패키지 |
-| merge (현재 브랜치) | `develop` | 컴파일 + Lens |
-| 브랜치 생성 | `feature/*` | 컴파일 + Lens |
-| 커밋 | `develop`, `feature/*` | Lens |
-| 외부 명령·HTTP | - | 컴파일 + Lens + 패키지 |
+| 내가 원격으로 push | `develop` | 컴파일 + DwoLens + 패키지 |
+| merge (현재 브랜치) | `develop` | 컴파일 + DwoLens |
+| 브랜치 생성 | `feature/*` | 컴파일 + DwoLens |
+| 커밋 | `develop`, `feature/*` | DwoLens |
+| 외부 명령·HTTP | - | 컴파일 + DwoLens + 패키지 |
 
 - push는 내 PC의 `pre-push` 기록과 원격 추적 브랜치 갱신이 일치할 때만 셉니다. 다른 사람의 push를 `fetch`로 받아 온 것은 빌드하지 않습니다.
 - 원격 서버에서 PR을 merge한 것은 내 PC에서 감지할 수 없습니다. 이때는 `ci-trigger`나 HTTP로 빌드를 요청합니다.
@@ -315,9 +315,9 @@ A/
 - 같은 작업이 이미 대기열에 있으면 새 요청은 그 빌드에 합쳐집니다. 한 번에 한 빌드만 실행합니다.
 - Jenkins가 꺼져 있으면 훅이나 `ci-trigger`가 자동으로 시작합니다. 훅이 무엇을 판단했는지는 `__dwo-forge/ci/hook.log`에 남습니다.
 
-**보관 개수**: Jenkins는 최근 `ci.keepBuilds`(기본 30)개 빌드만 남기고, 넘으면 가장 오래된 빌드부터 하나씩 지웁니다(첨부 결과는 `ci.keepArtifacts`개). Jenkins 기본값과 달리 마지막 성공 빌드도 예외 없이 이 개수에 포함됩니다. 패키지 결과물은 Lens 실행 기록에 최근 `retention.packages`(기본 3)개만 남습니다.
+**보관 개수**: Jenkins는 최근 `ci.keepBuilds`(기본 30)개 빌드만 남기고, 넘으면 가장 오래된 빌드부터 하나씩 지웁니다(첨부 결과는 `ci.keepArtifacts`개). Jenkins 기본값과 달리 마지막 성공 빌드도 예외 없이 이 개수에 포함됩니다. 패키지 결과물은 DwoLens 실행 기록에 최근 `retention.packages`(기본 3)개만 남습니다.
 
-**결과 보기**: 런처에서 로컬 CI를 `열기`하면 나오는 화면에서 빌드 목록·결과·실시간 로그를 보고, `지금 빌드`로 단계를 골라 실행합니다. 같은 내용을 Jenkins 화면(`http://127.0.0.1:8098/`, 계정은 `계정 복사`)에서도 볼 수 있고, 각 빌드에는 JUnit 추세와 Lens 리포트가 첨부됩니다. Lens 검사가 fail이면 빌드는 UNSTABLE, 컴파일·패키지 실패는 FAILURE입니다.
+**결과 보기**: 런처에서 로컬 CI를 `열기`하면 나오는 화면에서 빌드 목록·결과·실시간 로그를 보고, `지금 빌드`로 단계를 골라 실행합니다. 같은 내용을 Jenkins 화면(`http://127.0.0.1:8098/`, 계정은 `계정 복사`)에서도 볼 수 있고, 각 빌드에는 JUnit 추세와 DwoLens 리포트가 첨부됩니다. DwoLens 검사가 fail이면 빌드는 UNSTABLE, 컴파일·패키지 실패는 FAILURE입니다.
 
 **다른 PC에 설치할 때**: 따로 설치하거나 설정할 것은 Python 3.10 이상(dwo-Forge 공통 요구 사항)뿐입니다. Java·Jenkins·플러그인은 번들에 들어 있고, 관리자 권한·서비스 등록·방화벽 허용·인터넷이 필요 없습니다. Python이 없거나 Microsoft Store 바로 가기만 있으면 설치 전에 그렇게 알려 줍니다. 8098 포트를 다른 프로그램이 쓰고 있으면 `ci-install --port 8099`처럼 다른 포트로 설치합니다. 한국어 Windows(코드 페이지 949)에서 사용자 이름·dwo-Forge 폴더·프로젝트 경로에 한글이나 공백이 있어도 동작합니다(Jenkins 단계는 경로를 스크립트에 넣지 않고 환경 변수로 넘깁니다).
 
@@ -327,7 +327,7 @@ A/
 
 ## 설정
 
-`config/default.json`이 Lens 기본값입니다. 프로젝트별로 바꾸려면 `__dwo-forge/config.json`에 같은 구조로 필요한 키만 적습니다.
+`config/default.json`이 DwoLens 기본값입니다. 프로젝트별로 바꾸려면 `__dwo-forge/config.json`에 같은 구조로 필요한 키만 적습니다.
 
 ```json
 {
@@ -349,19 +349,19 @@ A/
 | `tests/selftest.bat` | 개발용 전체 검증 |
 | `tools/forge.ps1` | 명령 실행, 엔진 호출, 실행 기록 (`run.json`), dwo-Lens 1.x 이전 |
 | `tools/lens.ps1`, `tools/legacy-project-launcher.bat` | dwo-Lens 1.x 실행 파일 호환 (forge.ps1로 넘김) |
-| `tools/lens_analyze.py` | Lens: raw JSON → 통합 그래프, SQLite, 다이어그램, 게이트, HTML 리포트 |
-| `tools/lens_quality.py` | Lens: 이름 규칙, 미사용 에셋, BP 복잡도, DwoStateMonitor 감지 |
-| `tools/lens_logs.py` | Lens: UE 로그·크래시 파서 |
-| `tools/lens_verify.py` | Lens: 검증·로그 결과 판정과 리포트 |
-| `tools/lens_runtime.py` | Lens: 맵 부팅·성능 CSV·용량·트레이스 결과 판정과 리포트 |
+| `tools/lens_analyze.py` | DwoLens: raw JSON → 통합 그래프, SQLite, 다이어그램, 게이트, HTML 리포트 |
+| `tools/lens_quality.py` | DwoLens: 이름 규칙, 미사용 에셋, BP 복잡도, DwoStateMonitor 감지 |
+| `tools/lens_logs.py` | DwoLens: UE 로그·크래시 파서 |
+| `tools/lens_verify.py` | DwoLens: 검증·로그 결과 판정과 리포트 |
+| `tools/lens_runtime.py` | DwoLens: 맵 부팅·성능 CSV·용량·트레이스 결과 판정과 리포트 |
 | `tools/lens_build.py` | 빌드 검사: 컴파일·패키지 로그 → 오류 목록, 결과, 리포트 |
 | `tools/lens_export.py` | 실행 결과 → JUnit, SARIF 2.1.0 (이전 실행 대비 new/unchanged) |
 | `tools/ci.ps1`, `tools/forge_ci.py` | 로컬 CI: 오프라인 번들, Jenkins 설치·실행, 프로젝트 작업, git 훅과 트리거 판단, 보관 개수 |
 | `tools/vendor/mermaid.min.js` | 리포트 다이어그램용 Mermaid 10.9.1 (MIT). 리포트가 인터넷 없이 그려지도록 실행 기록 폴더로 복사 |
 | `tools/catalog.json` | 도구 레지스트리 (세 도구별로 묶음) |
 | `gui/`, `tools/gui.ps1` | ImGui 제어판 (Dear ImGui 1.91.9b docking, nlohmann/json 3.11.3, MIT). DwoStateMonitor 뷰어, DwoCanvas 화면 포함 |
-| `config/default.json` | Lens 규칙과 기준값 |
-| `plugin/DwoLensInspector` | Lens 추출 Commandlet (읽기 전용, 패키지를 저장하지 않음) |
+| `config/default.json` | DwoLens 규칙과 기준값 |
+| `plugin/DwoLensInspector` | DwoLens 추출 Commandlet (읽기 전용, 패키지를 저장하지 않음) |
 | `plugin/DwoStateMonitor` | DwoStateMonitor 런타임 플러그인 |
 | `plugin/DwoCanvas`, `canvas/` | DwoCanvas 플러그인, 검사기(`canvas/python`), 어댑터, 설계 문서 |
 

@@ -4,7 +4,7 @@
 #
 # dwo-Forge is a launcher: 'connect' prepares a project, then tools are installed, updated and removed one by one
 # ('tool install|update|remove <id>', 'tools' lists versions and updates):
-#   lens          Lens: analysis lines (analyze, verify, logs, smoke, perf, sizes, trace) + DwoLensInspector commandlet
+#   lens          DwoLens: analysis lines (analyze, verify, logs, smoke, perf, sizes, trace) + DwoLensInspector commandlet
 #   statemonitor  DwoStateMonitor: live runtime state viewer plugin (also sm-install, sm-remove)
 #   canvas        DwoCanvas: design file -> UMG Widget Blueprint importer (also canvas-install, canvas-remove, canvas-import)
 #   ci            Local CI: Jenkins job + git hooks for this project (tools\ci.ps1; the Jenkins itself is PC-wide)
@@ -356,7 +356,7 @@ function Install-Plugin($Build) {
     [IO.File]::WriteAllText($upluginPath, ($uplugin | ConvertTo-Json -Depth 10), $Utf8)
     Copy-Item -Recurse (Join-Path $Build.Dir 'Binaries') $PluginDest
     if (Test-Path (Join-Path $Build.Dir 'Resources')) { Copy-Item -Recurse (Join-Path $Build.Dir 'Resources') $PluginDest }
-    [IO.File]::WriteAllText((Join-Path $PluginDest $Marker), "Managed by dwo-Forge (Lens inspector). Removed by '__dwo-forge.bat uninstall'.`n", $Utf8)
+    [IO.File]::WriteAllText((Join-Path $PluginDest $Marker), "Managed by dwo-Forge (DwoLens inspector). Removed by '__dwo-forge.bat uninstall'.`n", $Utf8)
 }
 
 function Remove-EmptyPluginsFolder {
@@ -857,7 +857,7 @@ function Invoke-Attach([string]$Mode) {
     Install-Launcher
 
     # Connecting prepares the project only; tools are installed separately ('tool install <id>').
-    # attach (dwo-Lens compatible) = connect + Lens; update = connect again + update every installed tool.
+    # attach (dwo-Lens compatible) = connect + DwoLens; update = connect again + update every installed tool.
     $records = Get-ToolRecords
     $state = [ordered]@{
         schema                = 'forge.state/0.4'
@@ -890,7 +890,7 @@ function Invoke-Attach([string]$Mode) {
 # version, the source hash and the engine it was installed from; a different hash or engine means "update".
 # Local CI keeps its record in __dwo-forge\ci.json (written by ci.ps1).
 $ToolDefs = [ordered]@{
-    lens         = @{ Name = 'Lens';            Scope = 'project' }
+    lens         = @{ Name = 'DwoLens';            Scope = 'project' }
     statemonitor = @{ Name = 'DwoStateMonitor'; Scope = 'project' }
     canvas       = @{ Name = 'DwoCanvas';       Scope = 'project' }
     ci           = @{ Name = 'Local CI';        Scope = 'project+pc' }
@@ -937,7 +937,7 @@ function Get-ToolRecords {
     $s = Read-State
     $r = [ordered]@{}
     if ($s -and $s.PSObject.Properties['tools'] -and $s.tools) { foreach ($p in $s.tools.PSObject.Properties) { $r[$p.Name] = $p.Value } }
-    # Projects connected before 3.0 recorded only the Lens inspector hash.
+    # Projects connected before 3.0 recorded only the DwoLens inspector hash.
     if (-not $r.Contains('lens') -and $s -and $s.PSObject.Properties['pluginHash'] -and (Test-Path $PluginDest)) {
         $r['lens'] = [pscustomobject]@{ version = "$($s.systemCommit)"; hash = "$($s.pluginHash)"; engine = "$($s.engineVersion)" }
     }
@@ -1063,7 +1063,7 @@ function Install-Lens($Engine) {
     $build = Get-PluginBuild $Engine
     Install-Plugin $build
     Set-ToolInstalled 'lens' @{ engine = $Engine.Version }
-    Say "Lens installed: Plugins\__DwoLensInspector (UE $($Engine.Version), editor-only, disabled by default)."
+    Say "DwoLens installed: Plugins\__DwoLensInspector (UE $($Engine.Version), editor-only, disabled by default)."
 }
 
 function Update-StateMonitor($Engine) {
@@ -1092,10 +1092,10 @@ function Invoke-ToolAction([string]$Action, [string]$Id) {
     switch ($Id) {
         'lens' {
             if ($Action -eq 'remove') {
-                if (-not (Test-Path $PluginDest)) { Say 'Lens is not installed.'; Save-ToolRecord 'lens' $null; return }
+                if (-not (Test-Path $PluginDest)) { Say 'DwoLens is not installed.'; Save-ToolRecord 'lens' $null; return }
                 Remove-Plugin
                 Save-ToolRecord 'lens' $null
-                Say 'Lens removed (Plugins\__DwoLensInspector). Run history in __dwo-forge\data stays; uninstall removes it.'
+                Say 'DwoLens removed (Plugins\__DwoLensInspector). Run history in __dwo-forge\data stays; uninstall removes it.'
                 return
             }
             $engine = Resolve-Engine (Get-UProject).Json.EngineAssociation
@@ -1194,7 +1194,7 @@ function Invoke-Status {
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     if ($engine.Version -ne $state.engineVersion) { Say "Engine changed to $($engine.Version). Run __dwo-forge.bat update." }
     Say "Attached at    : $($state.attachedAt)"
-    Say "Lens           : $(if (Test-Path $PluginDest) { 'installed (Plugins\__DwoLensInspector)' } else { 'not installed (optional: tool install lens)' })"
+    Say "DwoLens           : $(if (Test-Path $PluginDest) { 'installed (Plugins\__DwoLensInspector)' } else { 'not installed (optional: tool install lens)' })"
     Say "DwoStateMonitor: $($tools.StateMonitor)"
     Say "DwoCanvas      : $($tools.Canvas)"
     Say "Local CI       : $(if (Test-Path (Join-Path $ForgeDir 'ci.json')) { 'installed' } else { 'not installed (optional: tool install ci)' })"
@@ -1220,8 +1220,8 @@ function Invoke-Doctor {
         $leaks = Invoke-Git @('status', '--porcelain', '--untracked-files=all', '--', '__dwo-forge', '__dwo-forge.bat', 'Plugins/__DwoLensInspector', 'Plugins/__DwoStateMonitor', 'Plugins/__DwoCanvas', '__dwo-lens', '__dwo-lens.bat', 'Plugins/__StateMonitor')
         Check 'dwo-forge files hidden from git' (-not $leaks) "visible to git: $leaks"
     }
-    if (Test-Path $PluginDest) { Check 'Lens inspector complete' (Test-Path (Join-Path $PluginDest 'Binaries\Win64\UnrealEditor-DwoLensInspector.dll')) 'run: tool update lens' }
-    else { Write-Host '  [info] Lens: not installed (optional: tool install lens)' }
+    if (Test-Path $PluginDest) { Check 'DwoLens inspector complete' (Test-Path (Join-Path $PluginDest 'Binaries\Win64\UnrealEditor-DwoLensInspector.dll')) 'run: tool update lens' }
+    else { Write-Host '  [info] DwoLens: not installed (optional: tool install lens)' }
     Check 'project launcher' (Test-Path $LauncherPath) 'run: __dwo-forge.bat connect'
     $py = Get-Command python -ErrorAction SilentlyContinue
     Check 'python available' ($py -ne $null) 'install Python 3.10+'
@@ -1729,7 +1729,7 @@ function Invoke-Tools {
 function Invoke-Analyze {
     $state = Read-State
     if (-not $state) { Fail 'Not connected. Connect the project first: __dwo-forge.bat connect' }
-    if (-not (Test-Path (Join-Path $PluginDest 'DwoLensInspector.uplugin'))) { Fail 'Lens is not installed in this project. Install it: __dwo-forge.bat tool install lens' }
+    if (-not (Test-Path (Join-Path $PluginDest 'DwoLensInspector.uplugin'))) { Fail 'DwoLens is not installed in this project. Install it: __dwo-forge.bat tool install lens' }
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
     $startedAt = Get-Date

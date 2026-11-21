@@ -4,13 +4,13 @@
 
 ## 비슷한 상용 제품과 비교
 
-dwo-Forge는 "언리얼 프로젝트에 도구(Lens, DwoStateMonitor, DwoCanvas, 로컬 CI)를 설치·업데이트하고 실행하는 런처"입니다(3.0부터). 같은 역할을 하는 상용 제품이 쓰는 말을 기준으로 삼았습니다.
+dwo-Forge는 "언리얼 프로젝트에 도구(DwoLens, DwoStateMonitor, DwoCanvas, 로컬 CI)를 설치·업데이트하고 실행하는 런처"입니다(3.0부터). 같은 역할을 하는 상용 제품이 쓰는 말을 기준으로 삼았습니다.
 
 | 역할 | 비교한 제품 | 그 제품의 표현 | dwo-Forge에 적용 |
 |---|---|---|---|
 | 프로젝트를 런처에 붙이기 | JetBrains Toolbox(프로젝트), SonarLint Connected Mode(Bind), GitHub Desktop(저장소 추가) | 연결, 바인딩, 추가 | **연결** (3.0 전에는 "연동". "부착"은 하드웨어 표현이라 쓰지 않음) |
 | 도구 관리 | JetBrains Toolbox, Epic Games Launcher(라이브러리), VS Code 확장 | 설치, 업데이트, 제거, 열기 | **설치·업데이트·제거·열기**, 상태는 **최신·업데이트 있음·설치 안 됨** |
-| 품질 검사 묶음 | SonarQube, Qodana, Unreal Horde, CI 파이프라인 | 분석, 검사, 작업, 단계 | **검사**(Lens의 analyze·verify·logs 등 하나하나), **단계**(검사 안의 ST-1 같은 순서) |
+| 품질 검사 묶음 | SonarQube, Qodana, Unreal Horde, CI 파이프라인 | 분석, 검사, 작업, 단계 | **검사**(DwoLens의 analyze·verify·logs 등 하나하나), **단계**(검사 안의 ST-1 같은 순서) |
 | 통과 여부 | SonarQube 품질 게이트, CI 결과 | 결과, 통과/실패, 품질 게이트 | **결과** (통과·경고·실패), 리포트 제목은 **품질 게이트** |
 | 문제를 목록에서 빼기 | SonarQube(무시·Won't fix), JetBrains(억제), ESLint(ignore) | 무시, 억제 | **무시** (기준선에 추가) |
 | 실행 결과물 | CI 아티팩트, Horde 산출 파일 | 아티팩트, 결과 파일 | **결과 파일** |
@@ -21,11 +21,11 @@ dwo-Forge는 "언리얼 프로젝트에 도구(Lens, DwoStateMonitor, DwoCanvas,
 
 | 쓰는 말 | 쓰지 않는 말 | 비고 |
 |---|---|---|
-| 연결, 연결됨, 연결 안 됨, 연결 해제, 연결 새로 고침 | 연동, 부착 | 명령어 `connect`, `uninstall`, `update`. `attach`는 연결 + Lens 설치 |
+| 연결, 연결됨, 연결 안 됨, 연결 해제, 연결 새로 고침 | 연동, 부착 | 명령어 `connect`, `uninstall`, `update`. `attach`는 연결 + DwoLens 설치 |
 | 런처, 도구, 도구 라이브러리, PC 구성요소 | 제어판, 기능 | 로컬 CI도 기능이 아니라 도구 |
 | 최신, 업데이트 있음, 설치 안 됨, 프로젝트에 포함, 이전 형식 | up to date 등 영어 | 도구 상태 |
 | 연결 해제 (프로젝트에서 모두 제거), 제거 (도구 하나) | dwo-Forge 제거, 제거 (uninstall) | 메뉴·버튼에 명령어 이름을 괄호로 붙이지 않음. 명령어는 툴팁이나 README에 |
-| 검사 (Lens 검사, 기본 검사 실행) | 라인, 생산 라인 | |
+| 검사 (DwoLens 검사, 기본 검사 실행) | 라인, 생산 라인 | |
 | 결과 | 판정 | 리포트 표의 머리글 포함 |
 | 단계 | 공정 | |
 | 결과 파일 | 산출물 | |

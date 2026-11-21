@@ -7,7 +7,7 @@ class FSocket;
 class ISocketSubsystem;
 
 /**
- * @brief dwo-Lens 뷰어(127.0.0.1:Port)에 붙는 non-blocking TCP 클라이언트.
+ * @brief dwo-Forge 창(127.0.0.1:Port)에 붙는 non-blocking TCP 클라이언트.
  * 뷰어가 없으면 RetrySeconds마다 조용히 다시 시도하고, 게임 스레드를 막지 않는다.
  * 줄 단위(JSON Lines)로 보내고 받으며, 부분 송수신은 내부 버퍼가 이어 붙인다.
  */

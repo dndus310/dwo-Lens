@@ -836,6 +836,19 @@ function Invoke-Migration {
     if (Test-Path $SmLegacyDest) { Say 'Plugins\__StateMonitor (dwo-Lens 1.x) is still installed. Run __dwo-forge.bat update to migrate it to DwoStateMonitor.' }
 }
 
+function Sync-ConnectionFiles {
+    # The small files a connection puts into the project follow the dwo-Forge that runs: the launcher and
+    # home.txt are rewritten as soon as any command touches a project connected by an older version. Tool
+    # plugins are not swapped here (the editor may have their DLLs loaded); they show as updates instead.
+    if (-not (Test-Path $StatePath)) { return }
+    if (Test-LauncherOutdated) {
+        Install-Launcher
+        Say 'Project launcher (__dwo-forge.bat) updated to this dwo-Forge.'
+    }
+    $homeFile = Join-Path $ForgeDir 'home.txt'
+    if (-not (Test-Path $homeFile) -or ([IO.File]::ReadAllText($homeFile).Trim() -ne $SystemDir)) { [IO.File]::WriteAllText($homeFile, $SystemDir, $Utf8) }
+}
+
 function Invoke-Attach([string]$Mode) {
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation
@@ -1026,8 +1039,12 @@ function Get-ToolStatus([string]$Id, $EngineVersion) {
     if ($state -eq 'installed') {
         $hash = if ($rec -and $rec.PSObject.Properties['hash']) { "$($rec.hash)" } else { '' }
         $engine = if ($rec -and $rec.PSObject.Properties['engine']) { "$($rec.engine)" } else { '' }
+        $version = if ($rec -and $rec.PSObject.Properties['version']) { "$($rec.version)".Split('+')[0] } else { '' }
         if (-not $hash) { $state = 'update'; $reason = 'unknown-version' }
         elseif ($source -and $hash -ne $availableHash) { $state = 'update'; $reason = 'new-version' }
+        # Installed by an older release: same plugin source, but its files (descriptor, marker, record) are
+        # rewritten so the project carries nothing from the old version.
+        elseif ($version -and $version -ne (Get-SystemVersion)) { $state = 'update'; $reason = 'older-release' }
         elseif ($engine -and $EngineVersion -and $engine -ne $EngineVersion) { $state = 'update'; $reason = 'engine-changed' }
     }
     return [ordered]@{
@@ -2223,6 +2240,7 @@ function Invoke-Uninstall {
 
 # Every command first migrates what dwo-Lens 1.x left in the project ('tools' does not touch a project).
 if ($Command -notin @('tools', 'tool') -and $Command -notlike 'ci-*') { Invoke-Migration }
+if ($Command -notin @('tools', 'tool', 'uninstall', 'detach', 'connect', 'attach', 'update') -and $Command -notlike 'ci-*') { Sync-ConnectionFiles }
 
 switch ($Command) {
     'connect' { Invoke-Attach 'connect' }

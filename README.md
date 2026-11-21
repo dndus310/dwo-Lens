@@ -261,7 +261,9 @@ A/
 └─ Plugins/__DwoCanvas/           # (DwoCanvas) 숨김
 ```
 
-`state.json`의 `tools`에는 도구마다 설치한 dwo-Forge 버전, 소스 해시, 빌드한 엔진 버전이 기록됩니다. dwo-Forge 폴더를 새 버전으로 바꿨을 때 해시가 다르거나 프로젝트 엔진이 바뀐 도구만 "업데이트 있음"으로 표시됩니다. 3.0 이전에 연결한 프로젝트의 DwoLens는 예전 기록(`pluginHash`)으로 인식하고, 기록이 없는 DwoStateMonitor·DwoCanvas는 업데이트를 권합니다.
+`state.json`의 `tools`에는 도구마다 설치한 dwo-Forge 버전, 소스 해시, 빌드한 엔진 버전이 기록됩니다. dwo-Forge 폴더를 새 버전으로 바꿨을 때 소스 해시가 다르거나, 이전 릴리스(`VERSION`)가 설치했거나, 프로젝트 엔진이 바뀐 도구가 "업데이트 있음"으로 표시됩니다. 업데이트(`모두 업데이트`, `tool update --all`, `update`)는 플러그인 파일·설명 파일·관리 표시·기록을 지금 버전으로 다시 씁니다. 플러그인 소스가 같으면 빌드 캐시를 써서 다시 빌드하지 않습니다. 기록이 없는 DwoStateMonitor·DwoCanvas(3.0 이전 설치)도 업데이트를 권합니다.
+
+연결이 프로젝트에 두는 작은 파일(`__dwo-forge.bat`, `__dwo-forge/home.txt`)은 어떤 명령이든 실행할 때 지금 dwo-Forge에 맞게 바로 교체됩니다(`tools`처럼 읽기만 하는 명령 제외). 도구 플러그인은 에디터가 DLL을 쥐고 있을 수 있어 자동으로 바꾸지 않고 업데이트로 표시합니다.
 
 도구 자체는 프로젝트에 복사하지 않고 dwo-Forge 설치 폴더에서 실행합니다. `.uproject`, `Build.cs`, 기존 파일은 건드리지 않습니다. 이전 버전처럼 `__dwo-forge/system` 복사본이 있으면 `update`나 연결 때 지웁니다.
 

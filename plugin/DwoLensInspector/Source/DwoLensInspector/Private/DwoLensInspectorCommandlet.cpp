@@ -563,7 +563,7 @@ int32 UDwoLensInspectorCommandlet::Main(const FString& Params)
 		WriteJson(OutDir / TEXT("blueprints.json"), BlueprintRoot) &&
 		WriteJson(OutDir / TEXT("assets.json"), AssetRoot);
 
-	UE_LOG(LogDwoLens, Display, TEXT("dwo-Lens: %d native classes, %d blueprints, %d assets -> %s"),
+	UE_LOG(LogDwoLens, Display, TEXT("DwoLens: %d native classes, %d blueprints, %d assets -> %s"),
 		NativeClasses.Num(), Blueprints.Num(), Assets.Num(), *OutDir);
 
 	return bWritten ? 0 : 1;

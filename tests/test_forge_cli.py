@@ -369,8 +369,8 @@ class ForgeCliTests(unittest.TestCase):
         _, tools = self.tools()
         self.assertEqual(tools["canvas"]["state"], "update", "no record (installed by an older dwo-Forge): offer an update")
         self.assertEqual(tools["canvas"]["reason"], "unknown-version")
-        current = tools["canvas"]["availableHash"]
-        self.connect_fake(tools={"canvas": {"version": "3.0.0", "hash": current}})
+        current, release = tools["canvas"]["availableHash"], tools["canvas"]["availableVersion"]
+        self.connect_fake(tools={"canvas": {"version": release, "hash": current}})
         _, tools = self.tools()
         self.assertEqual(tools["canvas"]["state"], "installed")
         self.connect_fake(tools={"canvas": {"version": "2.0.0", "hash": "000000000000"}})
@@ -387,8 +387,9 @@ class ForgeCliTests(unittest.TestCase):
         current = tools["lens"]["availableHash"]
         self.connect_fake(pluginHash=current, systemCommit="2.0.1+abc")
         _, tools = self.tools()
-        self.assertEqual(tools["lens"]["state"], "installed")
         self.assertEqual(tools["lens"]["installedVersion"], "2.0.1+abc")
+        self.assertEqual(tools["lens"]["state"], "update", "installed by an older release: its files are rewritten")
+        self.assertEqual(tools["lens"]["reason"], "older-release")
 
     def test_an_older_project_launcher_is_reported(self):
         self.connect_fake()
@@ -398,13 +399,40 @@ class ForgeCliTests(unittest.TestCase):
         write(self.project / "__dwo-forge.bat", "@echo off\nrem a launcher from an older dwo-Forge\n")
         doc, _ = self.tools()
         self.assertTrue(doc["project"]["launcherOutdated"])
-        code, out = self.forge("status")
-        self.assertIn("Run update to refresh it", out)
         code, out = self.forge("tool", "update", "--all")
         self.assertEqual(code, 0, out)
         self.assertIn("refreshed", out)
         doc, _ = self.tools()
         self.assertFalse(doc["project"]["launcherOutdated"])
+
+    def test_any_command_replaces_files_from_an_older_connection(self):
+        self.connect_fake()
+        write(self.project / "__dwo-forge.bat", "@echo off\nrem a launcher from an older dwo-Forge\n")
+        write(self.project / "__dwo-forge" / "home.txt", "C:\\old\\dwo-Lens")
+        code, out = self.forge("status")
+        self.assertEqual(code, 0, out)
+        self.assertIn("updated to this dwo-Forge", out)
+        self.assertEqual((self.project / "__dwo-forge.bat").read_bytes(), (ROOT / "tools" / "project-launcher.bat").read_bytes())
+        self.assertEqual((self.project / "__dwo-forge" / "home.txt").read_text(encoding="utf-8-sig").strip(), str(ROOT))
+        code, out = self.forge("status")
+        self.assertNotIn("updated to this dwo-Forge", out, "nothing to do the second time")
+
+    def test_tools_json_does_not_touch_an_older_connection(self):
+        self.connect_fake()
+        old = "@echo off\nrem a launcher from an older dwo-Forge\n"
+        write(self.project / "__dwo-forge.bat", old)
+        doc, _ = self.tools()
+        self.assertTrue(doc["project"]["launcherOutdated"])
+        self.assertEqual((self.project / "__dwo-forge.bat").read_text(encoding="utf-8"), old, "tools only reads")
+
+    def test_tool_from_an_older_release_is_offered_as_an_update(self):
+        self.connect_fake()
+        self.make_canvas()
+        _, tools = self.tools()
+        self.connect_fake(tools={"canvas": {"version": "2.0.1+7fda187", "hash": tools["canvas"]["availableHash"]}})
+        _, tools = self.tools()
+        self.assertEqual(tools["canvas"]["state"], "update")
+        self.assertEqual(tools["canvas"]["reason"], "older-release")
 
     def test_projects_own_plugins_are_reported_and_left_alone(self):
         self.connect_fake()

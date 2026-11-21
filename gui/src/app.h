@@ -71,6 +71,57 @@ struct Flow
 	std::vector<std::string> order;
 };
 
+// Where a symbol lives, for the architecture view's location tree.
+// cat: 0 source code (Source/), 1 content (/Game), 2 project plugins (Plugins/), 3 engine and external.
+struct Location
+{
+	int cat = 3;
+	std::vector<std::string> dirs;   // folders under the category, outermost first
+	std::string badge;               // C++, BP, 위젯 BP, DataTable, 모듈 ...
+};
+
+static std::vector<std::string> SplitPath(const std::string& path)
+{
+	std::vector<std::string> parts;
+	std::string cur;
+	for (char c : path)
+	{
+		if (c == '/' || c == '\\') { if (!cur.empty()) parts.push_back(cur); cur.clear(); }
+		else cur += c;
+	}
+	if (!cur.empty()) parts.push_back(cur);
+	return parts;
+}
+
+// file: Source/... or Plugins/... header; package: /Game/... or /<Plugin>/... asset package.
+static Location LocateSymbol(const std::string& file, const std::string& package, bool external, const std::string& module, const std::string& badge)
+{
+	Location l;
+	l.badge = badge;
+	if (!file.empty())
+	{
+		auto parts = SplitPath(file);
+		if (!parts.empty()) parts.pop_back();   // the file itself
+		if (!parts.empty() && parts[0] == "Source") { l.cat = 0; l.dirs.assign(parts.begin() + 1, parts.end()); }
+		else if (!parts.empty() && parts[0] == "Plugins") { l.cat = 2; l.dirs.assign(parts.begin() + 1, parts.end()); }
+		else { l.cat = 0; l.dirs = parts; }
+		return l;
+	}
+	if (!package.empty() && package[0] == '/')
+	{
+		auto parts = SplitPath(package);
+		if (!parts.empty()) parts.pop_back();   // the asset itself
+		if (!parts.empty() && parts[0] == "Game") { l.cat = 1; l.dirs.assign(parts.begin() + 1, parts.end()); }
+		else if (!parts.empty() && parts[0] == "Script") { l.cat = external ? 3 : 0; l.dirs = { module.empty() ? (parts.size() > 1 ? parts[1] : "기타") : module }; }
+		else if (!parts.empty() && (parts[0] == "Engine" || external)) { l.cat = 3; l.dirs = parts; }
+		else if (!parts.empty()) { l.cat = 2; l.dirs = { parts[0], "Content" }; l.dirs.insert(l.dirs.end(), parts.begin() + 1, parts.end()); }
+		return l;
+	}
+	l.cat = external ? 3 : 0;
+	if (!module.empty()) l.dirs = { module };
+	return l;
+}
+
 struct Structure
 {
 	struct Ref
@@ -78,6 +129,8 @@ struct Structure
 		std::string src, dst, type;
 	};
 	bool loaded = false;
+	std::map<std::string, Location> locByKey;    // class/blueprint key -> location
+	std::map<std::string, Location> locByName;   // display name (refs lists) -> location
 	std::map<std::string, ClassNode> classes;
 	std::vector<std::string> classRoots;
 	std::vector<Ref> calls, assetRefs, moduleDeps;
@@ -135,12 +188,35 @@ static void LoadStructure(const fs::path& outDir, Structure& s)
 	std::map<std::string, std::string> names;
 	s.symbols = (int)Arr(*graph, "symbols").size();
 	s.relations = (int)Arr(*graph, "relations").size();
+	// modules that belong to a project plugin (plugin --Contains--> module)
+	std::map<std::string, std::string> pluginOfModule;
+	for (auto& r : Arr(*graph, "relations"))
+		if (Str(r, "type") == "Contains" && Str(r, "source").rfind("plugin:", 0) == 0 && Str(r, "target").rfind("module:", 0) == 0)
+			pluginOfModule[Str(r, "target").substr(7)] = Str(r, "source").substr(7);
 	for (auto& sym : Arr(*graph, "symbols"))
 	{
 		std::string key = Str(sym, "key"), kind = Str(sym, "kind");
 		std::string name = Str(sym, "name");
 		if (kind == "asset") name = Str(sym, "package", name);
 		names[key] = name;
+		bool external = sym.value("external", false);
+		std::string assetClass = Str(sym, "asset_class");
+		std::string badge = kind == "class" ? "C++" : kind == "blueprint" ? (assetClass.find("Widget") != std::string::npos ? "위젯 BP" : "BP")
+		                  : kind == "module" ? (external ? "엔진 모듈" : "모듈") : kind == "plugin" ? "플러그인"
+		                  : kind == "asset" ? assetClass.substr(assetClass.find_last_of(".") == std::string::npos ? 0 : assetClass.find_last_of(".") + 1) : kind;
+		Location loc;
+		if (kind == "module")
+		{
+			loc.badge = badge;
+			auto pl = pluginOfModule.find(name);
+			if (external) loc.cat = 3;
+			else if (pl != pluginOfModule.end()) { loc.cat = 2; loc.dirs = { pl->second }; }
+			else loc.cat = 0;
+		}
+		else if (kind == "plugin") { loc.badge = badge; loc.cat = external ? 3 : 2; }
+		else loc = LocateSymbol(Str(sym, "file"), Str(sym, "package"), external, Str(sym, "module"), badge);
+		s.locByKey[key] = loc;
+		s.locByName[name] = loc;
 		if (kind != "class" && kind != "blueprint") continue;
 		ClassNode& n = s.classes[key];
 		n.name = name;
@@ -160,6 +236,7 @@ static void LoadStructure(const fs::path& outDir, Structure& s)
 		if (type == "Inherits")
 		{
 			if (!s.classes.count(dst)) { s.classes[dst].name = nameOf(dst); s.classes[dst].external = true; }
+			if (!s.locByKey.count(dst)) s.locByKey[dst] = Location{ 3, {}, "C++" };
 			s.classes[dst].children.push_back(src);
 			s.classes[src].parent = dst;
 			hasParent.insert(src);

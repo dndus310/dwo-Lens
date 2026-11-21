@@ -240,6 +240,41 @@ def scan_modules(project_file: Path, g: Graph) -> dict[str, set[str]]:
     return deps
 
 
+# --------------------------------------------------------------------------- C++ header locations
+
+# UCLASS()/USTRUCT()/UINTERFACE() ... class|struct [MODULE_API] UMyThing : ...   (the reflected name drops the prefix)
+DECL_RE = re.compile(r"\b(UCLASS|UINTERFACE|USTRUCT)\s*\((?:[^()]|\([^()]*\))*\)\s*(?:class|struct)\s+(?:[A-Z0-9_]+_API\s+)?([AUFIS][A-Za-z0-9_]*)\b")
+
+
+def scan_headers(root: Path) -> dict[str, str]:
+    """Reflected type name -> header path relative to the project (forward slashes), from Source/ and project plugins.
+
+    The editor's reflection data has the module but not the file; the launcher's architecture view lays classes out
+    by their folder, so the analysis finds where each one is declared. First declaration wins.
+    """
+    found: dict[str, str] = {}
+    dirs = [root / "Source"] + [d / "Source" for d in (root / "Plugins").rglob("*") if d.is_dir() and (d / "Source").is_dir()
+                                and "__DwoLensInspector" not in d.parts and "Intermediate" not in d.parts] if (root / "Plugins").exists() else [root / "Source"]
+    for base in dirs:
+        if not base.exists():
+            continue
+        for header in base.rglob("*.h"):
+            if "Intermediate" in header.parts or header.name.endswith(".generated.h"):
+                continue
+            try:
+                text = header.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            if "UCLASS" not in text and "UINTERFACE" not in text and "USTRUCT" not in text:
+                continue
+            rel = header.relative_to(root).as_posix()
+            for _, name in DECL_RE.findall(text):
+                # reflection drops the A/U/F/I/S prefix (also before lower case: UglTFRuntimeAsset -> glTFRuntimeAsset)
+                found.setdefault(name[1:], rel)
+                found.setdefault(name, rel)
+    return found
+
+
 # --------------------------------------------------------------------------- build graph
 
 def build(raw: Path, project_file: Path):
@@ -290,6 +325,12 @@ def build(raw: Path, project_file: Path):
                     g.relate(key, class_key(target), rel, f"{c['name']}.{prop['name']}")
             if module:
                 g.relate(f"module:{module}", key, "Contains", c["package"])
+
+    # where each project C++ class is declared (Source/... or Plugins/<plugin>/Source/...)
+    headers = scan_headers(project_file.parent)
+    for sym in g.symbols.values():
+        if sym["kind"] == "class" and not sym["external"] and sym["name"] in headers:
+            sym["file"] = headers[sym["name"]]
 
     # blueprint graphs -------------------------------------------------------
     bp_index = {}

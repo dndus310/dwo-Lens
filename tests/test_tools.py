@@ -204,6 +204,24 @@ class AnalyzerFixtureTests(TempDir):
 
 
 class ModuleScanTests(TempDir):
+    def test_header_locations_for_the_architecture_tree(self):
+        write(self.tmp / "Source/Game/UI/ShopWidget.h",
+              "#pragma once\nUCLASS(BlueprintType, meta=(DisplayName=\"Shop\"))\nclass GAME_API UShopWidget : public UUserWidget\n{\n};\n"
+              "USTRUCT(BlueprintType)\nstruct FShopItem\n{\n};\n")
+        write(self.tmp / "Source/Game/GameCharacter.h", "UCLASS()\nclass AGameCharacter : public ACharacter {};\n")
+        write(self.tmp / "Source/Game/Plain.h", "class FNotReflected {};\n")
+        write(self.tmp / "Plugins/glTFRuntime/Source/glTFRuntime/Public/glTFRuntimeAsset.h",
+              "UCLASS(BlueprintType)\nclass GLTFRUNTIME_API UglTFRuntimeAsset : public UObject {};\n")
+        write(self.tmp / "Plugins/glTFRuntime/Intermediate/Build/x.generated.h", "UCLASS()\nclass UIgnored : public UObject {};\n")
+        found = analyze.scan_headers(self.tmp)
+        self.assertEqual(found["ShopWidget"], "Source/Game/UI/ShopWidget.h")
+        self.assertEqual(found["ShopItem"], "Source/Game/UI/ShopWidget.h")
+        self.assertEqual(found["GameCharacter"], "Source/Game/GameCharacter.h")
+        self.assertEqual(found["glTFRuntimeAsset"], "Plugins/glTFRuntime/Source/glTFRuntime/Public/glTFRuntimeAsset.h",
+                         "reflection drops the prefix even before a lower-case letter")
+        self.assertNotIn("NotReflected", found)
+        self.assertNotIn("Ignored", found)
+
     def test_build_cs_dependencies_and_cycle(self):
         write(self.tmp / "P.uproject", json.dumps({"Modules": [{"Name": "Game"}]}))
         write(self.tmp / "Source/Game/Game.Build.cs",

@@ -10,6 +10,7 @@ struct UiState
 	char filter[256] = {};
 	// architecture
 	int archMode = 0;              // 0 classes, 1 flows, 2 calls, 3 assets, 4 modules, 5 quality
+	int archGroup = 0;             // 0 by location (folder tree), 1 inheritance (classes) / by link count (lists)
 	std::string archSel;           // class key / flow title / asset name / module
 	std::string archRun;
 	std::string archNode;          // selected graph node id
@@ -589,6 +590,142 @@ static void BuildArchGraph(App& app, const Structure& s)
 	ui.archGraph.RequestLayout();
 }
 
+// ---- location tree: Source / Content / Plugins / engine, then the real folders, like the IDE and the Content Browser
+struct LocItem
+{
+	std::string key;      // selection value
+	std::string label;
+	const Location* loc;
+	int degree = -1;      // links (lists); -1 = not shown
+	bool dim = false;
+};
+
+struct LocNode
+{
+	std::map<std::string, LocNode> dirs;
+	std::vector<const LocItem*> items;
+	int total = 0;
+	int problems = 0;
+};
+
+static void DrawLocNode(LocNode& n, const std::string& id, int depth, std::string& sel, std::string* node, bool filtering)
+{
+	for (auto& [name, child] : n.dirs)
+	{
+		std::string cid = id + "/" + name;
+		ImGui::PushID(cid.c_str());
+		ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+		if (filtering || depth < 1) flags |= ImGuiTreeNodeFlags_DefaultOpen;
+		if (filtering) ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+		bool open = ImGui::TreeNodeEx("dir", flags, "%s  %s", ICON_FOLDER, name.c_str());
+		float right = ImGui::GetWindowContentRegionMax().x;
+		std::string count = std::to_string(child.total);
+		ImGui::SameLine(right - ImGui::CalcTextSize(count.c_str()).x - (child.problems ? S(34) : 0));
+		TextDim(count);
+		if (child.problems)
+		{
+			ImGui::SameLine();
+			Pill(std::to_string(child.problems), col::Fail);
+			Tooltip("이 폴더 아래의 문제 수 (이름 규칙, BP 복잡도, 미사용 에셋 등)");
+		}
+		if (open)
+		{
+			DrawLocNode(child, cid, depth + 1, sel, node, filtering);
+			ImGui::TreePop();
+		}
+		ImGui::PopID();
+	}
+	for (const LocItem* it : n.items)
+	{
+		ImGui::PushID(it->key.c_str());
+		ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth;
+		if (sel == it->key) flags |= ImGuiTreeNodeFlags_Selected;
+		ImGui::PushStyleColor(ImGuiCol_Text, it->dim ? col::Dim : col::Text);
+		ImGui::TreeNodeEx("item", flags, "%s", it->label.c_str());
+		ImGui::PopStyleColor();
+		if (ImGui::IsItemClicked()) { sel = it->key; if (node) *node = it->key; }
+		if (ImGui::IsItemHovered()) Tooltip(it->key.c_str());
+		// badge or link count at the right edge, only when it does not run into the name
+		std::string right = it->degree >= 0 ? std::to_string(it->degree) : it->loc->badge;
+		float rw = ImGui::CalcTextSize(right.c_str()).x * 0.9f;
+		float x = ImGui::GetWindowContentRegionMax().x - rw;
+		float labelEnd = ImGui::GetItemRectMin().x + ImGui::GetTreeNodeToLabelSpacing() + ImGui::CalcTextSize(it->label.c_str()).x - ImGui::GetWindowPos().x;
+		if (!right.empty() && labelEnd + S(10) < x)
+		{
+			ImGui::SameLine(x);
+			ImGui::SetWindowFontScale(0.9f);
+			TextDim(right);
+			ImGui::SetWindowFontScale(1.0f);
+		}
+		ImGui::PopID();
+	}
+}
+
+static void DrawLocationTree(App& app, const std::vector<LocItem>& items, std::string& sel, std::string* node)
+{
+	static const char* const kCats[] = { "소스 코드  (Source)", "콘텐츠  (/Game)", "프로젝트 플러그인  (Plugins)", "엔진·외부" };
+	LocNode roots[4];
+	bool filtering = ui.filter[0] != 0;
+	for (auto& it : items)
+	{
+		if (filtering && !ContainsNoCase(it.label, ui.filter)) continue;
+		LocNode* n = &roots[ImClamp(it.loc->cat, 0, 3)];
+		n->total++;
+		for (auto& d : it.loc->dirs) { n = &n->dirs[d]; n->total++; }
+		n->items.push_back(&it);
+	}
+	// problems per folder: objects that are asset paths or blueprint names
+	app.RebuildProblems();
+	const Structure& s = app.structure;
+	for (auto& p : app.problems)
+	{
+		if (p.muted || p.severity == "info") continue;
+		std::string obj = p.object.substr(0, p.object.find(" · "));
+		const Location* loc = nullptr;
+		auto byName = s.locByName.find(obj);
+		Location tmp;
+		if (byName != s.locByName.end()) loc = &byName->second;
+		else if (!obj.empty() && obj[0] == '/') { tmp = LocateSymbol("", obj, false, "", ""); loc = &tmp; }
+		if (!loc) continue;
+		LocNode* n = &roots[ImClamp(loc->cat, 0, 3)];
+		n->problems++;
+		for (auto& d : loc->dirs)
+		{
+			auto it = n->dirs.find(d);
+			if (it == n->dirs.end()) break;
+			n = &it->second;
+			n->problems++;
+		}
+	}
+	for (int c = 0; c < 4; ++c)
+	{
+		LocNode& r = roots[c];
+		if (!r.total) continue;
+		ImGui::PushID(c);
+		ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_Framed;
+		if (c != 3 || filtering) flags |= ImGuiTreeNodeFlags_DefaultOpen;
+		if (filtering) ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+		ImGui::PushFont(g_fonts.bold);
+		ImGui::PushStyleColor(ImGuiCol_Header, IM_COL32(255, 255, 255, 14));
+		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, IM_COL32(255, 255, 255, 24));
+		ImGui::PushStyleColor(ImGuiCol_HeaderActive, IM_COL32(255, 255, 255, 30));
+		bool open = ImGui::TreeNodeEx("cat", flags, "%s", kCats[c]);
+		ImGui::PopStyleColor(3);
+		ImGui::PopFont();
+		std::string count = std::to_string(r.total);
+		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - ImGui::CalcTextSize(count.c_str()).x - S(6) - (r.problems ? S(34) : 0));
+		TextDim(count);
+		if (r.problems) { ImGui::SameLine(); Pill(std::to_string(r.problems), col::Fail); }
+		if (open)
+		{
+			DrawLocNode(r, kCats[c], 0, sel, node, filtering);
+			ImGui::TreePop();
+		}
+		ImGui::PopID();
+	}
+	if (items.empty() || (filtering && !roots[0].total && !roots[1].total && !roots[2].total && !roots[3].total)) TextDim("일치하는 항목이 없습니다.");
+}
+
 static void DrawArchitectureNav(App& app)
 {
 	const RunInfo* r = PickRunCombo(app, "##archrun", 0, ui.archRun);
@@ -604,9 +741,29 @@ static void DrawArchitectureNav(App& app)
 		if (ImGui::Selectable(label.c_str(), ui.archMode == i)) { ui.archMode = i; ui.archSel.clear(); ui.archNode.clear(); }
 	}
 	SectionHeader(modes[ui.archMode]);
+	if (ui.archMode == 0 || (ui.archMode >= 2 && ui.archMode <= 4))
+	{
+		static const char* const classGroups[] = { "위치", "상속" };
+		static const char* const listGroups[] = { "위치", "연결 수 순" };
+		Segmented("##archgroup", ui.archMode == 0 ? classGroups : listGroups, 2, ui.archGroup);
+		Tooltip(ui.archMode == 0 ? "위치: 소스·콘텐츠·플러그인·엔진으로 나눈 실제 폴더 트리 / 상속: 부모 클래스 기준 트리"
+		                         : "위치: 실제 폴더 트리 / 연결 수 순: 연결이 많은 항목부터");
+	}
 	SearchBox("##archfilter", ui.filter, sizeof(ui.filter), "필터", -FLT_MIN);
 	ImGui::BeginChild("archlist");
-	if (ui.archMode == 0)
+	if (ui.archMode == 0 && ui.archGroup == 0)
+	{
+		std::vector<LocItem> items;
+		items.reserve(s.classes.size());
+		for (auto& [key, c] : s.classes)
+		{
+			auto loc = s.locByKey.find(key);
+			if (loc == s.locByKey.end()) continue;
+			items.push_back({ key, c.name, &loc->second, -1, c.external });
+		}
+		DrawLocationTree(app, items, ui.archSel, &ui.archNode);
+	}
+	else if (ui.archMode == 0)
 	{
 		std::function<void(const std::string&, int)> tree = [&](const std::string& key, int depth) {
 			const ClassNode& c = s.classes.at(key);
@@ -646,10 +803,24 @@ static void DrawArchitectureNav(App& app)
 		const auto& refs = ui.archMode == 2 ? s.calls : ui.archMode == 3 ? s.assetRefs : s.moduleDeps;
 		std::map<std::string, int> degree;
 		for (auto& rf : refs) { ++degree[rf.src]; ++degree[rf.dst]; }
+		if (ImGui::Selectable("전체 보기", ui.archSel.empty())) ui.archSel.clear();
+		if (ui.archGroup == 0)
+		{
+			// location tree; names without a known location (unresolved calls) go to engine/external
+			static const Location unknown{ 3, { "기타" }, "" };
+			std::vector<LocItem> items;
+			for (auto& [k, v] : degree)
+			{
+				auto loc = s.locByName.find(k);
+				items.push_back({ k, k.substr(k.find_last_of('/') == std::string::npos ? 0 : k.find_last_of('/') + 1), loc != s.locByName.end() ? &loc->second : &unknown, v, false });
+			}
+			DrawLocationTree(app, items, ui.archSel, nullptr);
+			ImGui::EndChild();
+			return;
+		}
 		std::vector<std::pair<int, std::string>> sorted;
 		for (auto& [k, v] : degree) if (ContainsNoCase(k, ui.filter)) sorted.push_back({ -v, k });
 		std::sort(sorted.begin(), sorted.end());
-		if (ImGui::Selectable("전체 보기", ui.archSel.empty())) ui.archSel.clear();
 		ImGuiListClipper clip;
 		clip.Begin((int)sorted.size());
 		while (clip.Step())

@@ -7,7 +7,7 @@
 #   lens          DwoLens: analysis lines (analyze, verify, logs, smoke, perf, sizes, trace) + DwoLensInspector commandlet
 #   statemonitor  DwoStateMonitor: live runtime state viewer plugin (also sm-install, sm-remove)
 #   canvas        DwoCanvas: design file -> UMG Widget Blueprint importer (also canvas-install, canvas-remove, canvas-import)
-#   ci            Local CI: Jenkins job + git hooks for this project (tools\ci.ps1; the Jenkins itself is PC-wide)
+#   ci            DwoBuilder: Jenkins job + git hooks for this project (tools\ci.ps1; the Jenkins itself is PC-wide)
 param(
     [Parameter(Mandatory = $true)]
     [ValidateSet('connect', 'tool', 'attach', 'update', 'status', 'analyze', 'verify', 'logs', 'smoke', 'perf', 'sizes', 'trace', 'play', 'tools', 'gui',
@@ -880,7 +880,7 @@ function Invoke-Attach([string]$Mode) {
     Say "$(if ($Mode -eq 'update') { 'Connection refreshed' } else { 'Connected' }): $($uproject.Name) / UE $($engine.Version) / dwo-Forge $($state.systemCommit)"
     if ($Mode -eq 'attach') { Install-Lens $engine }
     elseif ($Mode -eq 'update') { Update-AllTools }
-    else { Say 'Install tools from the dwo-Forge window or: __dwo-forge.bat tool install <lens|statemonitor|canvas|ci>' }
+    else { Say 'Install tools from the dwo-Forge window or: __dwo-forge.bat tool install <lens|statemonitor|canvas|builder>' }
     Say "Open the control panel: dwo-Forge.bat (or __dwo-forge.bat in the project). Disconnect and remove everything: __dwo-forge.bat uninstall"
     Invoke-Doctor | Out-Null
 }
@@ -888,12 +888,12 @@ function Invoke-Attach([string]$Mode) {
 # ---------------------------------------------------------------- tools (dwo-Forge is their launcher)
 # Each tool is installed, updated and removed on its own. state.json 'tools' records, per tool, the dwo-Forge
 # version, the source hash and the engine it was installed from; a different hash or engine means "update".
-# Local CI keeps its record in __dwo-forge\ci.json (written by ci.ps1).
+# DwoBuilder keeps its record in __dwo-forge\ci.json (written by ci.ps1).
 $ToolDefs = [ordered]@{
     lens         = @{ Name = 'DwoLens';            Scope = 'project' }
     statemonitor = @{ Name = 'DwoStateMonitor'; Scope = 'project' }
     canvas       = @{ Name = 'DwoCanvas';       Scope = 'project' }
-    ci           = @{ Name = 'Local CI';        Scope = 'project+pc' }
+    ci           = @{ Name = 'DwoBuilder';        Scope = 'project+pc' }
 }
 
 function Get-SystemVersion {
@@ -970,7 +970,7 @@ function Get-CiHome {
 }
 
 function Get-PcStatus {
-    # Machine-wide parts the tools use: the local Jenkins (Local CI), its offline bundle, the installed engines.
+    # Machine-wide parts the tools use: the local Jenkins (DwoBuilder), its offline bundle, the installed engines.
     $ciHome = Get-CiHome
     $st = $null
     $f = Join-Path $ciHome 'ci.json'
@@ -1078,7 +1078,7 @@ function Update-StateMonitor($Engine) {
 function Invoke-CiTool([string]$Action) {
     $ci = Join-Path $SystemDir 'tools\ci.ps1'
     if ($Action -eq 'install' -and -not (Get-PcStatus).jenkins.installed) {
-        Say 'Local CI needs the PC-wide Jenkins first: installing it from the offline bundle...'
+        Say 'DwoBuilder needs the PC-wide Jenkins first: installing it from the offline bundle...'
         & $ci -Command ci-install -Project $Project -Rest @()
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     }
@@ -1130,8 +1130,11 @@ function Update-AllTools {
 function Invoke-Tool {
     $a = @($Rest)
     $action = if ($a.Count) { $a[0] } else { '' }
-    $id = if ($a.Count -gt 1) { $a[1] } else { '' }
-    $usage = 'Usage: __dwo-forge.bat tool install|update|remove <lens|statemonitor|canvas|ci>   or   tool update --all'
+    $id = if ($a.Count -gt 1) { "$($a[1])".ToLowerInvariant() } else { '' }
+    # Tool names work too: DwoLens, DwoStateMonitor, DwoCanvas, DwoBuilder (and builder for ci).
+    $aliases = @{ dwolens = 'lens'; dwostatemonitor = 'statemonitor'; dwocanvas = 'canvas'; dwobuilder = 'ci'; builder = 'ci' }
+    if ($aliases.ContainsKey($id)) { $id = $aliases[$id] }
+    $usage = 'Usage: __dwo-forge.bat tool install|update|remove <lens|statemonitor|canvas|builder>   or   tool update --all'
     if ($action -notin @('install', 'update', 'remove')) { Fail $usage }
     if (-not (Read-State)) { Fail 'This project is not connected. Connect it first: __dwo-forge.bat connect' }
     if ($action -eq 'update' -and $id -eq '--all') { Update-AllTools; return }
@@ -1197,7 +1200,7 @@ function Invoke-Status {
     Say "DwoLens           : $(if (Test-Path $PluginDest) { 'installed (Plugins\__DwoLensInspector)' } else { 'not installed (optional: tool install lens)' })"
     Say "DwoStateMonitor: $($tools.StateMonitor)"
     Say "DwoCanvas      : $($tools.Canvas)"
-    Say "Local CI       : $(if (Test-Path (Join-Path $ForgeDir 'ci.json')) { 'installed' } else { 'not installed (optional: tool install ci)' })"
+    Say "DwoBuilder     : $(if (Test-Path (Join-Path $ForgeDir 'ci.json')) { 'installed' } else { 'not installed (optional: tool install builder)' })"
     Say 'Versions and updates: __dwo-forge.bat tools'
     $null = Write-StaleDepsWarning
 }
@@ -2127,7 +2130,7 @@ function Invoke-Uninstall {
         }
     }
 
-    # 1b. Local CI: this project's Jenkins job and the git hooks (Jenkins itself is per PC and stays).
+    # 1b. DwoBuilder: this project's Jenkins job and the git hooks (Jenkins itself is per PC and stays).
     if (Test-Path (Join-Path $ForgeDir 'ci.json')) {
         & (Join-Path $SystemDir 'tools\ci.ps1') -Command 'ci-job' -Project $Project -Rest @('--remove')
     }
@@ -2213,7 +2216,7 @@ switch ($Command) {
     'compile' { Invoke-Compile }
     'package' { Invoke-Package }
     { $_ -like 'ci-*' } {
-        # Local CI lives in ci.ps1 (machine-wide Jenkins + this project's job and git hooks).
+        # DwoBuilder lives in ci.ps1 (machine-wide Jenkins + this project's job and git hooks).
         & (Join-Path $SystemDir 'tools\ci.ps1') -Command $Command -Project $Project -Rest $Rest
         exit $LASTEXITCODE
     }

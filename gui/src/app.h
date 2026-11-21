@@ -372,7 +372,7 @@ struct App
 	std::string canvasLastCommand;
 	bool legacyAttached = false; // project still has dwo-Lens 1.x __dwo-lens (migrated by the next command)
 	bool lensInstalled = false;  // Plugins/__DwoLensInspector (the DwoLens tool)
-	bool ciInstalled = false;    // __dwo-forge/ci.json (the Local CI tool)
+	bool ciInstalled = false;    // __dwo-forge/ci.json (DwoBuilder tool)
 	bool toolsDirty = true;      // tool versions must be read again (forge.ps1 tools --json)
 	bool migrationStarted = false;
 	json state;
@@ -868,7 +868,7 @@ struct App
 		SetEnvironmentVariableW(L"DWO_LENS_FROM_BAT", nullptr);
 		std::string verb = command.substr(0, command.find(' '));
 		std::string rest = command.size() > verb.size() ? command.substr(verb.size()) : "";
-		// PC-wide commands (the local CI's Jenkins) also run with no project open: against the install folder.
+		// PC-wide commands (DwoBuilder's Jenkins) also run with no project open: against the install folder.
 		fs::path target = project.empty() ? home : project;
 		std::wstring ps = L"powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"" + (home / "tools" / "forge.ps1").wstring() +
 		                  L"\" -Command " + ToWide(verb) + L" -Project \"" + target.wstring() + L"\"" + ToWide(rest);
@@ -919,8 +919,8 @@ struct App
 				                 : verb == "sm-install" ? "DwoStateMonitor 설치" : verb == "sm-remove" ? "DwoStateMonitor 제거"
 				                 : verb == "status" && migrationStarted ? "dwo-Lens 1.x 이전" : verb == "status" ? "상태 확인"
 				                 : verb == "doctor" ? "환경 점검" : verb == "play" ? "게임 실행"
-				                 : verb == "ci-install" ? "로컬 CI 설치" : verb == "ci-start" ? "로컬 CI 시작" : verb == "ci-stop" ? "로컬 CI 중지"
-				                 : verb == "ci-remove" ? "로컬 CI 제거" : verb == "ci-job" ? "CI 작업 설정" : verb == "ci-trigger" ? "CI 빌드 요청" : verb;
+				                 : verb == "ci-install" ? "DwoBuilder 설치" : verb == "ci-start" ? "DwoBuilder 시작" : verb == "ci-stop" ? "DwoBuilder 중지"
+				                 : verb == "ci-remove" ? "DwoBuilder 제거" : verb == "ci-job" ? "DwoBuilder 작업 설정" : verb == "ci-trigger" ? "DwoBuilder 빌드 요청" : verb;
 				for (int i = 0; i < kLineCount; ++i)
 					if (verb == kLines[i].command) what = kLines[i].name;   // a check that stopped before writing its run
 				std::string body = code == 0 ? "완료" : "실패 (종료 코드 " + std::to_string(code) + ") · " + runner.LastLine();
@@ -968,7 +968,7 @@ struct App
 		std::istringstream in(command);
 		std::string verb, action, id;
 		in >> verb >> action >> id;
-		std::string name = id == "lens" ? "DwoLens" : id == "statemonitor" ? "DwoStateMonitor" : id == "canvas" ? "DwoCanvas" : id == "ci" ? "로컬 CI" : id == "--all" ? "모든 도구" : id;
+		std::string name = id == "lens" ? "DwoLens" : id == "statemonitor" ? "DwoStateMonitor" : id == "canvas" ? "DwoCanvas" : id == "ci" || id == "builder" ? "DwoBuilder" : id == "--all" ? "모든 도구" : id;
 		return name + (action == "install" ? " 설치" : action == "update" ? " 업데이트" : action == "remove" ? " 제거" : " " + action);
 	}
 

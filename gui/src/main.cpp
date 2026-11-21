@@ -46,7 +46,7 @@ static const ActivityDef kActivities[] = {
 	{ Activity::History, ICON_HISTORY, "실행 기록", "history", "Ctrl+8", ImGuiKey_8, "DwoLens" },
 	{ Activity::Live, ICON_EYE, "DwoStateMonitor", "live", "Ctrl+7", ImGuiKey_7, "DwoStateMonitor" },
 	{ Activity::Canvas, ICON_CANVAS, "DwoCanvas", "canvas", "Ctrl+0", ImGuiKey_0, "DwoCanvas" },
-	{ Activity::Ci, ICON_SYNC, "로컬 CI", "ci", "", ImGuiKey_None, "CI" },
+	{ Activity::Ci, ICON_SYNC, "DwoBuilder", "ci", "", ImGuiKey_None, "CI" },
 };
 
 // Short caption drawn above each group in the activity bar.
@@ -259,7 +259,7 @@ static void DrawMenuBar(App& app, bool& quit)
 			{
 				if (group) ImGui::Separator();
 				group = a.group;
-				ImGui::TextDisabled("%s", std::string(group) == "Forge" ? "dwo-Forge" : std::string(group) == "CI" ? "로컬 CI" : group);
+				ImGui::TextDisabled("%s", std::string(group) == "Forge" ? "dwo-Forge" : std::string(group) == "CI" ? "DwoBuilder" : group);
 			}
 			if (ImGui::MenuItem((std::string(a.icon) + "  " + a.name).c_str(), a.shortcut, app.activity == a.id)) app.requestActivity = a.id;
 		}

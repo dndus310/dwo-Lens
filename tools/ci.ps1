@@ -1,4 +1,4 @@
-# dwo-Forge local CI: a private Jenkins on this PC (127.0.0.1 only), installed from an offline bundle so it
+# dwo-Forge DwoBuilder: a private Jenkins on this PC (127.0.0.1 only), installed from an offline bundle so it
 # also works on closed networks, plus one pipeline job and git hooks per project.
 # Windows PowerShell 5.1 compatible.
 #
@@ -22,7 +22,7 @@ $Utf8 = New-Object System.Text.UTF8Encoding($false)
 $env:PYTHONUTF8 = '1'
 $SystemDir = Split-Path -Parent $PSScriptRoot
 $AppDataDir = Join-Path $env:LOCALAPPDATA 'dwo-Forge'
-# DWO_FORGE_CI_HOME (user environment variable) moves the whole local CI, e.g. to a larger disk.
+# DWO_FORGE_CI_HOME (user environment variable) moves the whole DwoBuilder, e.g. to a larger disk.
 $CiDir = if ($env:DWO_FORGE_CI_HOME) { $env:DWO_FORGE_CI_HOME.TrimEnd('\') } else { Join-Path $AppDataDir 'ci' }
 $Runtime = Join-Path $CiDir 'runtime'
 $JenkinsHome = Join-Path $CiDir 'home'
@@ -83,7 +83,7 @@ function Get-BaseUrl { return "http://127.0.0.1:$(Get-Port)" }
 # ---------------------------------------------------------------- Jenkins REST
 function Get-AuthHeader {
     $s = Read-JsonFile $SecretsPath
-    if (-not $s) { Fail 'Local CI is not installed. Run ci-install first.' }
+    if (-not $s) { Fail 'DwoBuilder is not installed. Run ci-install first.' }
     $pair = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("$($s.user):$($s.token)"))
     return @{ Authorization = "Basic $pair" }
 }
@@ -337,18 +337,18 @@ function Get-JenkinsProcess {
 }
 
 function Start-Jenkins {
-    if (-not (Test-Path (Join-Path $Runtime 'jenkins.war'))) { Fail 'Local CI is not installed. Run ci-install first.' }
+    if (-not (Test-Path (Join-Path $Runtime 'jenkins.war'))) { Fail 'DwoBuilder is not installed. Run ci-install first.' }
     if (Test-Running) { Say "already running: $(Get-BaseUrl)/"; return }
     $port = Get-Port
     $busy = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
-    if ($busy) { Fail "Port $port is used by another program (pid $($busy[0].OwningProcess)). Move the local CI to a free port: dwo-Forge.bat ci-install --port 8099" }
+    if ($busy) { Fail "Port $port is used by another program (pid $($busy[0].OwningProcess)). Move DwoBuilder to a free port: dwo-Forge.bat ci-install --port 8099" }
     New-Item -ItemType Directory -Force $LogDir | Out-Null
     $java = Join-Path $Runtime 'jre\bin\java.exe'
     $log = Join-Path $LogDir 'jenkins.log'
     if (Test-Path $log) { Move-Item -Force $log "$log.1" }
     $javaArgs = "-Xmx1g -Djava.awt.headless=true -Dfile.encoding=UTF-8 -Djenkins.install.runSetupWizard=false " +
                 "-Dhudson.model.DownloadService.never=true -Dhudson.model.UpdateCenter.never=true " +
-                # No inbound agent port: it listens on every interface (firewall prompt, exposed port) and a local CI
+                # No inbound agent port: it listens on every interface (firewall prompt, exposed port) and DwoBuilder
                 # has no remote agents.
                 "-Djenkins.model.Jenkins.slaveAgentPort=-1 -Djenkins.model.Jenkins.slaveAgentPortEnforce=true " +
                 "-DJENKINS_HOME=`"$JenkinsHome`" -Ddwo.forge.secrets=`"$SecretsPath`" " +
@@ -416,8 +416,8 @@ function Invoke-Status {
         $doc.hooks = @(if ($pc) { $pc.hooks })
     }
     if (Has '--json') { ConvertTo-Json -InputObject $doc -Depth 6; return }
-    if (-not $installed) { Say 'local CI: not installed (ci-install)'; return }
-    Say "local CI: Jenkins $($doc.jenkinsVersion) $(if ($running) { "running at $($doc.url)" } else { 'stopped (ci-start)' })"
+    if (-not $installed) { Say 'DwoBuilder: not installed (ci-install)'; return }
+    Say "DwoBuilder: Jenkins $($doc.jenkinsVersion) $(if ($running) { "running at $($doc.url)" } else { 'stopped (ci-start)' })"
     Say "account: dwo-forge (password: $SecretsPath)"
     foreach ($p in $doc.projects) { Say "  job $($p.job) <- $($p.project)" }
 }
@@ -446,7 +446,7 @@ function Invoke-Remove {
     }
     Remove-Item -Recurse -Force $CiDir -ErrorAction SilentlyContinue
     if (Test-Path $CiDir) { Fail "Some files could not be removed: $CiDir (is Jenkins still running?)" }
-    Say 'local CI removed (Jenkins, its data, every project job and git hook).'
+    Say 'DwoBuilder removed (Jenkins, its data, every project job and git hook).'
 }
 
 # ---------------------------------------------------------------- project: git hooks
@@ -466,7 +466,7 @@ function Get-HookScript([string]$Name, [string]$Proj) {
     $stdin = if ($Name -in @('pre-push', 'reference-transaction')) { 1 } else { 0 }
     return @"
 #!/bin/sh
-# $HookMark`: dwo-Forge local CI. Removed by '__dwo-forge.bat ci-job --remove', ci-remove or uninstall.
+# $HookMark`: dwo-Forge DwoBuilder. Removed by '__dwo-forge.bat ci-job --remove', ci-remove or uninstall.
 # The hook this replaced (if any) is kept next to it as $Name.dwo-forge-orig and runs first.
 hook=$Name
 dir=`$(dirname "`$0")
@@ -536,7 +536,7 @@ function Require-Project {
 }
 
 function Ensure-Running {
-    if (-not (Test-Path (Join-Path $Runtime 'jenkins.war'))) { Fail 'Local CI is not installed. Run ci-install first.' }
+    if (-not (Test-Path (Join-Path $Runtime 'jenkins.war'))) { Fail 'DwoBuilder is not installed. Run ci-install first.' }
     if (-not (Test-Running)) { Start-Jenkins }
 }
 
@@ -638,7 +638,7 @@ function Invoke-Hook {
         Add-Content -Path $log -Encoding UTF8 -Value "$((Get-Date).ToString('s')) $hook branch=$branch -> $($triggers.Count) trigger(s)"
         foreach ($t in $triggers) {
             Add-Content -Path $log -Encoding UTF8 -Value "  [$($t.event)] $($t.reason) -> $(@($t.stages) -join '+')"
-            if (-not (Test-Path (Join-Path $Runtime 'jenkins.war'))) { Add-Content -Path $log -Encoding UTF8 -Value '  skipped: local CI is not installed'; continue }
+            if (-not (Test-Path (Join-Path $Runtime 'jenkins.war'))) { Add-Content -Path $log -Encoding UTF8 -Value '  skipped: DwoBuilder is not installed'; continue }
             if (-not (Test-Running)) { Start-Jenkins }
             Send-Trigger $t.reason @($t.stages) $t.event
             Add-Content -Path $log -Encoding UTF8 -Value '  queued'
@@ -669,7 +669,7 @@ switch ($Command) {
     'ci-bundle'  { Invoke-Bundle }
     'ci-install' { Invoke-Install }
     'ci-start'   { Start-Jenkins }
-    'ci-stop'    { if (Test-Path $CiDir) { Stop-Jenkins } else { Say 'local CI is not installed' } }
+    'ci-stop'    { if (Test-Path $CiDir) { Stop-Jenkins } else { Say 'DwoBuilder is not installed' } }
     'ci-status'  { Invoke-Status }
     'ci-remove'  { Invoke-Remove }
     'ci-job'     { Invoke-Job }

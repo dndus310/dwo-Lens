@@ -21,7 +21,7 @@ static const ToolMeta kToolMeta[] = {
 	{ "lens", "DwoLens", "Ln", col::Accent, "아키텍처·문제·검증·로그·성능·용량 검사와 실행 기록", Activity::Overview, "Plugins/__DwoLensInspector (편집기 전용, 기본 꺼짐)" },
 	{ "statemonitor", "DwoStateMonitor", "SM", col::Pass, "실행 중인 게임의 상태를 실시간으로 보는 플러그인", Activity::Live, "Plugins/__DwoStateMonitor" },
 	{ "canvas", "DwoCanvas", "Cv", col::Purple, "디자인 파일(*.dwocanvas.json)을 UMG 위젯 블루프린트로 가져오기", Activity::Canvas, "Plugins/__DwoCanvas" },
-	{ "ci", "로컬 CI", "CI", col::Teal, "push·merge·커밋 때 컴파일 → DwoLens 검사 → 패키지 빌드를 자동 실행", Activity::Ci, "Jenkins 작업, .git/hooks (Jenkins는 PC에 하나)" },
+	{ "ci", "DwoBuilder", "Bd", col::Teal, "push·merge·커밋 때 컴파일 → DwoLens 검사 → 패키지 빌드를 자동 실행", Activity::Ci, "Jenkins 작업, .git/hooks (Jenkins는 PC에 하나)" },
 };
 static const int kToolCount = 4;
 
@@ -249,7 +249,7 @@ static void DrawLauncherNav(App& app)
 	ci::Client& c = ci::Instance();
 	c.Ensure(app.hasUProject ? app.project : fs::path());
 	ci::Snapshot s = c.Get();
-	if (ImGui::Selectable((std::string(ICON_SYNC) + "  Jenkins (로컬 CI)").c_str(), u.page == launcher::Jenkins, ImGuiSelectableFlags_AllowOverlap)) u.page = launcher::Jenkins;
+	if (ImGui::Selectable((std::string(ICON_SYNC) + "  Jenkins (DwoBuilder)").c_str(), u.page == launcher::Jenkins, ImGuiSelectableFlags_AllowOverlap)) u.page = launcher::Jenkins;
 	ImGui::SameLine();
 	ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - S(56));
 	TextDim(!s.installed ? "없음" : s.running ? "실행 중" : "중지됨");
@@ -376,7 +376,7 @@ static void DrawToolRow(App& app, const ToolMeta& m, const ToolView& v, const js
 		ImGui::BeginDisabled(mutates && (!idle || !app.attached || (label == "설치" && (ciBlocked || !v.available))));
 		bool clicked = kind == 0 ? PrimaryButton(label.c_str()) : ImGui::Button(label.c_str());
 		ImGui::EndDisabled();
-		if (label == "설치" && ciBlocked) Tooltip("로컬 CI는 PC에 Jenkins가 필요합니다. 인터넷 PC에서 dwo-Forge.bat ci-bundle로 만든 번들을 dwo-Forge의 bundles 폴더에 두세요.");
+		if (label == "설치" && ciBlocked) Tooltip("DwoBuilder는 PC에 Jenkins가 필요합니다. 인터넷 PC에서 dwo-Forge.bat ci-bundle로 만든 번들을 dwo-Forge의 bundles 폴더에 두세요.");
 		else if (label == "패키지 포함 설치") Tooltip("패키지 게임에서도 동작합니다. .uproject(BP 전용) 또는 Build.cs(C++)에 DwoStateMonitor를 등록해야 합니다.");
 		else if (label == "설치" && m.id == std::string("ci")) Tooltip("Jenkins 작업과 git 훅을 만듭니다. PC에 Jenkins가 없으면 bundles 폴더의 오프라인 번들로 먼저 설치합니다.");
 		if (!clicked) continue;
@@ -555,7 +555,7 @@ static void DrawJenkinsPage(App& app)
 	ci::Snapshot s = c.Get();
 	json doc = g_tools.Get(app.project);
 	const json& pc = Obj(doc, "pc");
-	ViewHeader(ICON_SYNC, "Jenkins (로컬 CI)", "PC에 하나만 설치되고, 프로젝트마다 로컬 CI 도구가 작업을 하나씩 만듭니다.");
+	ViewHeader(ICON_SYNC, "Jenkins (DwoBuilder)", "PC에 하나만 설치되고, 프로젝트마다 DwoBuilder 도구가 작업을 하나씩 만듭니다.");
 	if (!s.installed) Pill("설치 안 됨", col::Muted);
 	else if (s.running) Pill(Fmt("실행 중 · 127.0.0.1:%d", s.port), col::Pass);
 	else Pill("중지됨", col::Warn);
@@ -606,7 +606,7 @@ static void DrawJenkinsPage(App& app)
 	{
 		TextBold("Jenkins 제거");
 		ImGui::PushTextWrapPos(S(380));
-		TextDim("Jenkins와 모든 프로젝트의 로컬 CI 작업·git 훅을 지웁니다. 빌드 기록은 %LOCALAPPDATA%\\dwo-Forge\\uninstalled로 옮겨 둡니다.");
+		TextDim("Jenkins와 모든 프로젝트의 DwoBuilder 작업·git 훅을 지웁니다. 빌드 기록은 %LOCALAPPDATA%\\dwo-Forge\\uninstalled로 옮겨 둡니다.");
 		ImGui::PopTextWrapPos();
 		if (DangerButton("제거")) { app.Run("ci-remove --keep-data"); ImGui::CloseCurrentPopup(); }
 		ImGui::SameLine();
@@ -623,7 +623,7 @@ static void DrawJenkinsPage(App& app)
 		if (u.projects.is_object()) u.projects = json::array({ u.projects });
 	}
 	SectionHeader("이 Jenkins를 쓰는 프로젝트");
-	if (!u.projects.is_array() || u.projects.empty()) TextDim("없음. 프로젝트의 도구 목록에서 로컬 CI를 설치하면 여기에 나타납니다.");
+	if (!u.projects.is_array() || u.projects.empty()) TextDim("없음. 프로젝트의 도구 목록에서 DwoBuilder를 설치하면 여기에 나타납니다.");
 	else if (ImGui::BeginTable("cijobs", 2, kTable))
 	{
 		ImGui::TableSetupColumn("작업", ImGuiTableColumnFlags_WidthFixed, S(260));
@@ -703,9 +703,9 @@ static void DrawLauncherInspector(App& app)
 	launcher::Ui& u = launcher::State();
 	if (u.page == launcher::Jenkins)
 	{
-		SectionHeader("로컬 CI 구조");
+		SectionHeader("DwoBuilder 구조");
 		ImGui::PushTextWrapPos(0);
-		TextDim("Jenkins(Java 포함)는 PC에 하나만 설치되며 127.0.0.1에서만 열립니다. 프로젝트에 로컬 CI 도구를 설치하면 그 프로젝트의 Jenkins 작업과 git 훅이 생기고, "
+		TextDim("Jenkins(Java 포함)는 PC에 하나만 설치되며 127.0.0.1에서만 열립니다. 프로젝트에 DwoBuilder 도구를 설치하면 그 프로젝트의 Jenkins 작업과 git 훅이 생기고, "
 		        "push·merge·브랜치 생성·커밋 때 빌드가 자동으로 시작됩니다.");
 		ImGui::Spacing();
 		TextDim("폐쇄망 PC: 인터넷 PC에서 dwo-Forge.bat ci-bundle로 만든 zip을 dwo-Forge의 bundles 폴더에 두면 네트워크 없이 설치됩니다.");

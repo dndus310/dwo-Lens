@@ -7,7 +7,7 @@
 | **DwoLens** | 분석·검증·로그 검사: 아키텍처 리포트(`analyze`), 검증(`verify`), 로그(`logs`), 맵 스모크(`smoke`), 성능(`perf`), 콘텐츠 용량(`sizes`), Insights 트레이스(`trace`), 컴파일·패키지 | `Plugins/__DwoLensInspector` (숨김, 미리 빌드, 기본 비활성) |
 | **DwoStateMonitor** | 실행 중인 게임의 상태를 실시간으로 보는 런타임 플러그인 (예전 이름 StateMonitor) | `Plugins/__DwoStateMonitor` (숨김) |
 | **DwoCanvas** | 디자인 파일(`*.dwocanvas.json`)을 UMG 위젯 블루프린트로 가져오는 플러그인 | `Plugins/__DwoCanvas` (숨김) |
-| **로컬 CI** | push·merge·커밋 때 컴파일 → DwoLens 검사 → 패키지 빌드를 자동 실행 (Jenkins, 폐쇄망 지원) | Jenkins 작업과 `.git/hooks` (Jenkins 자체는 PC에 하나) |
+| **DwoBuilder** | push·merge·커밋 때 컴파일 → DwoLens 검사 → 패키지 빌드를 자동 실행 (Jenkins, 폐쇄망 지원) | Jenkins 작업과 `.git/hooks` (Jenkins 자체는 PC에 하나) |
 
 모든 도구는 선택 설치입니다. 프로젝트 연결은 도구와 별개로, `__dwo-forge` 폴더와 실행 파일을 만들고 git에서 숨기는 일만 합니다.
 
@@ -53,10 +53,10 @@ DwoLens와 DwoStateMonitor는 프로젝트를 읽기만 하며, 언제 떼어 �
 dwo-Forge.bat connect "C:\Projects\MyGame"  :: 프로젝트 연결 (도구는 설치하지 않음)
 __dwo-forge.bat                     :: 창 열기 (연결 전이면 연결)
 
-:: 도구 (lens, statemonitor, canvas, ci). 플러그인 도구는 엔진 버전별 첫 설치 때만 빌드로 몇 분 걸림
+:: 도구 (lens, statemonitor, canvas, builder = DwoLens, DwoStateMonitor, DwoCanvas, DwoBuilder. 전체 이름도 됨). 플러그인 도구는 엔진 버전별 첫 설치 때만 빌드로 몇 분 걸림
 __dwo-forge.bat tools [--json]      :: 도구별 상태: 설치 안 됨 / 최신 / 업데이트 있음 / 프로젝트 자체 포함 / 이전 형식, PC 구성요소
 __dwo-forge.bat tool install lens   :: 설치 (statemonitor는 --runtime으로 패키지 게임 포함)
-__dwo-forge.bat tool update ci      :: 업데이트.  tool update --all = 업데이트가 있는 도구 모두
+__dwo-forge.bat tool update builder :: 업데이트.  tool update --all = 업데이트가 있는 도구 모두
 __dwo-forge.bat tool remove canvas  :: 제거 (프로젝트가 아직 쓰고 있으면 거부, --force)
 dwo-Forge.bat attach "C:\Projects\MyGame"   :: dwo-Lens 방식: 연결 + DwoLens 설치
 
@@ -80,7 +80,7 @@ __dwo-forge.bat canvas-validate <파일>                  :: 디자인 파일 �
 __dwo-forge.bat canvas-import <파일> [--reset] [--doc 이름]  :: 위젯 블루프린트로 가져오기
 :: canvas-install | canvas-remove [--force] 은 tool install|remove canvas와 같음
 
-:: 로컬 CI (아래 '로컬 CI')
+:: DwoBuilder (아래 'DwoBuilder')
 dwo-Forge.bat ci-bundle                     :: (인터넷 PC) Jenkins·Java·플러그인 오프라인 번들 만들기
 dwo-Forge.bat ci-install [--bundle <zip>] [--port N]   :: 번들로 설치 (네트워크 불필요). ci-start / ci-stop / ci-status / ci-remove
 __dwo-forge.bat ci-job [--remove]           :: 이 프로젝트의 CI 작업과 git 훅 등록 (해제) = tool install|remove ci
@@ -108,7 +108,7 @@ __dwo-forge.bat uninstall           :: 한 번에 완전 제거. 기록·생성 
 | 영역 | 내용 |
 |---|---|
 | 왼쪽: 프로젝트 | 최근 프로젝트 목록(업데이트가 있으면 표시), `프로젝트 열기...` |
-| 왼쪽: PC 구성요소 | **Jenkins (로컬 CI)**: 설치(오프라인 번들)·시작·중지·업데이트·제거, 계정, 이 Jenkins를 쓰는 프로젝트. **언리얼 엔진**: 이 PC의 엔진 목록 |
+| 왼쪽: PC 구성요소 | **Jenkins (DwoBuilder)**: 설치(오프라인 번들)·시작·중지·업데이트·제거, 계정, 이 Jenkins를 쓰는 프로젝트. **언리얼 엔진**: 이 PC의 엔진 목록 |
 | 왼쪽: dwo-Forge | 버전, 문서, 도구 카탈로그 |
 | 가운데: 도구 라이브러리 | 선택한 프로젝트의 도구 네 개. 줄마다 상태(설치 안 됨·최신·업데이트 있음·프로젝트에 포함·이전 형식), 설치 버전과 최신 버전, `설치`·`업데이트`·`열기`·`제거`. 업데이트가 있으면 위에 `모두 업데이트`, 엔진이 바뀌었으면 `연결 새로 고침` |
 | 오른쪽: 속성 | 선택한 도구의 설치 버전·빌드 엔진·설치 일시·위치와 같은 일을 하는 명령줄 |
@@ -129,7 +129,7 @@ __dwo-forge.bat uninstall           :: 한 번에 완전 제거. 기록·생성 
 | DwoLens | 실행 기록 (Ctrl+8) | 실행별 단계 띠, 두 실행 **비교**(지표 변화, 새로 생긴·해결된 문제, 결과가 바뀐 테스트), 결과 파일 |
 | DwoStateMonitor | DwoStateMonitor (Ctrl+7) | 실행 중인 게임의 상태를 실시간으로 표시 (아래 '제공 도구: DwoStateMonitor') |
 | DwoCanvas | DwoCanvas (Ctrl+0) | 디자인 파일 고르기(열기 대화상자 또는 `*.dwocanvas.json` 끌어다 놓기), 검사·가져오기·초기화하고 가져오기, 최신 리포트 요약 (아래 '제공 도구: DwoCanvas') |
-| 로컬 CI | 로컬 CI | 빌드 목록·결과·실시간 로그, `지금 빌드`(단계 선택), 이 프로젝트의 작업 설정 다시 적용. Jenkins 관리는 런처의 PC 구성요소 |
+| DwoBuilder | DwoBuilder | 빌드 목록·결과·실시간 로그, `지금 빌드`(단계 선택), 이 프로젝트의 작업 설정 다시 적용. Jenkins 관리는 런처의 PC 구성요소 |
 
 - **명령 팔레트 (Ctrl+K)**: 화면 이동, 검사 실행, 도구 설치·업데이트·제거, DwoCanvas 검사·가져오기, 리포트 저장을 검색해서 실행합니다.
 - **도구 메뉴**: 도구마다 열기·설치·업데이트·제거, `모든 도구 업데이트`, 프로젝트 연결·새로 고침·연결 해제.
@@ -248,7 +248,7 @@ A/
 ├─ __dwo-forge/
 │  ├─ home.txt                    # dwo-Forge 설치 폴더 위치
 │  ├─ state.json                  # 연결 정보 (버전, 형상관리 방식, 연결 전 git 상태)와 도구별 설치 기록 (tools)
-│  ├─ ci.json                     # (로컬 CI 설치 시) Jenkins 작업, 훅, 설치 버전
+│  ├─ ci.json                     # (DwoBuilder 설치 시) Jenkins 작업, 훅, 설치 버전
 │  ├─ data/runs/<id>/             # DwoLens 실행별 raw · out · run.json · 로그
 │  ├─ data/canvas/                # canvas-import 엔진 로그, 마지막 가져오기 (last.json)
 │  ├─ created-files.txt           # dwo-Forge 실행이 프로젝트에 남긴 파일 (제거 때 처리)
@@ -289,15 +289,15 @@ A/
 
 전체 목록과 계획 중인 도구(Insights 내보내기, PerfReportTool 리포트, 정적 분석 등)는 `tools/catalog.json` 또는 `__dwo-forge.bat tools`로 확인합니다. 카탈로그 항목은 `tool` 값(lens, statemonitor, canvas, forge)으로 묶입니다.
 
-## 로컬 CI (Jenkins, 폐쇄망 지원)
+## DwoBuilder (Jenkins, 폐쇄망 지원)
 
 내 PC에서만 쓰는 Jenkins를 설치해, git 이벤트나 외부 요청이 들어오면 **C++ 컴파일 → DwoLens 검사 → 패키지 빌드**를 자동으로 실행합니다. DwoStateMonitor처럼 설치·제거하지만, Jenkins는 프로젝트가 아니라 PC에 하나(`%LOCALAPPDATA%\dwo-Forge\ci`)만 설치되고 프로젝트마다 작업(job)이 하나씩 생깁니다. 프로젝트 폴더에는 아무것도 추가되지 않습니다(git 훅은 `.git/hooks`에 들어갑니다). 빌드 기록이 커질 수 있으므로 다른 디스크에 두려면 사용자 환경 변수 `DWO_FORGE_CI_HOME`(예: `setx DWO_FORGE_CI_HOME D:\dwo-forge-ci`)을 설정한 뒤 설치합니다.
 
 | 단계 | 하는 일 |
 |---|---|
 | 1. 번들 만들기 (인터넷 PC, 한 번) | `dwo-Forge.bat ci-bundle` → `bundles/dwo-forge-ci-bundle-<버전>.zip`. Jenkins LTS(war, SHA-256 확인), Eclipse Temurin 21 JRE(체크섬 확인), 플러그인(`workflow-aggregator`, `junit`과 의존성)을 묶고 파일마다 SHA-256을 `manifest.json`에 기록 |
-| 2. 설치 (폐쇄망 PC) | 번들을 `bundles/`에 두거나 `dwo-Forge.bat ci-install --bundle <zip>`. 체크섬을 확인한 뒤 설치하고 시작합니다. 네트워크에 접속하지 않고 관리자 권한도 필요 없습니다. 창에서는 런처의 **PC 구성요소 > Jenkins (로컬 CI)** `설치`. 프로젝트에 로컬 CI 도구를 설치할 때 Jenkins가 없으면 자동으로 함께 설치합니다 |
-| 3. 프로젝트에 설치 | 런처의 도구 목록에서 **로컬 CI** `설치` (`__dwo-forge.bat tool install ci`, 예전 명령 `ci-job`). Jenkins 파이프라인 작업과 git 훅(`post-commit`, `post-merge`, `pre-push`, `reference-transaction`)을 설치합니다. 기존 훅(git-lfs 등)은 `<훅>.dwo-forge-orig`로 보존되어 먼저 실행됩니다. 프로젝트 이름이 한글이거나 같은 프로젝트를 두 곳에 받아 둔 경우 작업 이름 뒤에 경로 기반 8자리 식별자가 붙어 서로 겹치지 않습니다 |
+| 2. 설치 (폐쇄망 PC) | 번들을 `bundles/`에 두거나 `dwo-Forge.bat ci-install --bundle <zip>`. 체크섬을 확인한 뒤 설치하고 시작합니다. 네트워크에 접속하지 않고 관리자 권한도 필요 없습니다. 창에서는 런처의 **PC 구성요소 > Jenkins (DwoBuilder)** `설치`. 프로젝트에 DwoBuilder 도구를 설치할 때 Jenkins가 없으면 자동으로 함께 설치합니다 |
+| 3. 프로젝트에 설치 | 런처의 도구 목록에서 **DwoBuilder** `설치` (`__dwo-forge.bat tool install builder`, 예전 명령 `ci-job`). Jenkins 파이프라인 작업과 git 훅(`post-commit`, `post-merge`, `pre-push`, `reference-transaction`)을 설치합니다. 기존 훅(git-lfs 등)은 `<훅>.dwo-forge-orig`로 보존되어 먼저 실행됩니다. 프로젝트 이름이 한글이거나 같은 프로젝트를 두 곳에 받아 둔 경우 작업 이름 뒤에 경로 기반 8자리 식별자가 붙어 서로 겹치지 않습니다 |
 
 **트리거** (기본값, `ci.triggers`에서 변경)
 
@@ -317,7 +317,7 @@ A/
 
 **보관 개수**: Jenkins는 최근 `ci.keepBuilds`(기본 30)개 빌드만 남기고, 넘으면 가장 오래된 빌드부터 하나씩 지웁니다(첨부 결과는 `ci.keepArtifacts`개). Jenkins 기본값과 달리 마지막 성공 빌드도 예외 없이 이 개수에 포함됩니다. 패키지 결과물은 DwoLens 실행 기록에 최근 `retention.packages`(기본 3)개만 남습니다.
 
-**결과 보기**: 런처에서 로컬 CI를 `열기`하면 나오는 화면에서 빌드 목록·결과·실시간 로그를 보고, `지금 빌드`로 단계를 골라 실행합니다. 같은 내용을 Jenkins 화면(`http://127.0.0.1:8098/`, 계정은 `계정 복사`)에서도 볼 수 있고, 각 빌드에는 JUnit 추세와 DwoLens 리포트가 첨부됩니다. DwoLens 검사가 fail이면 빌드는 UNSTABLE, 컴파일·패키지 실패는 FAILURE입니다.
+**결과 보기**: 런처에서 DwoBuilder를 `열기`하면 나오는 화면에서 빌드 목록·결과·실시간 로그를 보고, `지금 빌드`로 단계를 골라 실행합니다. 같은 내용을 Jenkins 화면(`http://127.0.0.1:8098/`, 계정은 `계정 복사`)에서도 볼 수 있고, 각 빌드에는 JUnit 추세와 DwoLens 리포트가 첨부됩니다. DwoLens 검사가 fail이면 빌드는 UNSTABLE, 컴파일·패키지 실패는 FAILURE입니다.
 
 **다른 PC에 설치할 때**: 따로 설치하거나 설정할 것은 Python 3.10 이상(dwo-Forge 공통 요구 사항)뿐입니다. Java·Jenkins·플러그인은 번들에 들어 있고, 관리자 권한·서비스 등록·방화벽 허용·인터넷이 필요 없습니다. Python이 없거나 Microsoft Store 바로 가기만 있으면 설치 전에 그렇게 알려 줍니다. 8098 포트를 다른 프로그램이 쓰고 있으면 `ci-install --port 8099`처럼 다른 포트로 설치합니다. 한국어 Windows(코드 페이지 949)에서 사용자 이름·dwo-Forge 폴더·프로젝트 경로에 한글이나 공백이 있어도 동작합니다(Jenkins 단계는 경로를 스크립트에 넣지 않고 환경 변수로 넘깁니다).
 
@@ -356,7 +356,7 @@ A/
 | `tools/lens_runtime.py` | DwoLens: 맵 부팅·성능 CSV·용량·트레이스 결과 판정과 리포트 |
 | `tools/lens_build.py` | 빌드 검사: 컴파일·패키지 로그 → 오류 목록, 결과, 리포트 |
 | `tools/lens_export.py` | 실행 결과 → JUnit, SARIF 2.1.0 (이전 실행 대비 new/unchanged) |
-| `tools/ci.ps1`, `tools/forge_ci.py` | 로컬 CI: 오프라인 번들, Jenkins 설치·실행, 프로젝트 작업, git 훅과 트리거 판단, 보관 개수 |
+| `tools/ci.ps1`, `tools/forge_ci.py` | DwoBuilder: 오프라인 번들, Jenkins 설치·실행, 프로젝트 작업, git 훅과 트리거 판단, 보관 개수 |
 | `tools/vendor/mermaid.min.js` | 리포트 다이어그램용 Mermaid 10.9.1 (MIT). 리포트가 인터넷 없이 그려지도록 실행 기록 폴더로 복사 |
 | `tools/catalog.json` | 도구 레지스트리 (세 도구별로 묶음) |
 | `gui/`, `tools/gui.ps1` | ImGui 제어판 (Dear ImGui 1.91.9b docking, nlohmann/json 3.11.3, MIT). DwoStateMonitor 뷰어, DwoCanvas 화면 포함 |

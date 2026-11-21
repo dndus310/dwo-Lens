@@ -1,4 +1,4 @@
-"""Local CI helpers used by ci.ps1 and forge.ps1. Pure decisions live here so they can be unit tested.
+"""DwoBuilder helpers used by ci.ps1 and forge.ps1. Pure decisions live here so they can be unit tested.
 
     python forge_ci.py decide   --event <hook> --config <json...> --state <dir> [--branch B] [--remote R] < stdin
     python forge_ci.py job-xml  --project <dir> --launcher <bat> --name <job> --config <json...>
@@ -219,7 +219,7 @@ def job_xml(project: str, launcher: str, ci: dict) -> str:
                              "</hudson.model.BooleanParameterDefinition>")
     return f"""<?xml version='1.1' encoding='UTF-8'?>
 <flow-definition plugin="workflow-job">
-  <description>{escape(f"dwo-Forge 로컬 CI: {project}. dwo-Forge가 관리합니다 (__dwo-forge.bat ci-job).")}</description>
+  <description>{escape(f"dwo-Forge DwoBuilder: {project}. dwo-Forge가 관리합니다 (__dwo-forge.bat ci-job).")}</description>
   <keepDependencies>false</keepDependencies>
   <properties>
     <jenkins.model.BuildDiscarderProperty>

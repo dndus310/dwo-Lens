@@ -1,5 +1,5 @@
 #pragma once
-// Local CI view: the private Jenkins on this PC (installed from an offline bundle) and this project's job.
+// DwoBuilder view: the private Jenkins on this PC (installed from an offline bundle) and this project's job.
 // Status and builds come from Jenkins' REST API on 127.0.0.1 (polled on a worker thread, HTTP/1.0 so no
 // chunked bodies); every action runs through forge.ps1 -> ci.ps1 in the runner like the other tools.
 
@@ -303,9 +303,9 @@ static void DrawCiNav(App& app)
 	SectionHeader("이 프로젝트");
 	if (s.job.empty())
 	{
-		TextDim("로컬 CI가 설치되지 않았습니다.");
+		TextDim("DwoBuilder가 설치되지 않았습니다.");
 		ImGui::BeginDisabled(!app.attached || !idle);
-		if (PrimaryButton((std::string(ICON_ADD) + "  로컬 CI 설치").c_str(), ImVec2(w, 0))) app.Run("tool install ci");
+		if (PrimaryButton((std::string(ICON_ADD) + "  DwoBuilder 설치").c_str(), ImVec2(w, 0))) app.Run("tool install ci");
 		ImGui::EndDisabled();
 		Tooltip("Jenkins에 이 프로젝트의 파이프라인(컴파일 → DwoLens 검사 → 패키지)을 만들고, git 훅으로 push·merge·브랜치 생성·커밋 때 자동 빌드합니다. PC에 Jenkins가 없으면 오프라인 번들로 먼저 설치합니다.");
 	}
@@ -332,10 +332,10 @@ static void DrawCiMain(App& app)
 	c.Ensure(app.hasUProject ? app.project : fs::path());
 	ci::Snapshot s = c.Get();
 	ci::Ui& ui = ci::State();
-	ViewHeader(ICON_SYNC, "로컬 CI", "내 PC의 Jenkins에서 컴파일 · DwoLens 검사 · 패키지 빌드를 자동으로 실행");
+	ViewHeader(ICON_SYNC, "DwoBuilder", "내 PC의 Jenkins에서 컴파일 · DwoLens 검사 · 패키지 빌드를 자동으로 실행");
 	if (!s.installed)
 	{
-		EmptyState(ICON_DOWNLOAD, "로컬 CI가 설치되지 않았습니다",
+		EmptyState(ICON_DOWNLOAD, "DwoBuilder가 설치되지 않았습니다",
 		           "인터넷이 되는 PC에서 'dwo-Forge.bat ci-bundle'로 오프라인 번들(zip)을 만든 뒤, 왼쪽 '설치 (오프라인 번들)'로 설치합니다. "
 		           "설치와 실행 모두 네트워크 없이 동작하므로 폐쇄망에서도 쓸 수 있습니다. Jenkins는 127.0.0.1에서만 열립니다.");
 		return;

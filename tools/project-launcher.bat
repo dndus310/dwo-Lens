@@ -8,7 +8,7 @@ rem    tools                   tool versions and updates (--json for scripts)
 rem    tool install^|update^|remove ^<lens^|statemonitor^|canvas^|ci^>   tool update --all
 rem    Lens            analyze^|verify^|logs^|smoke^|perf^|sizes^|trace^|play^|compile^|package
 rem    DwoCanvas       canvas-validate ^<file^>^|canvas-import ^<file^> [--reset] [--doc Name]
-rem    Local CI        ci-trigger [--reason text] [--stages compile,lens,package]^|ci-status
+rem    DwoBuilder      ci-trigger [--reason text] [--stages compile,lens,package]^|ci-status
 rem    connect^|status^|doctor^|update^|uninstall [--keep-data^|--delete-data] [--force]
 rem ============================================================================
 setlocal EnableExtensions

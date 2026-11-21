@@ -409,6 +409,18 @@ class ForgeCliTests(unittest.TestCase):
         state = json.loads((self.project / "__dwo-forge" / "state.json").read_text(encoding="utf-8-sig"))
         self.assertEqual(list(state["tools"]), ["lens"])
 
+    def test_tool_names_work_as_ids(self):
+        # DwoCanvas / DwoBuilder (and builder) name the same tools as canvas / ci.
+        self.make_canvas()
+        write(self.project / "__dwo-forge" / "ci.json", json.dumps({"job": "dwo-forge-Game", "hash": "x"}))
+        self.connect_fake(tools={"canvas": {"version": "3.0.0", "hash": "x"}})
+        code, out = self.forge("tool", "remove", "DwoCanvas")
+        self.assertEqual(code, 0, out)
+        self.assertFalse((self.project / "Plugins" / "__DwoCanvas").exists())
+        code, out = self.forge("tool", "remove", "builder", DWO_FORGE_CI_HOME=str(self.tmp / "no-ci"))
+        self.assertEqual(code, 0, out)
+        self.assertFalse((self.project / "__dwo-forge" / "ci.json").exists())
+
     def test_local_ci_record_lives_in_ci_json(self):
         self.connect_fake()
         _, tools = self.tools()

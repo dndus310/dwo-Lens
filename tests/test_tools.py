@@ -185,7 +185,7 @@ class AnalyzerFixtureTests(TempDir):
         self.assertTrue(all(r["status"] in ("verified", "rule", "inferred", "unknown") for r in graph["relations"]))
         for name in ("report.html", "index.db", "class_uml.puml", "findings.json", "quality.json", "statemonitor.json", "features.json"):
             self.assertTrue((out / name).exists(), name)
-        self.assertTrue(list((out / "flows").glob("*.mmd")))
+        self.assertFalse((out / "flows").exists(), "the feature view replaced the Mermaid exec graphs")
 
     def test_deterministic_output(self):
         a = self.run_cli(self.tmp / "a")

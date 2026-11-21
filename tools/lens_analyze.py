@@ -22,7 +22,6 @@ import lens_quality  # noqa: E402
 SCHEMA = "lens.graph/0.1"
 EXTRACTOR_VERSION = "lens-analyze/0.1"
 MAX_DIAGRAM_NODES = 120
-MAX_FLOW_NODES = 60
 TICK_EVENTS = {"ReceiveTick", "Tick"}
 EXTERNAL_PREFIXES = ("__ExternalActors__", "__ExternalObjects__")
 
@@ -680,52 +679,6 @@ def asset_diagram(g: Graph) -> str | None:
     return "\n".join(lines)
 
 
-def flow_diagrams(bp: dict) -> list[tuple[str, str]]:
-    """Exec flow from every event / function entry, one diagram per graph."""
-    out = []
-    for graph in bp["graphs"]:
-        nodes = {n["id"]: n for n in graph["nodes"]}
-        exec_links = [l for l in graph["links"] if l["kind"] == "exec"]
-        if not exec_links:
-            continue
-        adj = defaultdict(list)
-        for l in exec_links:
-            adj[l["from"]].append(l)
-        starts = [n["id"] for n in graph["nodes"]
-                  if (n.get("role") == "event" or n["class"] == "K2Node_FunctionEntry") and adj.get(n["id"])]
-        seen, order, edges = set(), [], []
-        stack = list(reversed(starts))
-        while stack and len(order) < MAX_FLOW_NODES:
-            nid = stack.pop()
-            if nid in seen or nid not in nodes:
-                continue
-            seen.add(nid)
-            order.append(nid)
-            for l in reversed(adj.get(nid, [])):
-                edges.append(l)
-                stack.append(l["to"])
-        if len(order) < 2:
-            continue
-        lines = ["flowchart TD"]
-        for nid in order:
-            n = nodes[nid]
-            label = mermaid_label(n["title"])
-            role = n.get("role")
-            if role == "event" or n["class"] == "K2Node_FunctionEntry":
-                lines.append(f'{mermaid_id(nid)}(["{label}"])')
-            elif role == "call":
-                lines.append(f'{mermaid_id(nid)}["{label}"]')
-            else:
-                lines.append(f'{mermaid_id(nid)}{{{{"{label}"}}}}' if "Branch" in n["class"] or "IfThen" in n["class"] else f'{mermaid_id(nid)}["{label}"]')
-        for l in edges:
-            if l["from"] in seen and l["to"] in seen:
-                pin = l["fromPin"]
-                label = "" if pin in ("then", "OutputDelegate", "execute") else f"|{mermaid_label(pin)}|"
-                lines.append(f"{mermaid_id(l['from'])} -->{label} {mermaid_id(l['to'])}")
-        out.append((graph["name"], "\n".join(lines)))
-    return out
-
-
 # --------------------------------------------------------------------------- report
 
 REPORT_CSS = """
@@ -803,7 +756,7 @@ def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, dia
 <section><h2>에셋 참조</h2>{mermaid_block('에셋 참조 (실선 hard · 점선 soft)', diagrams['assets'])}</section>
 <section><h2>Blueprint</h2><div class="scroll"><table><thead><tr><th>이름</th><th>종류</th><th>부모</th><th>그래프</th><th>호출 대상 클래스</th></tr></thead>
 <tbody>{''.join(bp_rows) or "<tr><td colspan='5'>없음</td></tr>"}</tbody></table></div></section>
-<section class="meta">결과 파일: graph.json · index.db · class_uml.puml · class_uml.mmd · class_uml.xmi (Visual Paradigm 등 UML 도구용) · findings.json · quality.json · statemonitor.json · features.json · flows/*.mmd (Blueprint 실행 그래프)</section>
+<section class="meta">결과 파일: graph.json · index.db · class_uml.puml · class_uml.mmd · class_uml.xmi (Visual Paradigm 등 UML 도구용) · findings.json · quality.json · statemonitor.json · features.json</section>
 </main>
 <script src="../../../vendor/mermaid.min.js"></script>
 <script>if(!window.mermaid)document.write('<script src="{MERMAID_CDN}"><\\/script>')</script>
@@ -837,15 +790,7 @@ def main() -> int:
     (args.out / "statemonitor.json").write_text(json.dumps(quality["stateMonitor"], ensure_ascii=False, indent=1), encoding="utf-8")
 
     classes_mmd, classes_puml = class_diagram(g)
-    flows = {}
-    flow_dir = args.out / "flows"
-    flow_dir.mkdir(exist_ok=True)
-    for key, bp in sorted(ctx["bp_index"].items()):
-        name = short_name(bp["asset"])
-        flows[name] = flow_diagrams(bp)
-        for gname, src in flows[name]:
-            (flow_dir / f"{name}.{re.sub(r'[^A-Za-z0-9_]', '_', gname)}.mmd").write_text(src, encoding="utf-8")
-    diagrams = {"classes": classes_mmd, "modules": module_diagram(g), "assets": asset_diagram(g), "flows": flows}
+    diagrams = {"classes": classes_mmd, "modules": module_diagram(g), "assets": asset_diagram(g)}
 
     graph_doc = {
         "schema": SCHEMA, "extractor": EXTRACTOR_VERSION, "meta": ctx["meta"],

@@ -80,6 +80,11 @@ if (-not (Test-Path $exe)) {
     }
     Remove-Item -Recurse -Force $obj
     Say "Built $exe"
+    # Older builds (one folder per source version) are not used again. Keep the two most recent in case a window
+    # of an older version is still open; a folder whose exe is running stays locked and is skipped.
+    Get-ChildItem (Join-Path $appData 'gui-cache') -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -ne $cache } | Sort-Object LastWriteTime -Descending | Select-Object -Skip 2 |
+        ForEach-Object { Remove-Item -Recurse -Force $_.FullName -ErrorAction SilentlyContinue }
 }
 
 if ($BuildOnly) { exit 0 }

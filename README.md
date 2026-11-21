@@ -382,7 +382,7 @@ A/
 | `run.json` | 실행 ID, 검사, 단계별 결과·소요 시간, dwo-Forge 버전 |
 | `out/report.html` | 검사별 리포트 |
 | `out/graph.json`, `out/index.db` | 심볼·관계 (status, evidence 포함) |
-| `out/class_uml.puml` / `.mmd`, `out/flows/*.mmd` | 클래스 다이어그램, Blueprint 실행 그래프(Mermaid) |
+| `out/class_uml.puml` / `.mmd` | 클래스 다이어그램 |
 | `out/features.json` | 클래스별 기능(진입점)과 각 기능의 단계 (`lens.features/1`, 아키텍처의 기능 보기와 리포트의 기능 섹션) |
 | `out/class_uml.xmi` | UML 2 클래스 모델(XMI 2.1). Visual Paradigm의 `File > Import > XMI`(또는 `scripts\ImportXMI.bat -project <.vpp> -file <.xmi>`), Enterprise Architect, MagicDraw, Papyrus에서 가져옵니다. 클래스는 `/Game` 폴더, `C++/<모듈>`, `External/<모듈>` 패키지로 나뉘고 속성·함수·상속·참조가 모두 들어갑니다. 다이어그램은 가져온 뒤 패키지를 끌어다 놓아 만듭니다 |
 | `out/findings.json`, `out/quality.json`, `out/statemonitor.json` | 분석 결과와 품질 점검 |

@@ -198,7 +198,7 @@ static void LoadFonts(float scale)
 		g_fonts.icon = exists(icons) ? io.Fonts->AddFontFromFileTTF(icons, 20.0f * scale, &cfg, iconRanges) : g_fonts.body;
 		// search (DwoLens), canvas (DwoCanvas), eye (DwoStateMonitor), package (DwoBuilder)
 		static const ImWchar thumbRanges[] = { 0xE721, 0xE721, 0xE790, 0xE790, 0xE7B3, 0xE7B3, 0xE7B8, 0xE7B8, 0 };
-		g_fonts.iconLarge = exists(icons) ? io.Fonts->AddFontFromFileTTF(icons, 40.0f * scale, &cfg, thumbRanges) : g_fonts.icon;
+		g_fonts.iconLarge = exists(icons) ? io.Fonts->AddFontFromFileTTF(icons, 26.0f * scale, &cfg, thumbRanges) : g_fonts.icon;
 	}
 	io.FontDefault = g_fonts.body;
 }
@@ -285,9 +285,11 @@ static void ApplyTheme(float scale)
 
 // ============================================================================ widgets
 
+// NoBordersInBody: columns resize from the header row only. Without it the (invisible) resize zone of every column
+// border runs down the whole body and takes the hover from the row while the mouse crosses cells, so rows flicker.
 static const ImGuiTableFlags kTable = ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg |
-                                      ImGuiTableFlags_Resizable | ImGuiTableFlags_Hideable | ImGuiTableFlags_ScrollY |
-                                      ImGuiTableFlags_SizingStretchProp;
+                                      ImGuiTableFlags_Resizable | ImGuiTableFlags_NoBordersInBody | ImGuiTableFlags_Hideable |
+                                      ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingStretchProp;
 
 static void Pill(const std::string& text, ImU32 color, bool filled = false)
 {

@@ -344,6 +344,7 @@ static void DrawMenuBar(App& app, bool& quit)
 }
 
 static std::map<std::string, Activity> g_lastToolScreen;   // tool id -> last screen used, reopened from its entry
+static std::map<std::string, bool> g_toolFolded;            // tool id -> its screens are folded in the sidebar
 
 // Sidebar: home, PC components, the installed tools (the open one lists its screens), and at the bottom the command
 // palette, about and collapse. Expanded it shows names; collapsed, icons only with tooltips.
@@ -380,14 +381,17 @@ static void DrawActivityBar(App& app)
 	bool inLauncher = app.activity == Activity::Launcher;
 
 	// One row. icon: glyph, or a tool tile when 'tool' is set. badge: text pill (expanded) or a dot (collapsed / no text).
+	// fold: nullptr = no fold arrow; otherwise the tool's folded state, flipped by a click on the arrow.
 	auto row = [&](const char* id, const char* icon, const ToolMeta* tool, const std::string& label, bool active, int depth,
-	               ImU32 badgeColor, const std::string& badge, const std::string& tip) -> bool {
+	               ImU32 badgeColor, const std::string& badge, const std::string& tip, bool* fold = nullptr) -> bool {
 		ImDrawList* dl = ImGui::GetWindowDrawList();
 		float h = depth ? S(34) : S(40);
 		ImVec2 p = ImGui::GetCursorScreenPos();
 		ImGui::PushID(id);
+		bool showFold = fold && !collapsed;
+		if (showFold) ImGui::SetNextItemAllowOverlap();
 		bool clicked = ImGui::InvisibleButton("row", ImVec2(W - 1, h));
-		bool hov = ImGui::IsItemHovered();
+		bool hov = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenOverlappedByItem);
 		ImVec2 a = p + ImVec2(S(8), 0), b = p + ImVec2(W - S(9), h);
 		if (active) dl->AddRectFilled(a, b, IM_COL32(255, 255, 255, 26), S(6));
 		else if (hov) dl->AddRectFilled(a, b, IM_COL32(255, 255, 255, 12), S(6));
@@ -412,6 +416,27 @@ static void DrawActivityBar(App& app)
 			dl->AddText(f, fs, ImVec2(lx, p.y + (h - ts.y) * 0.5f), active ? col::Text : hov ? IM_COL32(0xE6, 0xE8, 0xEB, 255) : IM_COL32(0xB8, 0xBC, 0xC2, 255), label.c_str());
 			dl->PopClipRect();
 		}
+		float badgeRight = p.x + W - S(20);
+		bool foldHovered = false;
+		if (showFold)
+		{
+			// fold arrow at the right edge
+			float aw = S(24);
+			ImVec2 ap(p.x + W - S(12) - aw, p.y + (h - aw) * 0.5f);
+			ImGui::SetCursorScreenPos(ap);
+			if (ImGui::InvisibleButton("fold", ImVec2(aw, aw))) { *fold = !*fold; clicked = false; }
+			bool ah = ImGui::IsItemHovered();
+			foldHovered = ah;
+			if (ah) dl->AddRectFilled(ap, ap + ImVec2(aw, aw), IM_COL32(255, 255, 255, 20), S(4));
+			const char* glyph = *fold ? ICON_RIGHT : ICON_DOWN;
+			float fs = g_fonts.icon->FontSize * 0.55f;
+			ImVec2 gs = g_fonts.icon->CalcTextSizeA(fs, FLT_MAX, 0, glyph);
+			dl->AddText(g_fonts.icon, fs, ap + (ImVec2(aw, aw) - gs) * 0.5f, ah ? col::Text : col::Dim, glyph);
+			if (ah) { BeginTip(); ImGui::TextUnformatted(*fold ? "화면 펼치기" : "화면 접기"); ImGui::EndTooltip(); }
+			badgeRight = ap.x - S(4);
+			ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h));
+			ImGui::Dummy(ImVec2(0, 0));
+		}
 		if (badgeColor)
 		{
 			if (!collapsed && !badge.empty())
@@ -419,14 +444,14 @@ static void DrawActivityBar(App& app)
 				ImFont* f = g_fonts.bold;
 				float fs = f->FontSize * 0.78f;
 				ImVec2 bs = f->CalcTextSizeA(fs, FLT_MAX, 0, badge.c_str());
-				ImVec2 bb = ImVec2(p.x + W - S(20), p.y + h * 0.5f + bs.y * 0.5f + S(2));
+				ImVec2 bb = ImVec2(badgeRight, p.y + h * 0.5f + bs.y * 0.5f + S(2));
 				ImVec2 ba = ImVec2(bb.x - bs.x - S(12), bb.y - bs.y - S(4));
 				dl->AddRectFilled(ba, bb, badgeColor, S(9));
 				dl->AddText(f, fs, ba + ImVec2(S(6), S(2)), IM_COL32(255, 255, 255, 255), badge.c_str());
 			}
-			else dl->AddCircleFilled(ImVec2(p.x + (collapsed ? W * 0.5f + S(12) : W - S(26)), p.y + (collapsed ? S(9) : h * 0.5f)), S(4), badgeColor);
+			else dl->AddCircleFilled(ImVec2(collapsed ? p.x + W * 0.5f + S(12) : badgeRight - S(6), p.y + (collapsed ? S(9) : h * 0.5f)), S(4), badgeColor);
 		}
-		if (hov && (collapsed || !tip.empty()))
+		if (hov && !foldHovered && (collapsed || !tip.empty()))
 		{
 			ImGui::SetNextWindowPos(ImVec2(p.x + W + S(4), p.y + S(6)));
 			BeginTip();
@@ -487,15 +512,24 @@ static void DrawActivityBar(App& app)
 		else if (id == "canvas" && !app.canvasReports.empty() && app.CanvasReportAt(0)->errors > 0) { bc = col::Fail; tip = "최근 가져오기에 오류"; }
 		int screens = 0;
 		for (auto& a : kActivities) screens += ToolOfActivity(a.id) == id;
-		// a single-screen tool is itself the active row; a tool with several screens highlights the screen instead
-		if (row(m.id, nullptr, &m, m.name, active && (screens <= 1 || collapsed), 0, bc, badge, tip))
+		// Tools with several screens fold them (arrow on the row). Unfolded by default for the tool on screen.
+		bool* fold = nullptr;
+		if (screens > 1)
+		{
+			if (!g_toolFolded.count(id)) g_toolFolded[id] = !active;
+			fold = &g_toolFolded[id];
+		}
+		bool showScreens = fold && !*fold && (!collapsed || active);
+		// the tool row is the active one when its screens are not listed under it
+		if (row(m.id, nullptr, &m, m.name, active && !showScreens, 0, bc, badge, tip, fold))
 		{
 			auto last = g_lastToolScreen.find(id);
 			app.requestActivity = last != g_lastToolScreen.end() ? last->second : m.open;
+			if (fold) *fold = false;
 		}
-		if (active)
+		showScreens = fold && !*fold && (!collapsed || active);
+		if (showScreens)
 		{
-			if (screens <= 1) continue;
 			for (auto& a : kActivities)
 			{
 				if (ToolOfActivity(a.id) != id) continue;

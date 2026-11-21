@@ -415,7 +415,7 @@ static void DrawToolItem(App& app, const ToolMeta& m, const ToolView& v, const j
 	ImDrawList* dl = ImGui::GetWindowDrawList();
 	ImVec2 p = ImGui::GetCursorScreenPos();
 	float w = ImGui::GetContentRegionAvail().x;
-	float h = S(126);
+	float h = S(100);
 	ImGui::SetNextItemAllowOverlap();
 	ImGui::InvisibleButton("row", ImVec2(w, h));
 	bool hovered = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenOverlappedByItem);
@@ -423,8 +423,8 @@ static void DrawToolItem(App& app, const ToolMeta& m, const ToolView& v, const j
 	if (hovered) dl->AddRectFilled(p + ImVec2(-S(8), S(4)), p + ImVec2(w + S(8), h - S(4)), IM_COL32(255, 255, 255, 8), S(8));
 
 	// thumbnail: full size, smaller in a narrow card, none when there is no room
-	ImVec2 thumb = w >= S(720) ? ImVec2(S(172), S(96)) : w >= S(520) ? ImVec2(S(124), S(70)) : ImVec2(0, S(96));
-	ImVec2 ta = p + ImVec2(0, S(15));
+	ImVec2 thumb = w >= S(640) ? ImVec2(S(116), S(66)) : w >= S(480) ? ImVec2(S(92), S(54)) : ImVec2(0, 0);
+	ImVec2 ta = p + ImVec2(0, S(14));
 	ImVec2 tb = ta + thumb;
 	if (thumb.x > 0)
 	{
@@ -432,12 +432,12 @@ static void DrawToolItem(App& app, const ToolMeta& m, const ToolView& v, const j
 		tb = ta + thumb;
 		DrawToolThumb(dl, ta, tb, m, v.state == "none");
 	}
-	ta.y = p.y + S(15);
-	tb.y = ta.y + S(96);
+	ta.y = p.y + S(13);
+	tb.y = ta.y + S(74);   // the text block: state, name, description, tags
 
 	// text block
 	float rightW = S(170);
-	float tx = thumb.x > 0 ? tb.x + S(20) : p.x;
+	float tx = thumb.x > 0 ? p.x + thumb.x + S(18) : p.x;
 	float textW = ImMax(S(80), p.x + w - rightW - tx - S(16));
 	ImGui::PushClipRect(ImVec2(tx, p.y), ImVec2(tx + textW, p.y + h), true);
 	ImGui::SetCursorScreenPos(ImVec2(tx, ta.y - S(1)));
@@ -486,7 +486,7 @@ static void DrawToolItem(App& app, const ToolMeta& m, const ToolView& v, const j
 	float bw = ImGui::CalcTextSize(label.c_str()).x + ImGui::GetStyle().FramePadding.x * 2 + S(18);
 	float mw = ImGui::GetFrameHeight() + S(6);
 	float bx = p.x + w - bw - mw - ImGui::GetStyle().ItemSpacing.x;
-	ImGui::SetCursorScreenPos(ImVec2(bx, ta.y + S(6)));
+	ImGui::SetCursorScreenPos(ImVec2(bx, ta.y + S(4)));
 	bool mutates = primary != "열기";
 	ImGui::BeginDisabled(mutates && (!idle || !app.hasUProject || (primary == "설치" && (ciBlocked || !v.available))));
 	bool clicked = primary == "열기" ? PrimaryButton(label.c_str(), ImVec2(bw, 0)) : ImGui::Button(label.c_str(), ImVec2(bw, 0));
@@ -513,7 +513,7 @@ static void DrawToolItem(App& app, const ToolMeta& m, const ToolView& v, const j
 	}
 	std::string ver = VersionText(v);
 	ImVec2 vs = ImGui::CalcTextSize(ver.c_str());
-	ImGui::SetCursorScreenPos(ImVec2(p.x + w - vs.x, ta.y + S(6) + ImGui::GetFrameHeight() + S(10)));
+	ImGui::SetCursorScreenPos(ImVec2(p.x + w - vs.x, ta.y + S(4) + ImGui::GetFrameHeight() + S(8)));
 	if (v.state == "update" || v.state == "legacy") TextColored(col::Warn, ver.c_str());
 	else { ImGui::PushFont(g_fonts.bold); TextDim(ver); ImGui::PopFont(); }
 

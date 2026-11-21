@@ -47,13 +47,43 @@ def fingerprint(category: str, message: str) -> str:
     return hashlib.sha1(f"{category}|{text}".encode("utf-8")).hexdigest()[:12]
 
 
+ENSURE_HEADER = re.compile(r"^=== Handled ensure: ===\s*$")
+SOURCE_REF = re.compile(r"\s*\[(?:File|Line):[^\]]*\]")
+
+
 def parse_file(path: Path, ignore: set[str]) -> list[dict]:
+    """Error/Fatal/Warning lines as events. An ensure is one event: UE writes it as many Error lines (header,
+    condition, description, 'Stack:', one '[Callstack]' line per frame), which fold into the condition line:
+    the description joins its message and the frames become its detail."""
     events = []
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    ensure = None          # the open ensure event
+    in_stack = False
     i = 0
     while i < len(lines):
         line = lines[i]
         m = LINE_TS.match(line) or LINE_PLAIN.match(line)
+        if ensure is not None:
+            if m and m.group("cat") == ensure["category"] and m.group("sev") in SEVERITIES:
+                text = m.group("msg").strip()
+                if text.startswith("[Callstack]"):
+                    if len(ensure["detail"]) < 40:
+                        ensure["detail"].append(text[len("[Callstack]"):].strip())
+                    i += 1
+                    continue
+                if text.startswith("Stack:"):
+                    in_stack = True
+                    i += 1
+                    continue
+                if not text:
+                    i += 1
+                    continue
+                if not in_stack and not ENSURE_HEADER.match(text) and "Ensure condition failed" not in text:
+                    ensure["message"] += " · " + text
+                    ensure["fingerprint"] = fingerprint(ensure["category"], SOURCE_REF.sub("", ensure["message"]))
+                    i += 1
+                    continue
+            ensure, in_stack = None, False
         sev = cat = msg = None
         if m and m.group("sev") in SEVERITIES:
             sev, cat, msg = m.group("sev"), m.group("cat"), m.group("msg")
@@ -62,6 +92,12 @@ def parse_file(path: Path, ignore: set[str]) -> list[dict]:
                 if pattern.search(line):
                     sev, cat, msg = special_sev, (m.group("cat") if m else special_cat), (m.group("msg") if m else line.strip())
                     break
+        if sev and ENSURE_HEADER.match(msg.strip()):
+            i += 1           # the header line itself: the condition line after it carries the ensure
+            continue
+        if sev and msg.strip() == "" and m:
+            i += 1
+            continue
         if sev and cat not in ignore:
             detail = []
             if sev == "Fatal":
@@ -70,8 +106,11 @@ def parse_file(path: Path, ignore: set[str]) -> list[dict]:
                 while j < len(lines) and len(detail) < 40 and lines[j].strip():
                     detail.append(lines[j].strip())
                     j += 1
-            events.append({"file": path.name, "line": i + 1, "severity": sev, "category": cat,
-                           "message": msg.strip(), "detail": detail, "fingerprint": fingerprint(cat, msg)})
+            event = {"file": path.name, "line": i + 1, "severity": sev, "category": cat,
+                     "message": msg.strip(), "detail": detail, "fingerprint": fingerprint(cat, SOURCE_REF.sub("", msg))}
+            events.append(event)
+            if "Ensure condition failed" in msg and m:
+                ensure, in_stack = event, False
         i += 1
     return events
 

@@ -745,6 +745,13 @@ function Add-Created([string]$Path) {
     [IO.File]::AppendAllText($LedgerPath, $Path.Substring($Project.Length + 1) + "`n", $Utf8)
 }
 
+function Test-LauncherOutdated {
+    # The project's __dwo-forge.bat differs from the one this dwo-Forge writes (older connection).
+    if (-not (Test-Path $LauncherPath)) { return $false }
+    $src = Join-Path $SystemDir 'tools\project-launcher.bat'
+    return [Convert]::ToBase64String([IO.File]::ReadAllBytes($LauncherPath)) -ne [Convert]::ToBase64String([IO.File]::ReadAllBytes($src))
+}
+
 function Install-Launcher {
     # The project's __dwo-forge.bat: a small launcher that finds this install folder (home.txt) and runs forge.ps1.
     $src = Join-Path $SystemDir 'tools\project-launcher.bat'
@@ -1054,6 +1061,7 @@ function Get-ToolsDocument {
             vcs = $(if ($state) { "$($state.vcs)" } else { '' })
             connectedAt = $(if ($state) { "$($state.attachedAt)" } else { '' })
             connectedWith = $(if ($state) { "$($state.systemCommit)" } else { '' })
+            launcherOutdated = [bool]($state -and (Test-LauncherOutdated))
         }
         tools   = @($ToolDefs.Keys | ForEach-Object { Get-ToolStatus $_ $engineVersion })
         pc      = Get-PcStatus
@@ -1125,6 +1133,7 @@ function Update-AllTools {
         if ($s.state -in @('update', 'legacy')) { Say "updating $($s.name) ..."; Invoke-ToolAction 'update' $id; $done++ }
         elseif ($s.state -eq 'installed') { Say "$($s.name): up to date" }
     }
+    if ((Read-State) -and (Test-LauncherOutdated)) { Install-Launcher; Say 'Project launcher (__dwo-forge.bat) refreshed.'; $done++ }
     if (-not $done) { Say 'Every installed tool is up to date.' }
 }
 
@@ -1162,6 +1171,7 @@ function Invoke-ToolList {
         }
         Say ("  {0,-16} {1}{2}" -f $t.name, $text, $(if ($t.detail) { " - $($t.detail)" } else { '' }))
     }
+    if ($doc.project.launcherOutdated) { Say ("  {0,-16} {1}" -f 'Project launcher', 'older version (update refreshes __dwo-forge.bat)') }
     $j = $doc.pc.jenkins
     Say "  PC: Jenkins $(if ($j.installed) { "$($j.version) (port $($j.port))" } else { 'not installed' }); bundle $(if ($doc.pc.bundle.file) { $doc.pc.bundle.version } else { 'none' }); engines $(@($doc.pc.engines | ForEach-Object { $_.version }) -join ', ')"
 }
@@ -1192,7 +1202,7 @@ function Invoke-Status {
     Say "Project        : $($state.project) ($($state.projectType))"
     Say "Engine         : UE $($state.engineVersion)"
     Say "dwo-Forge      : $(Get-SystemCommit) at $SystemDir"
-    if ($state.systemCommit -ne (Get-SystemCommit)) { Say "Attached with $($state.systemCommit). Run update to refresh the plugins and launcher." }
+    if (Test-LauncherOutdated) { Say "Project launcher: from an older dwo-Forge ($($state.systemCommit)). Run update to refresh it." }
     Say "Version control: $((Get-Vcs).Kind)"
     $uproject = Get-UProject
     $engine = Resolve-Engine $uproject.Json.EngineAssociation

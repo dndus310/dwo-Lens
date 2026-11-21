@@ -691,6 +691,11 @@ static void DrawProjectPage(App& app)
 		if (Banner("engine", col::Warn, "연결할 때 UE " + connectedEngine + ", 지금 UE " + engine + ". 연결을 새로 고치면 도구도 새 엔진으로 다시 빌드합니다.", "연결 새로 고침"))
 			app.Run("update");
 	}
+	else if (pj.value("launcherOutdated", false) && updates == 0)
+	{
+		if (Banner("launcher", col::Warn, "이 프로젝트의 실행 파일(__dwo-forge.bat)이 이전 dwo-Forge(" + Str(pj, "connectedWith") + ")의 것입니다. 연결을 새로 고치면 지금 버전으로 바뀝니다.", "연결 새로 고침"))
+			app.Run("update");
+	}
 	else if (updates > 0)
 	{
 		if (Banner("updates", col::Warn, Fmt("이 dwo-Forge(%s)에 더 새 버전이 있는 도구가 %d개 있습니다.", Str(Obj(doc, "forge"), "version").c_str(), updates), "모두 업데이트"))

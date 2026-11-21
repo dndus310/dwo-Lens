@@ -389,6 +389,22 @@ class ForgeCliTests(unittest.TestCase):
         self.assertEqual(tools["lens"]["state"], "installed")
         self.assertEqual(tools["lens"]["installedVersion"], "2.0.1+abc")
 
+    def test_an_older_project_launcher_is_reported(self):
+        self.connect_fake()
+        shutil.copy(ROOT / "tools" / "project-launcher.bat", self.project / "__dwo-forge.bat")
+        doc, _ = self.tools()
+        self.assertFalse(doc["project"]["launcherOutdated"])
+        write(self.project / "__dwo-forge.bat", "@echo off\nrem a launcher from an older dwo-Forge\n")
+        doc, _ = self.tools()
+        self.assertTrue(doc["project"]["launcherOutdated"])
+        code, out = self.forge("status")
+        self.assertIn("Run update to refresh it", out)
+        code, out = self.forge("tool", "update", "--all")
+        self.assertEqual(code, 0, out)
+        self.assertIn("refreshed", out)
+        doc, _ = self.tools()
+        self.assertFalse(doc["project"]["launcherOutdated"])
+
     def test_projects_own_plugins_are_reported_and_left_alone(self):
         self.connect_fake()
         self.make_canvas(managed=False)

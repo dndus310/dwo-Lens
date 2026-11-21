@@ -849,6 +849,24 @@ struct App
 			p.severity = std::move(severity);
 			p.category = std::move(category);
 			p.line = r.lineIndex;
+			// one line for lists: crash and log texts carry the call stack and source location after the message
+			// (the full text stays in the detail shown by the inspector)
+			if (title.find('\n') != std::string::npos || title.find("[File:") != std::string::npos)
+			{
+				auto stack = title.find("\nStack:");
+				if (stack != std::string::npos) title.resize(stack);
+				static const std::regex where(R"(\s*\[(File|Line):[^\]]*\])");
+				title = std::regex_replace(title, where, "");
+				std::string one, part;
+				std::istringstream lines(title);
+				while (std::getline(lines, part))
+				{
+					size_t a = part.find_first_not_of(" \t\r"), b = part.find_last_not_of(" \t\r");
+					if (a == std::string::npos) continue;
+					one += (one.empty() ? "" : "  ·  ") + part.substr(a, b - a + 1);
+				}
+				title = one;
+			}
 			p.title = std::move(title);
 			p.object = std::move(object);
 			p.runId = r.id;

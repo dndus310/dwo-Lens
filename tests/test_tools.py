@@ -137,6 +137,30 @@ class LogParserTests(TempDir):
 
 # =============================================================================== analyzer
 
+class EnsureFoldingTests(TempDir):
+    def test_an_ensure_is_one_error_with_its_stack(self):
+        log = write(self.tmp / "compile.log", "\n".join([
+            "[2026.11.16-16.08.16:052][  0]LogStats: FPlatformStackWalk::StackWalkAndDump -  0.799 s",
+            "[2026.11.16-16.08.16:052][  0]LogOutputDevice: Error: === Handled ensure: ===",
+            "[2026.11.16-16.08.16:061][  0]LogOutputDevice: Error: ",
+            "[2026.11.16-16.08.16:068][  0]LogOutputDevice: Error: Ensure condition failed: Seen.Contains(It.Key())  "
+            "[File:D:\\build\\WidgetBlueprintCompiler.cpp] [Line: 828] ",
+            "[2026.11.16-16.08.16:094][  0]LogOutputDevice: Error: Variable [Thumb] was deleted but still has a GUID",
+            "[2026.11.16-16.08.16:114][  0]LogOutputDevice: Error: Stack: ",
+            "[2026.11.16-16.08.16:121][  0]LogOutputDevice: Error: [Callstack] 0x00007ffdfc7518c0 UnrealEditor-UMGEditor.dll!A()",
+            "[2026.11.16-16.08.16:156][  0]LogOutputDevice: Error: [Callstack] 0x00007ffdfc6438aa UnrealEditor-UMGEditor.dll!B()",
+            "[2026.11.16-16.08.17:000][  0]LogBlueprint: Error: [Compiler] Real error after the ensure",
+        ]))
+        events = logs.parse_file(log, set())
+        self.assertEqual(len(events), 2, [e["message"] for e in events])
+        ensure = events[0]
+        self.assertTrue(ensure["message"].startswith("Ensure condition failed"))
+        self.assertIn("Variable [Thumb] was deleted", ensure["message"])
+        self.assertEqual(len(ensure["detail"]), 2)
+        self.assertTrue(ensure["detail"][0].startswith("0x00007ffdfc7518c0"))
+        self.assertEqual(events[1]["category"], "LogBlueprint")
+
+
 class AnalyzerHelperTests(unittest.TestCase):
     def test_normalize_skeleton_class(self):
         self.assertEqual(analyze.normalize_class("/Game/W.SKEL_W_C"), "/Game/W.W_C")

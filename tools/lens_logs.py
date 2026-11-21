@@ -1,4 +1,4 @@
-"""dwo-Lens structured log parser (ST-4).
+"""dwo-Forge DwoLens structured log parser (ST-4).
 
 Turns Unreal log files and crash folders into grouped, fingerprinted events so every wrapped tool
 (commandlets, automation, editor sessions) reports in one shape. Standard library only.
@@ -112,13 +112,22 @@ def summarize(events: list[dict], crashes: list[dict], baseline: dict | None = N
     for g in ordered:
         g["new"] = bool(baseline) and g["fingerprint"] not in known
     counts = {s: sum(1 for e in events if e["severity"] == s) for s in SEVERITIES}
+    # Saved/Crashes keeps every old crash folder, so only folders the previous run did not see are new.
+    # Without a baseline (first run) every crash counts as new.
+    seen = {c.get("folder") for c in (baseline or {}).get("crashes", [])}
+    for c in crashes:
+        c["new"] = not baseline or c["folder"] not in seen
     return {"schema": SCHEMA, "counts": counts, "crashes": crashes, "groups": ordered,
-            "newGroups": sum(1 for g in ordered if g["new"])}
+            "newGroups": sum(1 for g in ordered if g["new"]),
+            "newCrashes": sum(1 for c in crashes if c["new"])}
 
 
 def verdict_of(summary: dict, warn_on_new: bool = True) -> str:
-    if summary["counts"]["Fatal"] or summary["crashes"]:
+    crashes = summary["crashes"]
+    if summary["counts"]["Fatal"] or any(c.get("new", True) for c in crashes):
         return "fail"
+    if crashes:
+        return "warn"  # only crashes an earlier run already reported
     if summary["counts"]["Error"]:
         return "fail" if (warn_on_new and summary["newGroups"]) else "warn"
     if summary["counts"]["Warning"]:
@@ -144,12 +153,12 @@ def main() -> int:
     ap.add_argument("--baseline", type=Path)
     ap.add_argument("--ignore", nargs="*", default=[])
     args = ap.parse_args()
-    baseline = json.loads(args.baseline.read_text(encoding="utf-8")) if args.baseline and args.baseline.exists() else None
+    baseline = json.loads(args.baseline.read_text(encoding="utf-8-sig")) if args.baseline and args.baseline.exists() else None
     summary = run(args.files, args.crashes, set(args.ignore), baseline)
     summary["verdict"] = verdict_of(summary)
     args.out.write_text(json.dumps(summary, ensure_ascii=False, indent=1), encoding="utf-8")
-    print(f"[dwo-lens] logs: {summary['counts']} groups={len(summary['groups'])} new={summary['newGroups']} "
-          f"crashes={len(summary['crashes'])} verdict={summary['verdict']}")
+    print(f"[dwo-forge] logs: {summary['counts']} groups={len(summary['groups'])} new={summary['newGroups']} "
+          f"crashes={len(summary['crashes'])} newCrashes={summary['newCrashes']} verdict={summary['verdict']}")
     return 0
 
 

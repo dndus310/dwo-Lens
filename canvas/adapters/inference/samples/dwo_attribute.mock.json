@@ -1,0 +1,2722 @@
+[
+ {
+  "json": {
+   "schema": "dwocanvas/2",
+   "documents": [
+    {
+     "id": "screen.attribute",
+     "name": "AttributeScreen",
+     "kind": "screen",
+     "root": {
+      "id": "root",
+      "name": "AttributeScreen",
+      "type": "frame",
+      "box": {
+       "x": 0,
+       "y": 0,
+       "w": 1600,
+       "h": 900
+      },
+      "fills": [
+       {
+        "type": "solid",
+        "color": [
+         0.42,
+         0.549,
+         0.722,
+         1
+        ]
+       }
+      ],
+      "confidence": 0.7,
+      "inferred": [
+       "fills"
+      ],
+      "children": [
+       {
+        "id": "left",
+        "name": "LeftPanel",
+        "type": "frame",
+        "box": {
+         "x": 16,
+         "y": 16,
+         "w": 300,
+         "h": 868
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.11,
+           0.122,
+           0.141,
+           1
+          ]
+         }
+        ],
+        "radius": [
+         8
+        ],
+        "constraints": {
+         "h": "min",
+         "v": "stretch"
+        },
+        "layout": {
+         "mode": "vertical",
+         "gap": 10,
+         "padding": [
+          14,
+          14,
+          14,
+          14
+         ],
+         "crossAlign": "stretch"
+        },
+        "tokens": {
+         "padding": "space.lg",
+         "radius": "radius.lg"
+        },
+        "confidence": 0.9,
+        "inferred": [
+         "layout.gap",
+         "constraints"
+        ],
+        "children": [
+         {
+          "id": "left.title",
+          "name": "Title",
+          "type": "text",
+          "box": {
+           "x": 14,
+           "y": 14,
+           "w": 272,
+           "h": 19
+          },
+          "text": {
+           "content": "Attributes",
+           "font": {
+            "family": "Roboto",
+            "weight": 700,
+            "size": 16
+           },
+           "color": [
+            0.957,
+            0.957,
+            0.969,
+            1
+           ],
+           "align": "left"
+          },
+          "confidence": 0.95,
+          "inferred": [
+           "text.font.family"
+          ]
+         },
+         {
+          "id": "left.hint",
+          "name": "Hint",
+          "type": "text",
+          "box": {
+           "x": 14,
+           "y": 33,
+           "w": 272,
+           "h": 11
+          },
+          "text": {
+           "content": "Click an item to spawn it",
+           "font": {
+            "family": "Roboto",
+            "weight": 400,
+            "size": 9
+           },
+           "color": [
+            0.773,
+            0.792,
+            0.82,
+            1
+           ],
+           "align": "left"
+          },
+          "confidence": 0.9,
+          "inferred": [
+           "text.font.family"
+          ]
+         },
+         {
+          "id": "left.tabs",
+          "name": "TabRow",
+          "type": "frame",
+          "box": {
+           "x": 14,
+           "y": 54,
+           "w": 272,
+           "h": 32
+          },
+          "layout": {
+           "mode": "horizontal",
+           "gap": 4
+          },
+          "confidence": 0.8,
+          "inferred": [
+           "role",
+           "layout.gap"
+          ],
+          "children": [
+           {
+            "id": "left.tabs.building",
+            "name": "BuildingTab",
+            "type": "frame",
+            "role": "button",
+            "variable": true,
+            "widgetName": "BuildingTab",
+            "box": {
+             "x": 0,
+             "y": 0,
+             "w": 134,
+             "h": 32
+            },
+            "fills": [
+             {
+              "type": "solid",
+              "color": [
+               0.35,
+               0.769,
+               1.0,
+               1
+              ]
+             }
+            ],
+            "radius": [
+             6
+            ],
+            "layout": {
+             "mode": "horizontal",
+             "padding": [
+              12,
+              0,
+              12,
+              0
+             ],
+             "mainAlign": "center",
+             "crossAlign": "center"
+            },
+            "confidence": 0.7,
+            "inferred": [
+             "radius",
+             "layout.padding",
+             "states"
+            ],
+            "children": [
+             {
+              "id": "left.tabs.building.label",
+              "name": "Label",
+              "type": "text",
+              "box": {
+               "x": 0,
+               "y": 8,
+               "w": 110,
+               "h": 16
+              },
+              "text": {
+               "content": "Building",
+               "font": {
+                "family": "Roboto",
+                "weight": 700,
+                "size": 13
+               },
+               "color": [
+                0.957,
+                0.957,
+                0.969,
+                1
+               ],
+               "align": "left"
+              },
+              "confidence": 0.95,
+              "inferred": [
+               "text.font.family"
+              ]
+             }
+            ],
+            "sizing": {
+             "h": "fill"
+            }
+           },
+           {
+            "id": "left.tabs.load",
+            "name": "LoadTab",
+            "type": "frame",
+            "role": "button",
+            "variable": true,
+            "widgetName": "LoadTab",
+            "box": {
+             "x": 138,
+             "y": 0,
+             "w": 134,
+             "h": 32
+            },
+            "fills": [
+             {
+              "type": "solid",
+              "color": [
+               0.459,
+               0.478,
+               0.533,
+               1
+              ]
+             }
+            ],
+            "radius": [
+             6
+            ],
+            "layout": {
+             "mode": "horizontal",
+             "padding": [
+              12,
+              0,
+              12,
+              0
+             ],
+             "mainAlign": "center",
+             "crossAlign": "center"
+            },
+            "confidence": 0.7,
+            "inferred": [
+             "radius",
+             "layout.padding",
+             "states"
+            ],
+            "children": [
+             {
+              "id": "left.tabs.load.label",
+              "name": "Label",
+              "type": "text",
+              "box": {
+               "x": 0,
+               "y": 8,
+               "w": 110,
+               "h": 16
+              },
+              "text": {
+               "content": "Load",
+               "font": {
+                "family": "Roboto",
+                "weight": 700,
+                "size": 13
+               },
+               "color": [
+                0.957,
+                0.957,
+                0.969,
+                1
+               ],
+               "align": "left"
+              },
+              "confidence": 0.95,
+              "inferred": [
+               "text.font.family"
+              ]
+             }
+            ],
+            "sizing": {
+             "h": "fill"
+            }
+           }
+          ]
+         },
+         {
+          "id": "left.list",
+          "name": "AttributeList",
+          "type": "frame",
+          "role": "list",
+          "variable": true,
+          "widgetName": "AttributeList",
+          "box": {
+           "x": 14,
+           "y": 96,
+           "w": 272,
+           "h": 693
+          },
+          "fills": [
+           {
+            "type": "solid",
+            "color": [
+             0.2,
+             0.22,
+             0.251,
+             1
+            ]
+           }
+          ],
+          "radius": [
+           6
+          ],
+          "sizing": {
+           "v": "fill"
+          },
+          "layout": {
+           "mode": "vertical",
+           "gap": 4,
+           "padding": [
+            6,
+            6,
+            6,
+            6
+           ]
+          },
+          "confidence": 0.85,
+          "inferred": [
+           "sizing",
+           "layout.padding"
+          ],
+          "children": [
+           {
+            "id": "left.list.e0",
+            "name": "AttributeListEntry",
+            "type": "instance",
+            "component": {
+             "ref": "cmp.AttributeListEntry"
+            },
+            "box": {
+             "x": 6,
+             "y": 6,
+             "w": 260,
+             "h": 30
+            },
+            "confidence": 0.8,
+            "inferred": [
+             "component"
+            ],
+            "children": [
+             {
+              "id": "left.list.e0.bar",
+              "name": "LayerBar",
+              "type": "rectangle",
+              "box": {
+               "x": 8,
+               "y": 6,
+               "w": 4,
+               "h": 18
+              },
+              "fills": [
+               {
+                "type": "solid",
+                "color": [
+                 0.35,
+                 0.769,
+                 1.0,
+                 1
+                ]
+               }
+              ],
+              "confidence": 0.85,
+              "inferred": []
+             },
+             {
+              "id": "left.list.e0.name",
+              "name": "EntryName",
+              "type": "text",
+              "box": {
+               "x": 20,
+               "y": 8,
+               "w": 210,
+               "h": 14
+              },
+              "text": {
+               "content": "Box Building",
+               "font": {
+                "family": "Roboto",
+                "weight": 500,
+                "size": 12
+               },
+               "color": [
+                0.957,
+                0.957,
+                0.969,
+                1
+               ],
+               "align": "left"
+              },
+              "confidence": 0.9,
+              "inferred": [
+               "text.font.family"
+              ]
+             },
+             {
+              "id": "left.list.e0.tag",
+              "name": "EntryTag",
+              "type": "text",
+              "box": {
+               "x": 238,
+               "y": 9,
+               "w": 14,
+               "h": 11
+              },
+              "text": {
+               "content": "DT",
+               "font": {
+                "family": "Roboto",
+                "weight": 400,
+                "size": 9
+               },
+               "color": [
+                0.773,
+                0.792,
+                0.82,
+                1
+               ],
+               "align": "left"
+              },
+              "confidence": 0.7,
+              "inferred": [
+               "text.font.family",
+               "text.content"
+              ]
+             }
+            ]
+           },
+           {
+            "id": "left.list.e1",
+            "name": "AttributeListEntry",
+            "type": "instance",
+            "component": {
+             "ref": "cmp.AttributeListEntry"
+            },
+            "box": {
+             "x": 6,
+             "y": 40,
+             "w": 260,
+             "h": 30
+            },
+            "confidence": 0.8,
+            "inferred": [
+             "component"
+            ],
+            "children": [
+             {
+              "id": "left.list.e1.bar",
+              "name": "LayerBar",
+              "type": "rectangle",
+              "box": {
+               "x": 8,
+               "y": 6,
+               "w": 4,
+               "h": 18
+              },
+              "fills": [
+               {
+                "type": "solid",
+                "color": [
+                 0.35,
+                 0.769,
+                 1.0,
+                 1
+                ]
+               }
+              ],
+              "confidence": 0.85,
+              "inferred": []
+             },
+             {
+              "id": "left.list.e1.name",
+              "name": "EntryName",
+              "type": "text",
+              "box": {
+               "x": 20,
+               "y": 8,
+               "w": 210,
+               "h": 14
+              },
+              "text": {
+               "content": "Chamfer Block",
+               "font": {
+                "family": "Roboto",
+                "weight": 500,
+                "size": 12
+               },
+               "color": [
+                0.957,
+                0.957,
+                0.969,
+                1
+               ],
+               "align": "left"
+              },
+              "confidence": 0.9,
+              "inferred": [
+               "text.font.family"
+              ]
+             },
+             {
+              "id": "left.list.e1.tag",
+              "name": "EntryTag",
+              "type": "text",
+              "box": {
+               "x": 238,
+               "y": 9,
+               "w": 14,
+               "h": 11
+              },
+              "text": {
+               "content": "DT",
+               "font": {
+                "family": "Roboto",
+                "weight": 400,
+                "size": 9
+               },
+               "color": [
+                0.773,
+                0.792,
+                0.82,
+                1
+               ],
+               "align": "left"
+              },
+              "confidence": 0.7,
+              "inferred": [
+               "text.font.family",
+               "text.content"
+              ]
+             }
+            ]
+           },
+           {
+            "id": "left.list.e2",
+            "name": "AttributeListEntry",
+            "type": "instance",
+            "component": {
+             "ref": "cmp.AttributeListEntry"
+            },
+            "box": {
+             "x": 6,
+             "y": 74,
+             "w": 260,
+             "h": 30
+            },
+            "confidence": 0.8,
+            "inferred": [
+             "component"
+            ],
+            "children": [
+             {
+              "id": "left.list.e2.bar",
+              "name": "LayerBar",
+              "type": "rectangle",
+              "box": {
+               "x": 8,
+               "y": 6,
+               "w": 4,
+               "h": 18
+              },
+              "fills": [
+               {
+                "type": "solid",
+                "color": [
+                 0.35,
+                 0.769,
+                 1.0,
+                 1
+                ]
+               }
+              ],
+              "confidence": 0.85,
+              "inferred": []
+             },
+             {
+              "id": "left.list.e2.name",
+              "name": "EntryName",
+              "type": "text",
+              "box": {
+               "x": 20,
+               "y": 8,
+               "w": 210,
+               "h": 14
+              },
+              "text": {
+               "content": "Silo",
+               "font": {
+                "family": "Roboto",
+                "weight": 500,
+                "size": 12
+               },
+               "color": [
+                0.957,
+                0.957,
+                0.969,
+                1
+               ],
+               "align": "left"
+              },
+              "confidence": 0.9,
+              "inferred": [
+               "text.font.family"
+              ]
+             },
+             {
+              "id": "left.list.e2.tag",
+              "name": "EntryTag",
+              "type": "text",
+              "box": {
+               "x": 238,
+               "y": 9,
+               "w": 14,
+               "h": 11
+              },
+              "text": {
+               "content": "DT",
+               "font": {
+                "family": "Roboto",
+                "weight": 400,
+                "size": 9
+               },
+               "color": [
+                0.773,
+                0.792,
+                0.82,
+                1
+               ],
+               "align": "left"
+              },
+              "confidence": 0.7,
+              "inferred": [
+               "text.font.family",
+               "text.content"
+              ]
+             }
+            ]
+           },
+           {
+            "id": "left.list.e3",
+            "name": "AttributeListEntry",
+            "type": "instance",
+            "component": {
+             "ref": "cmp.AttributeListEntry"
+            },
+            "box": {
+             "x": 6,
+             "y": 108,
+             "w": 260,
+             "h": 30
+            },
+            "confidence": 0.8,
+            "inferred": [
+             "component"
+            ],
+            "children": [
+             {
+              "id": "left.list.e3.bar",
+              "name": "LayerBar",
+              "type": "rectangle",
+              "box": {
+               "x": 8,
+               "y": 6,
+               "w": 4,
+               "h": 18
+              },
+              "fills": [
+               {
+                "type": "solid",
+                "color": [
+                 0.35,
+                 0.769,
+                 1.0,
+                 1
+                ]
+               }
+              ],
+              "confidence": 0.85,
+              "inferred": []
+             },
+             {
+              "id": "left.list.e3.name",
+              "name": "EntryName",
+              "type": "text",
+              "box": {
+               "x": 20,
+               "y": 8,
+               "w": 210,
+               "h": 14
+              },
+              "text": {
+               "content": "Quarter Hall",
+               "font": {
+                "family": "Roboto",
+                "weight": 500,
+                "size": 12
+               },
+               "color": [
+                0.957,
+                0.957,
+                0.969,
+                1
+               ],
+               "align": "left"
+              },
+              "confidence": 0.9,
+              "inferred": [
+               "text.font.family"
+              ]
+             },
+             {
+              "id": "left.list.e3.tag",
+              "name": "EntryTag",
+              "type": "text",
+              "box": {
+               "x": 238,
+               "y": 9,
+               "w": 14,
+               "h": 11
+              },
+              "text": {
+               "content": "DT",
+               "font": {
+                "family": "Roboto",
+                "weight": 400,
+                "size": 9
+               },
+               "color": [
+                0.773,
+                0.792,
+                0.82,
+                1
+               ],
+               "align": "left"
+              },
+              "confidence": 0.7,
+              "inferred": [
+               "text.font.family",
+               "text.content"
+              ]
+             }
+            ]
+           },
+           {
+            "id": "left.list.e4",
+            "name": "AttributeListEntry",
+            "type": "instance",
+            "component": {
+             "ref": "cmp.AttributeListEntry"
+            },
+            "box": {
+             "x": 6,
+             "y": 142,
+             "w": 260,
+             "h": 30
+            },
+            "confidence": 0.8,
+            "inferred": [
+             "component"
+            ],
+            "children": [
+             {
+              "id": "left.list.e4.bar",
+              "name": "LayerBar",
+              "type": "rectangle",
+              "box": {
+               "x": 8,
+               "y": 6,
+               "w": 4,
+               "h": 18
+              },
+              "fills": [
+               {
+                "type": "solid",
+                "color": [
+                 0.35,
+                 0.769,
+                 1.0,
+                 1
+                ]
+               }
+              ],
+              "confidence": 0.85,
+              "inferred": []
+             },
+             {
+              "id": "left.list.e4.name",
+              "name": "EntryName",
+              "type": "text",
+              "box": {
+               "x": 20,
+               "y": 8,
+               "w": 210,
+               "h": 14
+              },
+              "text": {
+               "content": "Cone Tower",
+               "font": {
+                "family": "Roboto",
+                "weight": 500,
+                "size": 12
+               },
+               "color": [
+                0.957,
+                0.957,
+                0.969,
+                1
+               ],
+               "align": "left"
+              },
+              "confidence": 0.9,
+              "inferred": [
+               "text.font.family"
+              ]
+             },
+             {
+              "id": "left.list.e4.tag",
+              "name": "EntryTag",
+              "type": "text",
+              "box": {
+               "x": 238,
+               "y": 9,
+               "w": 14,
+               "h": 11
+              },
+              "text": {
+               "content": "DT",
+               "font": {
+                "family": "Roboto",
+                "weight": 400,
+                "size": 9
+               },
+               "color": [
+                0.773,
+                0.792,
+                0.82,
+                1
+               ],
+               "align": "left"
+              },
+              "confidence": 0.7,
+              "inferred": [
+               "text.font.family",
+               "text.content"
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "id": "left.add",
+          "name": "AddAttributeButton",
+          "type": "frame",
+          "role": "button",
+          "variable": true,
+          "widgetName": "AddAttributeButton",
+          "box": {
+           "x": 14,
+           "y": 799,
+           "w": 272,
+           "h": 36
+          },
+          "fills": [
+           {
+            "type": "solid",
+            "color": [
+             0.353,
+             0.698,
+             0.98,
+             1
+            ]
+           }
+          ],
+          "radius": [
+           6
+          ],
+          "layout": {
+           "mode": "horizontal",
+           "padding": [
+            12,
+            0,
+            12,
+            0
+           ],
+           "mainAlign": "center",
+           "crossAlign": "center"
+          },
+          "confidence": 0.9,
+          "inferred": [
+           "radius",
+           "layout.padding",
+           "states"
+          ],
+          "children": [
+           {
+            "id": "left.add.label",
+            "name": "Label",
+            "type": "text",
+            "box": {
+             "x": 0,
+             "y": 8,
+             "w": 248,
+             "h": 16
+            },
+            "text": {
+             "content": "+  Add Attribute",
+             "font": {
+              "family": "Roboto",
+              "weight": 700,
+              "size": 13
+             },
+             "color": [
+              0.957,
+              0.957,
+              0.969,
+              1
+             ],
+             "align": "left"
+            },
+            "confidence": 0.95,
+            "inferred": [
+             "text.font.family"
+            ]
+           }
+          ]
+         },
+         {
+          "id": "left.status",
+          "name": "StatusText",
+          "type": "text",
+          "box": {
+           "x": 14,
+           "y": 843,
+           "w": 272,
+           "h": 11
+          },
+          "text": {
+           "content": "Spawned Box Building (BUILDING)",
+           "font": {
+            "family": "Roboto",
+            "weight": 400,
+            "size": 9
+           },
+           "color": [
+            0.773,
+            0.792,
+            0.82,
+            1
+           ],
+           "align": "left"
+          },
+          "confidence": 0.75,
+          "inferred": [
+           "text.font.family",
+           "variable"
+          ],
+          "variable": true,
+          "widgetName": "StatusText"
+         }
+        ]
+       },
+       {
+        "id": "right",
+        "name": "RightPanel",
+        "type": "frame",
+        "box": {
+         "x": 1144,
+         "y": 16,
+         "w": 440,
+         "h": 868
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.11,
+           0.122,
+           0.141,
+           1
+          ]
+         }
+        ],
+        "radius": [
+         8
+        ],
+        "constraints": {
+         "h": "max",
+         "v": "stretch"
+        },
+        "layout": {
+         "mode": "vertical",
+         "gap": 10,
+         "padding": [
+          14,
+          14,
+          14,
+          14
+         ],
+         "crossAlign": "stretch"
+        },
+        "tokens": {
+         "padding": "space.lg",
+         "radius": "radius.lg"
+        },
+        "confidence": 0.9,
+        "inferred": [
+         "layout.gap",
+         "constraints"
+        ],
+        "children": [
+         {
+          "id": "right.header",
+          "name": "Header",
+          "type": "frame",
+          "box": {
+           "x": 14,
+           "y": 14,
+           "w": 412,
+           "h": 32
+          },
+          "layout": {
+           "mode": "horizontal",
+           "crossAlign": "center"
+          },
+          "confidence": 0.85,
+          "inferred": [],
+          "children": [
+           {
+            "id": "right.title",
+            "name": "Title",
+            "type": "text",
+            "box": {
+             "x": 0,
+             "y": 6,
+             "w": 380,
+             "h": 19
+            },
+            "text": {
+             "content": "Asset Library",
+             "font": {
+              "family": "Roboto",
+              "weight": 700,
+              "size": 16
+             },
+             "color": [
+              0.957,
+              0.957,
+              0.969,
+              1
+             ],
+             "align": "left"
+            },
+            "confidence": 0.9,
+            "inferred": [
+             "text.font.family"
+            ],
+            "sizing": {
+             "h": "fill"
+            }
+           },
+           {
+            "id": "right.close",
+            "name": "CloseButton",
+            "type": "frame",
+            "role": "button",
+            "variable": true,
+            "widgetName": "CloseButton",
+            "box": {
+             "x": 380,
+             "y": 0,
+             "w": 32,
+             "h": 32
+            },
+            "fills": [
+             {
+              "type": "solid",
+              "color": [
+               0.459,
+               0.478,
+               0.533,
+               1
+              ]
+             }
+            ],
+            "radius": [
+             6
+            ],
+            "layout": {
+             "mode": "horizontal",
+             "padding": [
+              12,
+              0,
+              12,
+              0
+             ],
+             "mainAlign": "center",
+             "crossAlign": "center"
+            },
+            "confidence": 0.8,
+            "inferred": [
+             "radius",
+             "layout.padding",
+             "states"
+            ],
+            "children": [
+             {
+              "id": "right.close.label",
+              "name": "Label",
+              "type": "text",
+              "box": {
+               "x": 0,
+               "y": 8,
+               "w": 8,
+               "h": 16
+              },
+              "text": {
+               "content": "X",
+               "font": {
+                "family": "Roboto",
+                "weight": 700,
+                "size": 13
+               },
+               "color": [
+                0.957,
+                0.957,
+                0.969,
+                1
+               ],
+               "align": "left"
+              },
+              "confidence": 0.95,
+              "inferred": [
+               "text.font.family"
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "id": "right.hint",
+          "name": "Hint",
+          "type": "text",
+          "box": {
+           "x": 14,
+           "y": 46,
+           "w": 412,
+           "h": 11
+          },
+          "text": {
+           "content": "Pick an asset and Apply to add it to the attribute list",
+           "font": {
+            "family": "Roboto",
+            "weight": 400,
+            "size": 9
+           },
+           "color": [
+            0.773,
+            0.792,
+            0.82,
+            1
+           ],
+           "align": "left"
+          },
+          "confidence": 0.9,
+          "inferred": [
+           "text.font.family"
+          ]
+         },
+         {
+          "id": "right.tabs",
+          "name": "TabRow",
+          "type": "frame",
+          "box": {
+           "x": 14,
+           "y": 67,
+           "w": 412,
+           "h": 32
+          },
+          "layout": {
+           "mode": "horizontal",
+           "gap": 4
+          },
+          "confidence": 0.8,
+          "inferred": [
+           "role",
+           "layout.gap"
+          ],
+          "children": [
+           {
+            "id": "right.tabs.building",
+            "name": "BuildingTab",
+            "type": "frame",
+            "role": "button",
+            "variable": true,
+            "widgetName": "BuildingTab",
+            "box": {
+             "x": 0,
+             "y": 0,
+             "w": 204,
+             "h": 32
+            },
+            "fills": [
+             {
+              "type": "solid",
+              "color": [
+               0.35,
+               0.769,
+               1.0,
+               1
+              ]
+             }
+            ],
+            "radius": [
+             6
+            ],
+            "layout": {
+             "mode": "horizontal",
+             "padding": [
+              12,
+              0,
+              12,
+              0
+             ],
+             "mainAlign": "center",
+             "crossAlign": "center"
+            },
+            "confidence": 0.7,
+            "inferred": [
+             "radius",
+             "layout.padding",
+             "states"
+            ],
+            "children": [
+             {
+              "id": "right.tabs.building.label",
+              "name": "Label",
+              "type": "text",
+              "box": {
+               "x": 0,
+               "y": 8,
+               "w": 180,
+               "h": 16
+              },
+              "text": {
+               "content": "Building",
+               "font": {
+                "family": "Roboto",
+                "weight": 700,
+                "size": 13
+               },
+               "color": [
+                0.957,
+                0.957,
+                0.969,
+                1
+               ],
+               "align": "left"
+              },
+              "confidence": 0.95,
+              "inferred": [
+               "text.font.family"
+              ]
+             }
+            ],
+            "sizing": {
+             "h": "fill"
+            }
+           },
+           {
+            "id": "right.tabs.load",
+            "name": "LoadTab",
+            "type": "frame",
+            "role": "button",
+            "variable": true,
+            "widgetName": "LoadTab",
+            "box": {
+             "x": 208,
+             "y": 0,
+             "w": 204,
+             "h": 32
+            },
+            "fills": [
+             {
+              "type": "solid",
+              "color": [
+               0.459,
+               0.478,
+               0.533,
+               1
+              ]
+             }
+            ],
+            "radius": [
+             6
+            ],
+            "layout": {
+             "mode": "horizontal",
+             "padding": [
+              12,
+              0,
+              12,
+              0
+             ],
+             "mainAlign": "center",
+             "crossAlign": "center"
+            },
+            "confidence": 0.7,
+            "inferred": [
+             "radius",
+             "layout.padding",
+             "states"
+            ],
+            "children": [
+             {
+              "id": "right.tabs.load.label",
+              "name": "Label",
+              "type": "text",
+              "box": {
+               "x": 0,
+               "y": 8,
+               "w": 180,
+               "h": 16
+              },
+              "text": {
+               "content": "Load",
+               "font": {
+                "family": "Roboto",
+                "weight": 700,
+                "size": 13
+               },
+               "color": [
+                0.957,
+                0.957,
+                0.969,
+                1
+               ],
+               "align": "left"
+              },
+              "confidence": 0.95,
+              "inferred": [
+               "text.font.family"
+              ]
+             }
+            ],
+            "sizing": {
+             "h": "fill"
+            }
+           }
+          ]
+         },
+         {
+          "id": "right.tiles",
+          "name": "AssetTiles",
+          "type": "frame",
+          "role": "tile",
+          "variable": true,
+          "widgetName": "AssetTiles",
+          "box": {
+           "x": 14,
+           "y": 109,
+           "w": 412,
+           "h": 600
+          },
+          "fills": [
+           {
+            "type": "solid",
+            "color": [
+             0.2,
+             0.22,
+             0.251,
+             1
+            ]
+           }
+          ],
+          "radius": [
+           6
+          ],
+          "layout": {
+           "mode": "wrap",
+           "gap": 8,
+           "crossGap": 8,
+           "padding": [
+            4,
+            4,
+            4,
+            4
+           ]
+          },
+          "confidence": 0.8,
+          "inferred": [
+           "layout.gap",
+           "layout.crossGap",
+           "sizing"
+          ],
+          "children": [
+           {
+            "id": "right.tiles.t0",
+            "name": "AttributeAssetItem",
+            "type": "instance",
+            "component": {
+             "ref": "cmp.AttributeAssetItem"
+            },
+            "box": {
+             "x": 4,
+             "y": 4,
+             "w": 120,
+             "h": 146
+            },
+            "confidence": 0.8,
+            "inferred": [
+             "component"
+            ],
+            "children": [
+             {
+              "id": "right.tiles.t0.thumb",
+              "name": "Thumbnail",
+              "type": "frame",
+              "box": {
+               "x": 12,
+               "y": 7,
+               "w": 96,
+               "h": 96
+              },
+              "confidence": 0.6,
+              "inferred": [
+               "role",
+               "fills"
+              ],
+              "children": [
+               {
+                "id": "right.tiles.t0.preview",
+                "name": "Preview",
+                "type": "ellipse",
+                "box": {
+                 "x": 24,
+                 "y": 24,
+                 "w": 48,
+                 "h": 48
+                },
+                "fills": [
+                 {
+                  "type": "solid",
+                  "color": [
+                   0.773,
+                   0.792,
+                   0.82,
+                   1
+                  ]
+                 }
+                ],
+                "confidence": 0.75,
+                "inferred": []
+               }
+              ]
+             },
+             {
+              "id": "right.tiles.t0.name",
+              "name": "ItemName",
+              "type": "text",
+              "box": {
+               "x": 6,
+               "y": 107,
+               "w": 108,
+               "h": 14
+              },
+              "text": {
+               "content": "Box Building",
+               "font": {
+                "family": "Roboto",
+                "weight": 700,
+                "size": 11
+               },
+               "color": [
+                0.957,
+                0.957,
+                0.969,
+                1
+               ],
+               "align": "center"
+              },
+              "confidence": 0.9,
+              "inferred": [
+               "text.font.family"
+              ]
+             },
+             {
+              "id": "right.tiles.t0.tag",
+              "name": "ItemTag",
+              "type": "text",
+              "box": {
+               "x": 6,
+               "y": 124,
+               "w": 108,
+               "h": 11
+              },
+              "text": {
+               "content": "BUILDING",
+               "font": {
+                "family": "Roboto",
+                "weight": 400,
+                "size": 9
+               },
+               "color": [
+                0.35,
+                0.769,
+                1.0,
+                1
+               ],
+               "align": "center"
+              },
+              "confidence": 0.9,
+              "inferred": [
+               "text.font.family"
+              ]
+             }
+            ]
+           },
+           {
+            "id": "right.tiles.t1",
+            "name": "AttributeAssetItem",
+            "type": "instance",
+            "component": {
+             "ref": "cmp.AttributeAssetItem"
+            },
+            "box": {
+             "x": 132,
+             "y": 4,
+             "w": 120,
+             "h": 146
+            },
+            "confidence": 0.8,
+            "inferred": [
+             "component"
+            ],
+            "children": [
+             {
+              "id": "right.tiles.t1.thumb",
+              "name": "Thumbnail",
+              "type": "frame",
+              "box": {
+               "x": 12,
+               "y": 7,
+               "w": 96,
+               "h": 96
+              },
+              "confidence": 0.6,
+              "inferred": [
+               "role",
+               "fills"
+              ],
+              "children": [
+               {
+                "id": "right.tiles.t1.preview",
+                "name": "Preview",
+                "type": "ellipse",
+                "box": {
+                 "x": 24,
+                 "y": 24,
+                 "w": 48,
+                 "h": 48
+                },
+                "fills": [
+                 {
+                  "type": "solid",
+                  "color": [
+                   0.773,
+                   0.792,
+                   0.82,
+                   1
+                  ]
+                 }
+                ],
+                "confidence": 0.75,
+                "inferred": []
+               }
+              ]
+             },
+             {
+              "id": "right.tiles.t1.name",
+              "name": "ItemName",
+              "type": "text",
+              "box": {
+               "x": 6,
+               "y": 107,
+               "w": 108,
+               "h": 14
+              },
+              "text": {
+               "content": "Chamfer Block",
+               "font": {
+                "family": "Roboto",
+                "weight": 700,
+                "size": 11
+               },
+               "color": [
+                0.957,
+                0.957,
+                0.969,
+                1
+               ],
+               "align": "center"
+              },
+              "confidence": 0.9,
+              "inferred": [
+               "text.font.family"
+              ]
+             },
+             {
+              "id": "right.tiles.t1.tag",
+              "name": "ItemTag",
+              "type": "text",
+              "box": {
+               "x": 6,
+               "y": 124,
+               "w": 108,
+               "h": 11
+              },
+              "text": {
+               "content": "BUILDING",
+               "font": {
+                "family": "Roboto",
+                "weight": 400,
+                "size": 9
+               },
+               "color": [
+                0.35,
+                0.769,
+                1.0,
+                1
+               ],
+               "align": "center"
+              },
+              "confidence": 0.9,
+              "inferred": [
+               "text.font.family"
+              ]
+             }
+            ]
+           },
+           {
+            "id": "right.tiles.t2",
+            "name": "AttributeAssetItem",
+            "type": "instance",
+            "component": {
+             "ref": "cmp.AttributeAssetItem"
+            },
+            "box": {
+             "x": 260,
+             "y": 4,
+             "w": 120,
+             "h": 146
+            },
+            "confidence": 0.8,
+            "inferred": [
+             "component"
+            ],
+            "children": [
+             {
+              "id": "right.tiles.t2.thumb",
+              "name": "Thumbnail",
+              "type": "frame",
+              "box": {
+               "x": 12,
+               "y": 7,
+               "w": 96,
+               "h": 96
+              },
+              "confidence": 0.6,
+              "inferred": [
+               "role",
+               "fills"
+              ],
+              "children": [
+               {
+                "id": "right.tiles.t2.preview",
+                "name": "Preview",
+                "type": "ellipse",
+                "box": {
+                 "x": 24,
+                 "y": 24,
+                 "w": 48,
+                 "h": 48
+                },
+                "fills": [
+                 {
+                  "type": "solid",
+                  "color": [
+                   0.773,
+                   0.792,
+                   0.82,
+                   1
+                  ]
+                 }
+                ],
+                "confidence": 0.75,
+                "inferred": []
+               }
+              ]
+             },
+             {
+              "id": "right.tiles.t2.name",
+              "name": "ItemName",
+              "type": "text",
+              "box": {
+               "x": 6,
+               "y": 107,
+               "w": 108,
+               "h": 14
+              },
+              "text": {
+               "content": "Silo",
+               "font": {
+                "family": "Roboto",
+                "weight": 700,
+                "size": 11
+               },
+               "color": [
+                0.957,
+                0.957,
+                0.969,
+                1
+               ],
+               "align": "center"
+              },
+              "confidence": 0.9,
+              "inferred": [
+               "text.font.family"
+              ]
+             },
+             {
+              "id": "right.tiles.t2.tag",
+              "name": "ItemTag",
+              "type": "text",
+              "box": {
+               "x": 6,
+               "y": 124,
+               "w": 108,
+               "h": 11
+              },
+              "text": {
+               "content": "BUILDING",
+               "font": {
+                "family": "Roboto",
+                "weight": 400,
+                "size": 9
+               },
+               "color": [
+                0.35,
+                0.769,
+                1.0,
+                1
+               ],
+               "align": "center"
+              },
+              "confidence": 0.9,
+              "inferred": [
+               "text.font.family"
+              ]
+             }
+            ]
+           },
+           {
+            "id": "right.tiles.t3",
+            "name": "AttributeAssetItem",
+            "type": "instance",
+            "component": {
+             "ref": "cmp.AttributeAssetItem"
+            },
+            "box": {
+             "x": 4,
+             "y": 158,
+             "w": 120,
+             "h": 146
+            },
+            "confidence": 0.8,
+            "inferred": [
+             "component"
+            ],
+            "children": [
+             {
+              "id": "right.tiles.t3.thumb",
+              "name": "Thumbnail",
+              "type": "frame",
+              "box": {
+               "x": 12,
+               "y": 7,
+               "w": 96,
+               "h": 96
+              },
+              "confidence": 0.6,
+              "inferred": [
+               "role",
+               "fills"
+              ],
+              "children": [
+               {
+                "id": "right.tiles.t3.preview",
+                "name": "Preview",
+                "type": "ellipse",
+                "box": {
+                 "x": 24,
+                 "y": 24,
+                 "w": 48,
+                 "h": 48
+                },
+                "fills": [
+                 {
+                  "type": "solid",
+                  "color": [
+                   0.773,
+                   0.792,
+                   0.82,
+                   1
+                  ]
+                 }
+                ],
+                "confidence": 0.75,
+                "inferred": []
+               }
+              ]
+             },
+             {
+              "id": "right.tiles.t3.name",
+              "name": "ItemName",
+              "type": "text",
+              "box": {
+               "x": 6,
+               "y": 107,
+               "w": 108,
+               "h": 14
+              },
+              "text": {
+               "content": "Quarter Hall",
+               "font": {
+                "family": "Roboto",
+                "weight": 700,
+                "size": 11
+               },
+               "color": [
+                0.957,
+                0.957,
+                0.969,
+                1
+               ],
+               "align": "center"
+              },
+              "confidence": 0.9,
+              "inferred": [
+               "text.font.family"
+              ]
+             },
+             {
+              "id": "right.tiles.t3.tag",
+              "name": "ItemTag",
+              "type": "text",
+              "box": {
+               "x": 6,
+               "y": 124,
+               "w": 108,
+               "h": 11
+              },
+              "text": {
+               "content": "BUILDING",
+               "font": {
+                "family": "Roboto",
+                "weight": 400,
+                "size": 9
+               },
+               "color": [
+                0.35,
+                0.769,
+                1.0,
+                1
+               ],
+               "align": "center"
+              },
+              "confidence": 0.9,
+              "inferred": [
+               "text.font.family"
+              ]
+             }
+            ]
+           },
+           {
+            "id": "right.tiles.t4",
+            "name": "AttributeAssetItem",
+            "type": "instance",
+            "component": {
+             "ref": "cmp.AttributeAssetItem"
+            },
+            "box": {
+             "x": 132,
+             "y": 158,
+             "w": 120,
+             "h": 146
+            },
+            "confidence": 0.8,
+            "inferred": [
+             "component"
+            ],
+            "children": [
+             {
+              "id": "right.tiles.t4.thumb",
+              "name": "Thumbnail",
+              "type": "frame",
+              "box": {
+               "x": 12,
+               "y": 7,
+               "w": 96,
+               "h": 96
+              },
+              "confidence": 0.6,
+              "inferred": [
+               "role",
+               "fills"
+              ],
+              "children": [
+               {
+                "id": "right.tiles.t4.preview",
+                "name": "Preview",
+                "type": "ellipse",
+                "box": {
+                 "x": 24,
+                 "y": 24,
+                 "w": 48,
+                 "h": 48
+                },
+                "fills": [
+                 {
+                  "type": "solid",
+                  "color": [
+                   0.773,
+                   0.792,
+                   0.82,
+                   1
+                  ]
+                 }
+                ],
+                "confidence": 0.75,
+                "inferred": []
+               }
+              ]
+             },
+             {
+              "id": "right.tiles.t4.name",
+              "name": "ItemName",
+              "type": "text",
+              "box": {
+               "x": 6,
+               "y": 107,
+               "w": 108,
+               "h": 14
+              },
+              "text": {
+               "content": "Cone Tower",
+               "font": {
+                "family": "Roboto",
+                "weight": 700,
+                "size": 11
+               },
+               "color": [
+                0.957,
+                0.957,
+                0.969,
+                1
+               ],
+               "align": "center"
+              },
+              "confidence": 0.9,
+              "inferred": [
+               "text.font.family"
+              ]
+             },
+             {
+              "id": "right.tiles.t4.tag",
+              "name": "ItemTag",
+              "type": "text",
+              "box": {
+               "x": 6,
+               "y": 124,
+               "w": 108,
+               "h": 11
+              },
+              "text": {
+               "content": "BUILDING",
+               "font": {
+                "family": "Roboto",
+                "weight": 400,
+                "size": 9
+               },
+               "color": [
+                0.35,
+                0.769,
+                1.0,
+                1
+               ],
+               "align": "center"
+              },
+              "confidence": 0.9,
+              "inferred": [
+               "text.font.family"
+              ]
+             }
+            ]
+           },
+           {
+            "id": "right.tiles.t5",
+            "name": "AttributeAssetItem",
+            "type": "instance",
+            "component": {
+             "ref": "cmp.AttributeAssetItem"
+            },
+            "box": {
+             "x": 260,
+             "y": 158,
+             "w": 120,
+             "h": 146
+            },
+            "confidence": 0.8,
+            "inferred": [
+             "component"
+            ],
+            "children": [
+             {
+              "id": "right.tiles.t5.thumb",
+              "name": "Thumbnail",
+              "type": "frame",
+              "box": {
+               "x": 12,
+               "y": 7,
+               "w": 96,
+               "h": 96
+              },
+              "confidence": 0.6,
+              "inferred": [
+               "role",
+               "fills"
+              ],
+              "children": [
+               {
+                "id": "right.tiles.t5.preview",
+                "name": "Preview",
+                "type": "ellipse",
+                "box": {
+                 "x": 24,
+                 "y": 24,
+                 "w": 48,
+                 "h": 48
+                },
+                "fills": [
+                 {
+                  "type": "solid",
+                  "color": [
+                   0.773,
+                   0.792,
+                   0.82,
+                   1
+                  ]
+                 }
+                ],
+                "confidence": 0.75,
+                "inferred": []
+               }
+              ]
+             },
+             {
+              "id": "right.tiles.t5.name",
+              "name": "ItemName",
+              "type": "text",
+              "box": {
+               "x": 6,
+               "y": 107,
+               "w": 108,
+               "h": 14
+              },
+              "text": {
+               "content": "car",
+               "font": {
+                "family": "Roboto",
+                "weight": 700,
+                "size": 11
+               },
+               "color": [
+                0.957,
+                0.957,
+                0.969,
+                1
+               ],
+               "align": "center"
+              },
+              "confidence": 0.9,
+              "inferred": [
+               "text.font.family"
+              ]
+             },
+             {
+              "id": "right.tiles.t5.tag",
+              "name": "ItemTag",
+              "type": "text",
+              "box": {
+               "x": 6,
+               "y": 124,
+               "w": 108,
+               "h": 11
+              },
+              "text": {
+               "content": "BUILDING | USER",
+               "font": {
+                "family": "Roboto",
+                "weight": 400,
+                "size": 9
+               },
+               "color": [
+                0.35,
+                0.769,
+                1.0,
+                1
+               ],
+               "align": "center"
+              },
+              "confidence": 0.9,
+              "inferred": [
+               "text.font.family"
+              ]
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "id": "right.status",
+          "name": "StatusText",
+          "type": "text",
+          "box": {
+           "x": 14,
+           "y": 717,
+           "w": 412,
+           "h": 11
+          },
+          "text": {
+           "content": "Select an asset, then Apply.",
+           "font": {
+            "family": "Roboto",
+            "weight": 400,
+            "size": 9
+           },
+           "color": [
+            0.773,
+            0.792,
+            0.82,
+            1
+           ],
+           "align": "left"
+          },
+          "confidence": 0.9,
+          "inferred": [
+           "text.font.family"
+          ],
+          "variable": true,
+          "widgetName": "AssetStatusText"
+         },
+         {
+          "id": "right.buttons",
+          "name": "ButtonRow",
+          "type": "frame",
+          "box": {
+           "x": 14,
+           "y": 736,
+           "w": 412,
+           "h": 32
+          },
+          "layout": {
+           "mode": "horizontal",
+           "gap": 6
+          },
+          "confidence": 0.85,
+          "inferred": [
+           "layout.gap"
+          ],
+          "children": [
+           {
+            "id": "right.import",
+            "name": "ImportUserAssetButton",
+            "type": "frame",
+            "role": "button",
+            "variable": true,
+            "widgetName": "ImportUserAssetButton",
+            "box": {
+             "x": 0,
+             "y": 0,
+             "w": 203,
+             "h": 32
+            },
+            "fills": [
+             {
+              "type": "solid",
+              "color": [
+               0.459,
+               0.478,
+               0.533,
+               1
+              ]
+             }
+            ],
+            "radius": [
+             6
+            ],
+            "layout": {
+             "mode": "horizontal",
+             "padding": [
+              12,
+              0,
+              12,
+              0
+             ],
+             "mainAlign": "center",
+             "crossAlign": "center"
+            },
+            "confidence": 0.85,
+            "inferred": [
+             "radius",
+             "layout.padding",
+             "states"
+            ],
+            "children": [
+             {
+              "id": "right.import.label",
+              "name": "Label",
+              "type": "text",
+              "box": {
+               "x": 0,
+               "y": 8,
+               "w": 179,
+               "h": 16
+              },
+              "text": {
+               "content": "Import User Asset...",
+               "font": {
+                "family": "Roboto",
+                "weight": 700,
+                "size": 13
+               },
+               "color": [
+                0.957,
+                0.957,
+                0.969,
+                1
+               ],
+               "align": "left"
+              },
+              "confidence": 0.95,
+              "inferred": [
+               "text.font.family"
+              ]
+             }
+            ],
+            "sizing": {
+             "h": "fill"
+            }
+           },
+           {
+            "id": "right.apply",
+            "name": "ApplyButton",
+            "type": "frame",
+            "role": "button",
+            "variable": true,
+            "widgetName": "ApplyButton",
+            "box": {
+             "x": 209,
+             "y": 0,
+             "w": 203,
+             "h": 32
+            },
+            "fills": [
+             {
+              "type": "solid",
+              "color": [
+               0.353,
+               0.698,
+               0.98,
+               1
+              ]
+             }
+            ],
+            "radius": [
+             6
+            ],
+            "layout": {
+             "mode": "horizontal",
+             "padding": [
+              12,
+              0,
+              12,
+              0
+             ],
+             "mainAlign": "center",
+             "crossAlign": "center"
+            },
+            "confidence": 0.9,
+            "inferred": [
+             "radius",
+             "layout.padding",
+             "states"
+            ],
+            "children": [
+             {
+              "id": "right.apply.label",
+              "name": "Label",
+              "type": "text",
+              "box": {
+               "x": 0,
+               "y": 8,
+               "w": 179,
+               "h": 16
+              },
+              "text": {
+               "content": "Apply",
+               "font": {
+                "family": "Roboto",
+                "weight": 700,
+                "size": 13
+               },
+               "color": [
+                0.957,
+                0.957,
+                0.969,
+                1
+               ],
+               "align": "left"
+              },
+              "confidence": 0.95,
+              "inferred": [
+               "text.font.family"
+              ]
+             }
+            ],
+            "sizing": {
+             "h": "fill"
+            }
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "id": "marker",
+        "name": "SpawnMarker",
+        "type": "vector",
+        "box": {
+         "x": 780,
+         "y": 430,
+         "w": 40,
+         "h": 40
+        },
+        "bake": {
+         "image": "crop"
+        },
+        "constraints": {
+         "h": "center",
+         "v": "center"
+        },
+        "confidence": 0.4,
+        "inferred": [
+         "role",
+         "constraints",
+         "bake"
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "components": [
+    {
+     "id": "cmp.AttributeListEntry",
+     "name": "AttributeListEntry",
+     "kind": "component",
+     "root": {
+      "id": "cmp.entry",
+      "name": "AttributeListEntry",
+      "type": "frame",
+      "box": {
+       "x": 0,
+       "y": 0,
+       "w": 260,
+       "h": 30
+      },
+      "fills": [
+       {
+        "type": "solid",
+        "color": [
+         0.459,
+         0.478,
+         0.533,
+         1
+        ]
+       }
+      ],
+      "radius": [
+       4
+      ],
+      "layout": {
+       "mode": "horizontal",
+       "gap": 8,
+       "padding": [
+        8,
+        6,
+        10,
+        6
+       ],
+       "crossAlign": "center"
+      },
+      "confidence": 0.75,
+      "inferred": [
+       "radius",
+       "layout"
+      ],
+      "children": [
+       {
+        "id": "cmp.entry.bar",
+        "name": "LayerBar",
+        "type": "rectangle",
+        "box": {
+         "x": 8,
+         "y": 6,
+         "w": 4,
+         "h": 18
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.35,
+           0.769,
+           1.0,
+           1
+          ]
+         }
+        ],
+        "confidence": 0.85,
+        "inferred": []
+       },
+       {
+        "id": "cmp.entry.name",
+        "name": "EntryName",
+        "type": "text",
+        "box": {
+         "x": 20,
+         "y": 8,
+         "w": 210,
+         "h": 14
+        },
+        "text": {
+         "content": "Box Building",
+         "font": {
+          "family": "Roboto",
+          "weight": 500,
+          "size": 12
+         },
+         "color": [
+          0.957,
+          0.957,
+          0.969,
+          1
+         ],
+         "align": "left"
+        },
+        "confidence": 0.9,
+        "inferred": [
+         "text.font.family"
+        ],
+        "sizing": {
+         "h": "fill"
+        },
+        "variable": true,
+        "widgetName": "EntryName"
+       },
+       {
+        "id": "cmp.entry.tag",
+        "name": "EntryTag",
+        "type": "text",
+        "box": {
+         "x": 238,
+         "y": 9,
+         "w": 14,
+         "h": 11
+        },
+        "text": {
+         "content": "DT",
+         "font": {
+          "family": "Roboto",
+          "weight": 400,
+          "size": 9
+         },
+         "color": [
+          0.773,
+          0.792,
+          0.82,
+          1
+         ],
+         "align": "left"
+        },
+        "confidence": 0.9,
+        "inferred": [
+         "text.font.family"
+        ],
+        "variable": true,
+        "widgetName": "EntryTag"
+       }
+      ]
+     }
+    },
+    {
+     "id": "cmp.AttributeAssetItem",
+     "name": "AttributeAssetItem",
+     "kind": "component",
+     "root": {
+      "id": "cmp.item",
+      "name": "AttributeAssetItem",
+      "type": "frame",
+      "box": {
+       "x": 0,
+       "y": 0,
+       "w": 120,
+       "h": 146
+      },
+      "fills": [
+       {
+        "type": "solid",
+        "color": [
+         0.2,
+         0.22,
+         0.251,
+         1
+        ]
+       }
+      ],
+      "radius": [
+       6
+      ],
+      "layout": {
+       "mode": "vertical",
+       "gap": 4,
+       "padding": [
+        6,
+        7,
+        6,
+        6
+       ],
+       "crossAlign": "center"
+      },
+      "confidence": 0.7,
+      "inferred": [
+       "radius",
+       "layout"
+      ],
+      "children": [
+       {
+        "id": "cmp.item.thumb",
+        "name": "Thumbnail",
+        "type": "frame",
+        "variable": true,
+        "widgetName": "Thumbnail",
+        "box": {
+         "x": 12,
+         "y": 7,
+         "w": 96,
+         "h": 96
+        },
+        "confidence": 0.6,
+        "inferred": [
+         "variable"
+        ],
+        "children": [
+         {
+          "id": "cmp.item.preview",
+          "name": "Preview",
+          "type": "ellipse",
+          "box": {
+           "x": 24,
+           "y": 24,
+           "w": 48,
+           "h": 48
+          },
+          "fills": [
+           {
+            "type": "solid",
+            "color": [
+             0.773,
+             0.792,
+             0.82,
+             1
+            ]
+           }
+          ],
+          "confidence": 0.75,
+          "inferred": []
+         }
+        ]
+       },
+       {
+        "id": "cmp.item.name",
+        "name": "ItemName",
+        "type": "text",
+        "box": {
+         "x": 6,
+         "y": 107,
+         "w": 108,
+         "h": 14
+        },
+        "text": {
+         "content": "Box Building",
+         "font": {
+          "family": "Roboto",
+          "weight": 700,
+          "size": 11
+         },
+         "color": [
+          0.957,
+          0.957,
+          0.969,
+          1
+         ],
+         "align": "center"
+        },
+        "confidence": 0.9,
+        "inferred": [
+         "text.font.family"
+        ],
+        "variable": true,
+        "widgetName": "ItemName"
+       },
+       {
+        "id": "cmp.item.tag",
+        "name": "ItemTag",
+        "type": "text",
+        "box": {
+         "x": 6,
+         "y": 124,
+         "w": 108,
+         "h": 11
+        },
+        "text": {
+         "content": "BUILDING",
+         "font": {
+          "family": "Roboto",
+          "weight": 400,
+          "size": 9
+         },
+         "color": [
+          0.35,
+          0.769,
+          1.0,
+          1
+         ],
+         "align": "center"
+        },
+        "confidence": 0.9,
+        "inferred": [
+         "text.font.family"
+        ],
+        "variable": true,
+        "widgetName": "ItemTag"
+       }
+      ]
+     }
+    }
+   ]
+  }
+ }
+]

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="dwocanvas:viewport" content="400x300">
+<meta name="dwocanvas:name" content="HtmlText">
+<title>Text styles</title>
+<style>
+@font-face { font-family: "Roboto"; font-weight: 300; font-style: normal; src: url("file:///C:/Program%20Files/Epic%20Games/UE_5.7/Engine/Content/Slate/Fonts/Roboto-Light.ttf"); }
+@font-face { font-family: "Roboto"; font-weight: 400; font-style: normal; src: url("file:///C:/Program%20Files/Epic%20Games/UE_5.7/Engine/Content/Slate/Fonts/Roboto-Regular.ttf"); }
+@font-face { font-family: "Roboto"; font-weight: 400; font-style: italic; src: url("file:///C:/Program%20Files/Epic%20Games/UE_5.7/Engine/Content/Slate/Fonts/Roboto-Italic.ttf"); }
+@font-face { font-family: "Roboto"; font-weight: 700; font-style: normal; src: url("file:///C:/Program%20Files/Epic%20Games/UE_5.7/Engine/Content/Slate/Fonts/Roboto-Bold.ttf"); }
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #1c212b; font-family: "Roboto"; color: #f2f3f5; }
+.t { position: absolute; left: 20px; white-space: nowrap; }
+
+#h1 { top: 14px; font-size: 28px; line-height: 33px; font-weight: 700; }
+#light { top: 54px; font-size: 20px; line-height: 24px; font-weight: 300; color: #b8d8ff; }
+#italic { left: 220px; top: 58px; font-size: 16px; line-height: 19px; font-style: italic; color: #ffd28a; }
+#caps { top: 88px; font-size: 12px; line-height: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: #5ac4ff; }
+#small { left: 220px; top: 90px; font-size: 11px; line-height: 13px; color: #b8c0cc; }
+
+/* Multi-line paragraph with a tall line height, fixed width (explicit breaks: browser and UE measure text a few px apart, so natural wrapping is not compared) */
+#para { position: absolute; left: 20px; top: 116px; width: 220px; font-size: 13px; line-height: 20px; color: #dfe3ea; }
+/* Single line cut with an ellipsis */
+#ellipsis { position: absolute; left: 260px; top: 120px; width: 120px; font-size: 13px; line-height: 15px; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis; color: #f2f3f5; }
+/* Right and centre aligned text in fixed boxes */
+#right { position: absolute; left: 260px; top: 148px; width: 120px; font-size: 13px; line-height: 15px; text-align: right; color: #8be08a; }
+#centered { position: absolute; left: 260px; top: 176px; width: 120px; font-size: 13px; line-height: 15px; text-align: center; color: #ff9fb0; }
+
+#big { top: 228px; font-size: 40px; line-height: 47px; font-weight: 700; color: #ffb44a; }
+</style>
+</head>
+<body>
+  <div class="t" id="h1">Heading 28 Bold</div>
+  <div class="t" id="light">Light 20</div>
+  <div class="t" id="italic">Italic 16</div>
+  <div class="t" id="caps">Uppercase spaced</div>
+  <div class="t" id="small">Regular 11 caption</div>
+  <div id="para">Three lines of thirteen pixel text<br>with a twenty pixel line height,<br>in a fixed width box.</div>
+  <div id="ellipsis">This line is far too long to fit</div>
+  <div id="right">Right aligned</div>
+  <div id="centered">Centred</div>
+  <div class="t" id="big">Score 1280</div>
+</body>
+</html>

@@ -1,0 +1,278 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dwocanvas/2",
+  "title": "DwoCanvas design document",
+  "description": "Tool-neutral UI design document. Any adapter (Figma, HTML, Photoshop, inference, hand-written) produces it; the DwoCanvas UE plugin consumes it without knowing the source. Units: design px. Colors: sRGB 0..1. Boxes: unrotated, relative to the parent frame. designbridge/1 files are migrated to this version on load.",
+  "type": "object",
+  "required": ["schema", "documents"],
+  "properties": {
+    "schema": { "const": "dwocanvas/2" },
+    "source": { "$ref": "#/$defs/source" },
+    "capabilities": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/capability" },
+      "description": "What the source provided. The importer does not warn about information outside this list."
+    },
+    "tokens": { "$ref": "#/$defs/tokenGroup", "description": "Design tokens in W3C Design Tokens Community Group format ($value / $type), nested groups." },
+    "assets": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/asset" }
+    },
+    "documents": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/document" } },
+    "components": { "type": "array", "items": { "$ref": "#/$defs/document" } },
+    "lint": { "type": "array", "items": { "$ref": "#/$defs/lintItem" } },
+    "usage": { "type": "object", "additionalProperties": { "type": "integer" }, "description": "Feature usage counts (audit)." }
+  },
+  "patternProperties": { "^x-": {} },
+  "additionalProperties": false,
+  "$defs": {
+    "capability": {
+      "enum": [
+        "layout.flow",
+        "layout.constraints",
+        "paint.gradient",
+        "paint.image",
+        "effects",
+        "text.metrics",
+        "components",
+        "variants",
+        "tokens",
+        "preview",
+        "stable-ids",
+        "inferred"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "tool": { "type": "string", "description": "figma | html | photoshop | inference | hand | ..." },
+        "adapter": { "type": "string", "description": "Adapter name and version, e.g. dwocanvas-figma/0.2.0." },
+        "mode": { "enum": ["extract", "draft"], "description": "draft = inferred content: first-generation only, no re-import guarantee." },
+        "file": { "type": "string" },
+        "exportedAt": { "type": "string" },
+        "model": { "type": "string", "description": "Inference adapters: model id and prompt version." }
+      },
+      "patternProperties": { "^x-": {} }
+    },
+    "color": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 4 },
+    "sides": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4, "description": "left, top, right, bottom (radius: tl, tr, br, bl)." },
+    "tokenGroup": {
+      "type": "object",
+      "description": "A token ({$value, $type}) or a group of tokens / groups.",
+      "properties": {
+        "$value": {},
+        "$type": { "type": "string" },
+        "$description": { "type": "string" }
+      }
+    },
+    "asset": {
+      "type": "object",
+      "properties": {
+        "data": { "type": "string", "description": "Base64 PNG / JPG." },
+        "uri": { "type": "string", "description": "Path relative to the JSON file, or file:// URI." },
+        "sha256": { "type": "string", "description": "Hex digest of the image bytes (dedupe)." },
+        "scale": { "type": "number", "description": "Export scale (2 = @2x)." },
+        "nineSlice": { "$ref": "#/$defs/sides", "description": "9-slice margins in texture px." }
+      },
+      "patternProperties": { "^x-": {} }
+    },
+    "lintItem": {
+      "type": "object",
+      "required": ["level", "message"],
+      "properties": {
+        "level": { "enum": ["info", "warning", "error"] },
+        "node": { "type": "string" },
+        "name": { "type": "string" },
+        "message": { "type": "string" },
+        "rule": { "type": "string" }
+      }
+    },
+    "document": {
+      "type": "object",
+      "required": ["id", "name", "root"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["screen", "component"] },
+        "target": { "type": "string", "description": "WBP package path; default <WidgetFolder>/WBP_<name>." },
+        "parentClass": { "type": "string", "description": "e.g. /Script/MyGame.MyWidget; default UserWidget." },
+        "preview": { "type": "string", "description": "Asset id of the source render at 1x (visual diff)." },
+        "root": { "$ref": "#/$defs/node" }
+      },
+      "patternProperties": { "^x-": {} }
+    },
+    "paint": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["solid", "linear", "radial", "angular", "diamond", "image"] },
+        "visible": { "type": "boolean" },
+        "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "color": { "$ref": "#/$defs/color" },
+        "colorToken": { "type": "string", "description": "Token path, e.g. color.primary." },
+        "stops": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["position", "color"],
+            "properties": { "position": { "type": "number" }, "color": { "$ref": "#/$defs/color" } }
+          }
+        },
+        "handles": { "type": "array", "items": { "type": "number" }, "minItems": 6, "maxItems": 6, "description": "start xy, end xy, width xy in 0..1 of the node box." },
+        "image": { "type": "string", "description": "Asset id." },
+        "scaleMode": { "enum": ["fill", "fit", "tile", "crop"] },
+        "scalingFactor": { "type": "number" }
+      }
+    },
+    "role": {
+      "anyOf": [
+        { "enum": ["auto", "button", "list", "tile", "scroll", "textInput", "checkBox", "slider", "progressBar", "switcher", "namedSlot", "spacer", "ignore"] },
+        { "type": "string", "pattern": "^x-[A-Za-z0-9_.-]+$" }
+      ],
+      "description": "What the node is. Adapters set it (from naming rules, data attributes...). x-<name> roles are handled by project-registered role handlers."
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "name", "type"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "description": "Stable node id: re-import identity (see capability stable-ids)." },
+        "name": { "type": "string", "description": "Source layer name (display)." },
+        "type": { "enum": ["frame", "group", "component", "instance", "rectangle", "ellipse", "text", "vector"] },
+        "role": { "$ref": "#/$defs/role" },
+        "variable": { "type": "boolean", "description": "Expose as a Blueprint variable." },
+        "widgetName": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$", "description": "UE widget name (e.g. a C++ BindWidget name). Default: sanitized name." },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1, "description": "Inferred nodes: how sure the adapter is." },
+        "inferred": { "type": "array", "items": { "type": "string" }, "description": "Inferred nodes: fields that were guessed." },
+        "tokens": {
+          "type": "object",
+          "description": "Token references for numeric properties: gap, crossGap, padding, radius, strokeWidth, opacity, fontSize.",
+          "additionalProperties": { "type": "string" }
+        },
+        "visible": { "type": "boolean" },
+        "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "rotation": { "type": "number", "description": "Degrees, counter-clockwise." },
+        "clip": { "type": "boolean" },
+        "box": {
+          "type": "object",
+          "required": ["x", "y", "w", "h"],
+          "properties": { "x": { "type": "number" }, "y": { "type": "number" }, "w": { "type": "number", "minimum": 0 }, "h": { "type": "number", "minimum": 0 } }
+        },
+        "layout": {
+          "type": "object",
+          "properties": {
+            "mode": { "enum": ["none", "horizontal", "vertical", "wrap", "grid"] },
+            "gap": { "type": "number" },
+            "crossGap": { "type": "number" },
+            "padding": { "$ref": "#/$defs/sides" },
+            "mainAlign": { "enum": ["start", "center", "end", "space-between"] },
+            "crossAlign": { "enum": ["start", "center", "end", "stretch"] },
+            "columns": { "type": "integer", "minimum": 1 },
+            "strokesIncluded": { "type": "boolean" }
+          }
+        },
+        "sizing": {
+          "type": "object",
+          "properties": {
+            "h": { "enum": ["fixed", "hug", "fill"] },
+            "v": { "enum": ["fixed", "hug", "fill"] },
+            "minW": { "type": "number" }, "maxW": { "type": "number" }, "minH": { "type": "number" }, "maxH": { "type": "number" }
+          }
+        },
+        "positioning": { "enum": ["auto", "absolute"] },
+        "constraints": {
+          "type": "object",
+          "properties": {
+            "h": { "enum": ["min", "max", "center", "stretch", "scale"] },
+            "v": { "enum": ["min", "max", "center", "stretch", "scale"] }
+          }
+        },
+        "fills": { "type": "array", "items": { "$ref": "#/$defs/paint" }, "description": "Bottom to top." },
+        "stroke": {
+          "type": "object",
+          "properties": {
+            "color": { "$ref": "#/$defs/color" },
+            "colorToken": { "type": "string" },
+            "opacity": { "type": "number" },
+            "width": { "type": "number", "minimum": 0 },
+            "align": { "enum": ["inside", "center", "outside"] },
+            "dash": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+            "sides": { "$ref": "#/$defs/sides" }
+          }
+        },
+        "radius": { "type": "array", "items": { "type": "number" }, "minItems": 1, "maxItems": 4 },
+        "effects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type"],
+            "properties": {
+              "type": { "enum": ["drop-shadow", "inner-shadow", "background-blur", "layer-blur"] },
+              "visible": { "type": "boolean" },
+              "color": { "$ref": "#/$defs/color" },
+              "offset": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+              "blur": { "type": "number" },
+              "spread": { "type": "number" },
+              "showBehind": { "type": "boolean" },
+              "radius": { "type": "number" }
+            }
+          }
+        },
+        "blendMode": { "type": "string" },
+        "bake": {
+          "type": "object",
+          "required": ["image"],
+          "properties": { "image": { "type": "string" }, "overflow": { "$ref": "#/$defs/sides" } },
+          "description": "Node rendered to an image by the adapter; overflow = effect area outside the box."
+        },
+        "text": {
+          "type": "object",
+          "required": ["content"],
+          "properties": {
+            "content": { "type": "string" },
+            "font": {
+              "type": "object",
+              "properties": {
+                "family": { "type": "string" },
+                "weight": { "type": "integer", "minimum": 1, "maximum": 1000, "description": "CSS weight: 400 regular, 700 bold." },
+                "italic": { "type": "boolean" },
+                "size": { "type": "number", "minimum": 0 },
+                "style": { "type": "string", "description": "Source style name (informative)." }
+              }
+            },
+            "color": { "$ref": "#/$defs/color" },
+            "colorToken": { "type": "string" },
+            "lineHeight": { "type": "object", "properties": { "unit": { "enum": ["px", "percent", "auto"] }, "value": { "type": "number" } } },
+            "letterSpacing": { "type": "object", "properties": { "unit": { "enum": ["px", "percent"] }, "value": { "type": "number" } } },
+            "align": { "enum": ["left", "center", "right", "justify"] },
+            "valign": { "enum": ["top", "center", "bottom"] },
+            "autoResize": { "enum": ["width", "height", "none", "truncate"] },
+            "maxLines": { "type": "integer", "minimum": 0 },
+            "case": { "enum": ["none", "upper", "lower", "title"] },
+            "decoration": { "enum": ["none", "underline", "strike"] },
+            "runs": { "type": "array" },
+            "loc": { "type": "object", "properties": { "table": { "type": "string" }, "key": { "type": "string" } } }
+          }
+        },
+        "component": {
+          "type": "object",
+          "required": ["ref"],
+          "properties": {
+            "ref": { "type": "string", "description": "Component document id." },
+            "name": { "type": "string" },
+            "overridden": { "type": "boolean" },
+            "variant": { "type": "object" }
+          }
+        },
+        "states": {
+          "type": "object",
+          "description": "Button visuals per state (fills / stroke / radius / bake).",
+          "properties": { "hovered": { "type": "object" }, "pressed": { "type": "object" }, "disabled": { "type": "object" } }
+        },
+        "meta": { "type": "object", "description": "Adapter hints (class, bake...). Superseded by role / variable / widgetName." },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/node" } }
+      },
+      "patternProperties": { "^x-": {} }
+    }
+  }
+}

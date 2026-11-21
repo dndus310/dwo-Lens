@@ -1,4 +1,4 @@
-"""Unit tests for the dwo-Lens Python tools. Standard library only.
+"""Unit tests for the dwo-Forge Lens Python tools. Standard library only.
 
     python -m unittest discover -s tests -v
 """
@@ -19,6 +19,7 @@ FIXTURE = Path(__file__).resolve().parent / "fixtures" / "raw_temp_proj"
 sys.path.insert(0, str(TOOLS))
 
 import lens_analyze as analyze  # noqa: E402
+import lens_features as features  # noqa: E402
 import lens_logs as logs  # noqa: E402
 import lens_quality as quality  # noqa: E402
 import lens_runtime as runtime  # noqa: E402
@@ -116,7 +117,22 @@ class LogParserTests(TempDir):
         self.assertEqual(crashes[0]["error"], "Access violation")
         self.assertEqual(crashes[0]["callstack"], ["A()", "B()"])
         self.assertIn("unreadable", crashes[1]["error"])
-        self.assertEqual(logs.verdict_of(logs.summarize([], crashes)), "fail")
+        self.assertEqual(logs.verdict_of(logs.summarize([], crashes)), "fail")  # no baseline: all new
+
+    def test_old_crashes_only_warn(self):
+        old = [{"folder": "UECC-1", "error": "x", "callstack": []}]
+        base = logs.summarize([], [dict(c) for c in old])
+        again = logs.summarize([], [dict(c) for c in old], baseline=base)
+        self.assertEqual(again["newCrashes"], 0)
+        self.assertEqual(logs.verdict_of(again), "warn")
+        more = logs.summarize([], [dict(c) for c in old] + [{"folder": "UECC-2", "error": "y", "callstack": []}], baseline=base)
+        self.assertEqual(more["newCrashes"], 1)
+        self.assertEqual(logs.verdict_of(more), "fail")
+
+    def test_load_json_accepts_bom(self):
+        p = self.tmp / "bom.uproject"
+        p.write_bytes(b"\xef\xbb\xbf" + b'{"FileVersion": 3}')
+        self.assertEqual(analyze.load_json(p)["FileVersion"], 3)
 
 
 # =============================================================================== analyzer
@@ -167,14 +183,14 @@ class AnalyzerFixtureTests(TempDir):
         hard = {(r["source"], r["target"]) for r in graph["relations"] if r["type"] == "AssetHardRef"}
         self.assertIn(("asset:/Game/WBP_ListView", "asset:/Game/WBP_Item"), hard)
         self.assertTrue(all(r["status"] in ("verified", "rule", "inferred", "unknown") for r in graph["relations"]))
-        for name in ("report.html", "index.db", "class_uml.puml", "findings.json", "quality.json", "statemonitor.json"):
+        for name in ("report.html", "index.db", "class_uml.puml", "findings.json", "quality.json", "statemonitor.json", "features.json"):
             self.assertTrue((out / name).exists(), name)
         self.assertTrue(list((out / "flows").glob("*.mmd")))
 
     def test_deterministic_output(self):
         a = self.run_cli(self.tmp / "a")
         b = self.run_cli(self.tmp / "b")
-        for name in ("graph.json", "findings.json", "quality.json", "class_uml.mmd"):
+        for name in ("graph.json", "findings.json", "quality.json", "class_uml.mmd", "features.json"):
             ha = hashlib.sha256((a / name).read_bytes()).hexdigest()
             hb = hashlib.sha256((b / name).read_bytes()).hexdigest()
             self.assertEqual(ha, hb, f"{name} differs between identical runs")
@@ -189,6 +205,24 @@ class AnalyzerFixtureTests(TempDir):
 
 
 class ModuleScanTests(TempDir):
+    def test_header_locations_for_the_architecture_tree(self):
+        write(self.tmp / "Source/Game/UI/ShopWidget.h",
+              "#pragma once\nUCLASS(BlueprintType, meta=(DisplayName=\"Shop\"))\nclass GAME_API UShopWidget : public UUserWidget\n{\n};\n"
+              "USTRUCT(BlueprintType)\nstruct FShopItem\n{\n};\n")
+        write(self.tmp / "Source/Game/GameCharacter.h", "UCLASS()\nclass AGameCharacter : public ACharacter {};\n")
+        write(self.tmp / "Source/Game/Plain.h", "class FNotReflected {};\n")
+        write(self.tmp / "Plugins/glTFRuntime/Source/glTFRuntime/Public/glTFRuntimeAsset.h",
+              "UCLASS(BlueprintType)\nclass GLTFRUNTIME_API UglTFRuntimeAsset : public UObject {};\n")
+        write(self.tmp / "Plugins/glTFRuntime/Intermediate/Build/x.generated.h", "UCLASS()\nclass UIgnored : public UObject {};\n")
+        found = analyze.scan_headers(self.tmp)
+        self.assertEqual(found["ShopWidget"], "Source/Game/UI/ShopWidget.h")
+        self.assertEqual(found["ShopItem"], "Source/Game/UI/ShopWidget.h")
+        self.assertEqual(found["GameCharacter"], "Source/Game/GameCharacter.h")
+        self.assertEqual(found["glTFRuntimeAsset"], "Plugins/glTFRuntime/Source/glTFRuntime/Public/glTFRuntimeAsset.h",
+                         "reflection drops the prefix even before a lower-case letter")
+        self.assertNotIn("NotReflected", found)
+        self.assertNotIn("Ignored", found)
+
     def test_build_cs_dependencies_and_cycle(self):
         write(self.tmp / "P.uproject", json.dumps({"Modules": [{"Name": "Game"}]}))
         write(self.tmp / "Source/Game/Game.Build.cs",
@@ -205,6 +239,188 @@ class ModuleScanTests(TempDir):
         result = analyze.run_checks(g, ctx)
         self.assertEqual(result["verdict"], "fail")
         self.assertEqual(result["findings"][0]["rule"], "module-cycle")
+
+
+CHARACTER_CPP = """
+#include "HeroCharacter.h"
+
+void AHeroCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+	// a comment with Fake(); calls and { braces
+	ResetHealth();
+	GetWorld()->GetTimerManager().SetTimer(RegenTimer, this, &AHeroCharacter::Regen, 1.0f, true);
+}
+
+void AHeroCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	if (UEnhancedInputComponent* Input = Cast<UEnhancedInputComponent>(PlayerInputComponent))
+	{
+		Input->BindAction(JumpAction, ETriggerEvent::Started, this, &AHeroCharacter::DoJump);
+		Input->BindAction(FireAction, ETriggerEvent::Triggered, this, &AHeroCharacter::Fire);
+	}
+	Hitbox->OnComponentBeginOverlap.AddDynamic(this, &AHeroCharacter::OnHitboxOverlap);
+}
+
+void AHeroCharacter::DoJump()
+{
+	if (bCanJump && !IsDead())
+	{
+		Jump();
+	}
+	else
+	{
+		PlayFailSound();
+	}
+	JumpCount += 1;
+}
+
+void AHeroCharacter::Fire()
+{
+	const FVector Muzzle(0.f, 0.f, 10.f);
+	for (int32 i = 0; i < Pellets; ++i)
+	{
+		GetWorld()->SpawnActor<AProjectile>(ProjectileClass, Muzzle, FRotator::ZeroRotator);
+	}
+}
+
+void AHeroCharacter::ResetHealth() { Health = MaxHealth; }
+void AHeroCharacter::Regen() { Health = FMath::Min(Health + 1.f, MaxHealth); }
+void AHeroCharacter::OnHitboxOverlap(UPrimitiveComponent* Comp, AActor* Other, UPrimitiveComponent* OtherComp, int32 Index, bool bSweep, const FHitResult& Hit)
+{
+	TakeHit(Other);
+}
+void AHeroCharacter::Heal_Implementation(float Amount) { Health += Amount; }
+"""
+
+
+def bp_node(nid, cls, title, **kw):
+    return {"id": nid, "class": cls, "title": title, "role": kw.pop("role", "other"), **kw}
+
+
+class FeatureTests(TempDir):
+    """Features: entry points from C++ source and Blueprint graphs, and the steps they run."""
+
+    def build(self):
+        write(self.tmp / "Source/Game/HeroCharacter.cpp", CHARACTER_CPP)
+        reflection = {"native": [{"path": "/Script/Game.HeroCharacter", "name": "HeroCharacter", "super": "/Script/Engine.Character",
+                                  "functions": [{"name": "Heal", "flags": ["Native", "Net", "NetServer"]},
+                                                {"name": "DoJump", "flags": ["Native", "BlueprintCallable"]}]}],
+                      "blueprint": []}
+        graph = {"name": "EventGraph", "kind": "event", "nodes": [
+            bp_node("e1", "K2Node_Event", "BeginPlay 이벤트", role="event", member="ReceiveBeginPlay"),
+            bp_node("b1", "K2Node_IfThenElse", "Branch"),
+            bp_node("c1", "K2Node_CallFunction", "Do Jump", role="call", member="DoJump", memberOwner="/Script/Game.HeroCharacter"),
+            bp_node("c2", "K2Node_CallFunction", "Print String", role="call", member="PrintString",
+                    memberOwner="/Script/Engine.KismetSystemLibrary"),
+            bp_node("e2", "K2Node_Event", "Tick 이벤트", role="event", member="ReceiveTick"),   # unwired: not a feature
+            bp_node("e3", "K2Node_ComponentBoundEvent", "On Component Begin Overlap (Box)", role="event"),
+            bp_node("s1", "K2Node_VariableSet", "Set", member="Score"),
+        ], "links": [
+            {"from": "e1", "fromPin": "then", "to": "b1", "toPin": "execute", "kind": "exec"},
+            {"from": "b1", "fromPin": "then", "to": "c1", "toPin": "execute", "kind": "exec"},
+            {"from": "b1", "fromPin": "else", "to": "c2", "toPin": "execute", "kind": "exec"},
+            {"from": "e3", "fromPin": "then", "to": "s1", "toPin": "execute", "kind": "exec"},
+        ]}
+        bp = {"asset": "/Game/BP_Hero.BP_Hero", "generatedClass": "/Game/BP_Hero.SKEL_BP_Hero_C",
+              "parent": "/Script/Game.HeroCharacter", "graphs": [graph]}
+        return features.build_features({"reflection": reflection, "blueprints": [bp]}, self.tmp, [])
+
+    def test_cpp_entry_points_by_category(self):
+        doc = self.build()
+        hero = next(c for c in doc["classes"] if c["key"] == "uclass:/Script/Game.HeroCharacter")
+        by_name = {f["name"]: f for f in hero["features"]}
+        self.assertEqual(by_name["BeginPlay"]["category"], "lifecycle")
+        self.assertEqual(by_name["Jump · Started"]["category"], "input")
+        self.assertEqual(by_name["Fire · Triggered"]["category"], "input")
+        self.assertEqual(by_name["Hitbox.OnComponentBeginOverlap"]["category"], "collision")
+        self.assertEqual(by_name["타이머 → Regen"]["category"], "timer")
+        self.assertEqual(by_name["Heal"]["category"], "network")
+        self.assertTrue(by_name["BeginPlay"]["where"].startswith("Source/Game/HeroCharacter.cpp:"))
+        self.assertTrue(all(f["estimated"] for f in hero["features"]))
+        self.assertNotIn("DoJump", by_name, "a bound input handler is not listed again as a public function")
+        texts = [s["text"] for s in by_name["BeginPlay"]["steps"]]
+        self.assertIn("ResetHealth", texts)
+        self.assertNotIn("Fake", " ".join(texts), "comments are not code")
+
+    def test_cpp_flow_has_branches_loops_and_expansion(self):
+        doc = self.build()
+        hero = next(c for c in doc["classes"] if c["key"] == "uclass:/Script/Game.HeroCharacter")
+        jump = next(f for f in hero["features"] if f["name"] == "Jump · Started")
+        call = jump["steps"][0]
+        self.assertEqual(call["text"], "DoJump")
+        branch = call["inner"][0]
+        self.assertEqual(branch["kind"], "branch")
+        self.assertEqual([b["label"] for b in branch["branches"]], ["참", "거짓"])
+        self.assertEqual(branch["branches"][0]["steps"][0]["text"], "Jump")
+        self.assertEqual(branch["branches"][1]["steps"][0]["text"], "PlayFailSound")
+        self.assertEqual(call["inner"][1], {"kind": "set", "text": "설정 JumpCount", "estimated": True})
+        fire = next(f for f in hero["features"] if f["name"] == "Fire · Triggered")
+        inner = fire["steps"][0]["inner"]
+        self.assertNotIn("Muzzle", [s["text"] for s in inner], "a declared variable is not a call")
+        loop = next(s for s in inner if s["kind"] == "loop")
+        self.assertEqual(loop["branches"][0]["steps"][0]["kind"], "spawn")
+
+    def test_blueprint_events_walk_exec_wires_into_cpp(self):
+        doc = self.build()
+        bp = next(c for c in doc["classes"] if c["key"] == "bp:/Game/BP_Hero.BP_Hero_C")
+        self.assertEqual(bp["name"], "BP_Hero")
+        self.assertEqual(bp["parent"], "uclass:/Script/Game.HeroCharacter")
+        names = [f["name"] for f in bp["features"]]
+        self.assertNotIn("Tick 이벤트", names, "an unwired default event does nothing")
+        begin = next(f for f in bp["features"] if f["name"] == "BeginPlay 이벤트")
+        self.assertEqual(begin["category"], "lifecycle")
+        branch = begin["steps"][0]
+        self.assertEqual(branch["kind"], "branch")
+        labels = {b["label"]: b["steps"] for b in branch["branches"]}
+        self.assertEqual(set(labels), {"참", "거짓"})
+        jump = labels["참"][0]
+        self.assertEqual(jump["target"], "uclass:/Script/Game.HeroCharacter")
+        self.assertEqual(jump["inner"][0]["kind"], "branch", "the BP call continues into the C++ body")
+        overlap = next(f for f in bp["features"] if f["name"].startswith("On Component Begin Overlap"))
+        self.assertEqual(overlap["category"], "collision")
+        self.assertEqual(overlap["steps"], [{"kind": "set", "text": "설정 Score"}])
+
+    def test_report_section(self):
+        html_text = features.render_html(self.build())
+        self.assertIn("<h2>기능</h2>", html_text)
+        self.assertIn("Jump · Started", html_text)
+        self.assertIn("C++ 소스 추정", html_text)
+
+
+class ClassModelTests(unittest.TestCase):
+    def graph(self):
+        g = analyze.Graph()
+        g.symbol("class:/Script/Engine.Actor", "class", "Actor", external=True, module="Engine")
+        for folder in ("/Game/A/BP_Door", "/Game/B/BP_Door"):   # same class name in two folders
+            key = g.symbol(f"bp:{folder}.BP_Door_C", "blueprint", "BP_Door_C", package=folder, asset_class="Blueprint",
+                           properties=[{"name": "Open Speed ", "type": "double"}], functions=["Open Door"])
+            g.relate(key, "class:/Script/Engine.Actor", "Inherits", "parent")
+        g.symbol("bp:/Game/A/BP_Empty.BP_Empty_C", "blueprint", "BP_Empty_C", package="/Game/A/BP_Empty")
+        return g
+
+    def test_mermaid_has_no_empty_class_body(self):
+        mmd, _ = analyze.class_diagram(self.graph())
+        self.assertIn("class BP_Empty_C\n", mmd + "\n")
+        self.assertNotRegex(mmd, r"\{\s*\}")   # Mermaid 10 rejects "class X {" + "}"
+
+    def test_xmi_packages_keep_same_names_apart(self):
+        import xml.etree.ElementTree as ET
+        root = ET.fromstring(analyze.class_xmi(self.graph(), "P"))
+        t = "{http://schema.omg.org/spec/XMI/2.1}type"
+        classes = [e for e in root.iter() if e.get(t) == "uml:Class"]
+        self.assertEqual(sorted(c.get("name") for c in classes), ["Actor", "BP_Door_C", "BP_Door_C", "BP_Empty_C"])
+        parents = {}
+        for pkg in (e for e in root.iter() if e.get(t) == "uml:Package"):
+            for child in pkg:
+                if child.get(t) == "uml:Class":
+                    parents.setdefault(child.get("name"), set()).add(pkg.get("name"))
+        self.assertEqual(parents["BP_Door_C"], {"A", "B"})
+        self.assertEqual(parents["Actor"], {"Engine"})
+        gens = [e for e in root.iter() if e.get(t) == "uml:Generalization"]
+        self.assertEqual(len(gens), 2)
+        attr = next(e for e in root.iter() if e.get(t) == "uml:Property")
+        self.assertEqual(attr.get("name"), "Open Speed")
 
 
 # =============================================================================== quality checks
@@ -294,6 +510,20 @@ class QualityTests(TempDir):
         self.assertEqual(len(data["bpCalls"]), 1)
         self.assertEqual(data["testFilter"], "StateMonitor.")
         self.assertEqual(findings[0]["rule"], "state-monitor")
+
+    def test_dwo_state_monitor_detection(self):
+        # dwo-Forge installs the renamed plugin as Plugins/__DwoStateMonitor; BP nodes reference /Script/DwoStateMonitor.
+        write(self.tmp / "P.uproject", json.dumps({"Plugins": []}))
+        write(self.tmp / "Plugins/__DwoStateMonitor/DwoStateMonitor.uplugin", "{}")
+        bp = {"asset": "/Game/BP_A.BP_A", "graphs": [{"name": "EventGraph", "nodes": [
+            {"id": "n1", "role": "call", "member": "SubmitStateSnapshot", "memberOwner": "/Script/DwoStateMonitor.StateMonitorLibrary"},
+            {"id": "n2", "role": "call", "member": "WatchStateObject", "memberOwner": "/Script/StateMonitor.StateMonitorLibrary"}]}]}
+        cfg = json.loads((ROOT / "config" / "default.json").read_text(encoding="utf-8"))
+        findings, data = quality.check_state_monitor(self.ctx(bp_index={"bp:a": bp}), cfg)
+        self.assertTrue(data["present"] and data["enabled"])
+        self.assertEqual(data["plugin"].replace("\\", "/"), "Plugins/__DwoStateMonitor/DwoStateMonitor.uplugin")
+        self.assertEqual(len(data["bpCalls"]), 2, "assets saved against the old module still count")
+        self.assertEqual(data["testFilter"], "StateMonitor.")
 
     def test_state_monitor_absent(self):
         findings, data = quality.check_state_monitor(self.ctx(), {"stateMonitor": {}})
@@ -479,7 +709,13 @@ class CatalogAndConfigTests(unittest.TestCase):
         for t in catalog["tools"]:
             self.assertIn(t["kind"], ("build", "wrap", "ai"))
             self.assertIn(t["status"], ("ready", "planned"))
-            self.assertRegex(t["station"], r"^(ST-[1-5]|OPS)$")
+            self.assertRegex(t["station"], r"^(ST-[1-5]|BUILD|OPS|UI)$")
+            self.assertIn(t["tool"], ("lens", "statemonitor", "canvas", "builder", "forge"))
+        tools = {t["tool"] for t in catalog["tools"]}
+        self.assertEqual(tools, {"lens", "statemonitor", "canvas", "builder", "forge"}, "every dwo-Forge tool group has catalog entries")
+        commands = " ".join(t["command"] for t in catalog["tools"])
+        for command in ("canvas-install", "canvas-remove", "canvas-import", "canvas-validate", "sm-install", "sm-remove"):
+            self.assertIn(command, commands)
 
     def test_default_config_is_valid_json_with_all_sections(self):
         cfg = json.loads((ROOT / "config" / "default.json").read_text(encoding="utf-8"))

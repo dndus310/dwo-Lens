@@ -1,4 +1,4 @@
-"""dwo-Lens analyzer: raw extractor JSON -> unified graph, SQLite index, diagrams, gate findings, HTML report.
+"""dwo-Forge DwoLens analyzer: raw extractor JSON -> unified graph, SQLite index, diagrams, gate findings, HTML report.
 
 Standard library only. Deterministic: the same raw input always produces the same output.
 
@@ -16,13 +16,13 @@ from collections import defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import lens_features  # noqa: E402
 import lens_quality  # noqa: E402
 
 SCHEMA = "lens.graph/0.1"
 EXTRACTOR_VERSION = "lens-analyze/0.1"
 MAX_DIAGRAM_NODES = 120
 MAX_FLOW_NODES = 60
-MAX_REPORT_FLOWS = 60
 TICK_EVENTS = {"ReceiveTick", "Tick"}
 EXTERNAL_PREFIXES = ("__ExternalActors__", "__ExternalObjects__")
 
@@ -30,7 +30,7 @@ EXTERNAL_PREFIXES = ("__ExternalActors__", "__ExternalObjects__")
 # --------------------------------------------------------------------------- helpers
 
 def load_json(path: Path):
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(path.read_text(encoding="utf-8-sig"))  # .uproject files may start with a BOM
 
 
 def normalize_class(path: str) -> str:
@@ -71,6 +71,23 @@ def mermaid_id(key: str) -> str:
 
 def mermaid_label(text: str) -> str:
     return text.replace("\n", " ").replace('"', "#quot;").replace("<", "#lt;").replace(">", "#gt;")
+
+
+MERMAID_CDN = "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"
+VENDOR_DIR = Path(__file__).resolve().parent / "vendor"
+
+
+def vendor_mermaid(dest: Path) -> None:
+    """Reports load Mermaid from <data>/vendor so diagrams render without internet (closed networks);
+    the CDN is only a fallback for a report opened away from its data folder."""
+    src = VENDOR_DIR / "mermaid.min.js"
+    target = dest / "mermaid.min.js"
+    try:
+        if src.exists() and (not target.exists() or target.stat().st_size != src.stat().st_size):
+            dest.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(src.read_bytes())
+    except OSError:
+        pass   # the CDN fallback still works where there is internet
 
 
 def tarjan(graph: dict[str, set[str]]) -> list[list[str]]:
@@ -223,6 +240,41 @@ def scan_modules(project_file: Path, g: Graph) -> dict[str, set[str]]:
     return deps
 
 
+# --------------------------------------------------------------------------- C++ header locations
+
+# UCLASS()/USTRUCT()/UINTERFACE() ... class|struct [MODULE_API] UMyThing : ...   (the reflected name drops the prefix)
+DECL_RE = re.compile(r"\b(UCLASS|UINTERFACE|USTRUCT)\s*\((?:[^()]|\([^()]*\))*\)\s*(?:class|struct)\s+(?:[A-Z0-9_]+_API\s+)?([AUFIS][A-Za-z0-9_]*)\b")
+
+
+def scan_headers(root: Path) -> dict[str, str]:
+    """Reflected type name -> header path relative to the project (forward slashes), from Source/ and project plugins.
+
+    The editor's reflection data has the module but not the file; the launcher's architecture view lays classes out
+    by their folder, so the analysis finds where each one is declared. First declaration wins.
+    """
+    found: dict[str, str] = {}
+    dirs = [root / "Source"] + [d / "Source" for d in (root / "Plugins").rglob("*") if d.is_dir() and (d / "Source").is_dir()
+                                and "__DwoLensInspector" not in d.parts and "Intermediate" not in d.parts] if (root / "Plugins").exists() else [root / "Source"]
+    for base in dirs:
+        if not base.exists():
+            continue
+        for header in base.rglob("*.h"):
+            if "Intermediate" in header.parts or header.name.endswith(".generated.h"):
+                continue
+            try:
+                text = header.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            if "UCLASS" not in text and "UINTERFACE" not in text and "USTRUCT" not in text:
+                continue
+            rel = header.relative_to(root).as_posix()
+            for _, name in DECL_RE.findall(text):
+                # reflection drops the A/U/F/I/S prefix (also before lower case: UglTFRuntimeAsset -> glTFRuntimeAsset)
+                found.setdefault(name[1:], rel)
+                found.setdefault(name, rel)
+    return found
+
+
 # --------------------------------------------------------------------------- build graph
 
 def build(raw: Path, project_file: Path):
@@ -273,6 +325,12 @@ def build(raw: Path, project_file: Path):
                     g.relate(key, class_key(target), rel, f"{c['name']}.{prop['name']}")
             if module:
                 g.relate(f"module:{module}", key, "Contains", c["package"])
+
+    # where each project C++ class is declared (Source/... or Plugins/<plugin>/Source/...)
+    headers = scan_headers(project_file.parent)
+    for sym in g.symbols.values():
+        if sym["kind"] == "class" and not sym["external"] and sym["name"] in headers:
+            sym["file"] = headers[sym["name"]]
 
     # blueprint graphs -------------------------------------------------------
     bp_index = {}
@@ -475,9 +533,12 @@ def class_diagram(g: Graph) -> tuple[str, str]:
             continue
         members = [f"+{p['type'].replace('<', '~').replace('>', '~')} {p['name']}" for p in s.get("properties", [])[:12]]
         methods = [f"+{f}()" for f in s.get("functions", [])[:12]]
-        mmd.append(f"class {cid} {{")
-        mmd += [f"  {m}" for m in members + methods]
-        mmd.append("}")
+        if members or methods:
+            mmd.append(f"class {cid} {{")
+            mmd += [f"  {m}" for m in members + methods]
+            mmd.append("}")
+        else:
+            mmd.append(f"class {cid}")   # Mermaid rejects an empty body ("class X {" + "}")
         stereo = " <<blueprint>>" if s["kind"] == "blueprint" else ""
         puml.append(f'class "{label}" as {cid}{stereo} {{')
         puml += [f"  {m}" for m in members + methods]
@@ -491,6 +552,101 @@ def class_diagram(g: Graph) -> tuple[str, str]:
             puml.append(f"{ids[r['target']]} {p} {ids[r['source']]}{label}")
     puml.append("@enduml")
     return "\n".join(mmd), "\n".join(puml)
+
+
+def class_xmi(g: Graph, model_name: str) -> str:
+    """UML 2 class model as XMI 2.1, for modeling tools that import XMI (Visual Paradigm, Enterprise Architect,
+    MagicDraw, Eclipse Papyrus). Same classes as the diagram but without the node cap or member limits:
+    project classes/blueprints, their direct external parents (in an "External" package), generalizations,
+    realizations and hard/soft asset references as dependencies."""
+    project = [s for s in g.symbols.values() if s["kind"] in ("class", "blueprint") and not s["external"]]
+    keys = {s["key"] for s in project}
+    edges = [r for r in g.edges("Inherits", "Implements", "RefHard", "RefSoft") if r["source"] in keys]
+    shown = keys | {r["target"] for r in edges if r["type"] in ("Inherits", "Implements")}
+
+    def q(v: str) -> str:
+        return html.escape(str(v), quote=True)
+
+    ids = {key: f"c{i}" for i, key in enumerate(sorted(shown), 1)}
+    types: dict[str, str] = {}
+
+    def type_id(name: str) -> str:
+        return types.setdefault(name, f"t{len(types) + 1}")
+
+    parents = defaultdict(list)
+    for r in edges:
+        if r["type"] == "Inherits" and r["target"] in ids:
+            parents[r["source"]].append(r["target"])
+
+    def class_xml(key: str, indent: str) -> list[str]:
+        s = g.symbols.get(key, {"name": short_name(key), "external": True})
+        cid = ids[key]
+        out = [f'{indent}<packagedElement xmi:type="uml:Class" xmi:id="{cid}" name="{q(s["name"])}">']
+        if s.get("kind") == "blueprint":
+            out.append(f'{indent}  <ownedComment xmi:type="uml:Comment" xmi:id="{cid}_doc" body="{q(s.get("asset_class") or "Blueprint")} {q(s.get("package", ""))}"/>')
+        for n, parent in enumerate(sorted(parents.get(key, [])), 1):
+            out.append(f'{indent}  <generalization xmi:type="uml:Generalization" xmi:id="{cid}_g{n}" general="{ids[parent]}"/>')
+        for n, p in enumerate(s.get("properties", []), 1):
+            name = str(p.get("name", "")).strip()
+            out.append(f'{indent}  <ownedAttribute xmi:type="uml:Property" xmi:id="{cid}_a{n}" name="{q(name)}" '
+                       f'visibility="public" type="{type_id(str(p.get("type", "")).strip() or "unknown")}"/>')
+        for n, f in enumerate(s.get("functions", []), 1):
+            out.append(f'{indent}  <ownedOperation xmi:type="uml:Operation" xmi:id="{cid}_o{n}" name="{q(str(f).strip())}" visibility="public"/>')
+        out.append(f"{indent}</packagedElement>")
+        return out
+
+    # Classes go into packages that mirror where they live (/Game/... folders for blueprints, C++/<module>,
+    # External/<module>). Same-named blueprints in different folders are common, and a flat model makes
+    # importers rename or reject them.
+    def folder(key: str) -> list[str]:
+        s = g.symbols.get(key, {})
+        if key in keys:
+            if s.get("kind") == "blueprint" and s.get("package"):
+                return [p for p in s["package"].split("/")[:-1] if p]
+            return ["C++", s.get("module") or "Unknown"]
+        return ["External", s.get("module") or (s.get("package") or "").strip("/").split("/")[0] or "Engine"]
+
+    tree: dict = {}
+    for key in sorted(shown):
+        node = tree
+        for part in folder(key):
+            node = node.setdefault(part, {})
+        node.setdefault("", []).append(key)
+
+    body: list[str] = []
+    pkg_ids = iter(range(1, 1 << 30))
+
+    def emit(node: dict, indent: str) -> None:
+        for key in node.get("", []):
+            body.extend(class_xml(key, indent))
+        for name in sorted(k for k in node if k):
+            body.append(f'{indent}<packagedElement xmi:type="uml:Package" xmi:id="p{next(pkg_ids)}" name="{q(name)}">')
+            emit(node[name], indent + "  ")
+            body.append(f"{indent}</packagedElement>")
+
+    emit(tree, "    ")
+    n = 0
+    for r in sorted(edges, key=lambda r: (r["source"], r["target"], r["type"])):
+        if r["type"] == "Inherits" or r["source"] not in ids or r["target"] not in ids:
+            continue
+        n += 1
+        kind = "uml:Realization" if r["type"] == "Implements" else "uml:Dependency"
+        name = "" if r["type"] == "Implements" else f' name="{r["type"]}"'
+        body.append(f'    <packagedElement xmi:type="{kind}" xmi:id="r{n}"{name} client="{ids[r["source"]]}" supplier="{ids[r["target"]]}"/>')
+    if types:
+        body.append('    <packagedElement xmi:type="uml:Package" xmi:id="pkg_types" name="Types">')
+        body += [f'      <packagedElement xmi:type="uml:DataType" xmi:id="{tid}" name="{q(name)}"/>' for name, tid in sorted(types.items(), key=lambda t: t[1])]
+        body.append("    </packagedElement>")
+    return "\n".join([
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<xmi:XMI xmi:version="2.1" xmlns:xmi="http://schema.omg.org/spec/XMI/2.1" xmlns:uml="http://www.eclipse.org/uml2/3.0.0/UML">',
+        '  <xmi:Documentation exporter="dwo-Forge DwoLens" exporterVersion="' + q(EXTRACTOR_VERSION) + '"/>',
+        f'  <uml:Model xmi:id="model" name="{q(model_name)}">',
+        *body,
+        "  </uml:Model>",
+        "</xmi:XMI>",
+        "",
+    ])
 
 
 def module_diagram(g: Graph) -> str | None:
@@ -592,7 +748,8 @@ summary{cursor:pointer;color:var(--ink2)}code{font-family:Consolas,monospace;fon
 """
 
 
-def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, diagrams: dict, quality_html: str = ""):
+def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, diagrams: dict, quality_html: str = "",
+                  features_html: str = ""):
     meta = ctx["meta"]
     esc = html.escape
     project_syms = [s for s in g.symbols.values() if not s["external"]]
@@ -610,24 +767,12 @@ def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, dia
                 len(f["items"]), "<br>".join(esc(p) for p in preview))
         rows.append(f"<tr><td><span class='badge {f['severity']}'>{f['severity']}</span></td>"
                     f"<td><code>{esc(f['rule'])}</code></td><td>{esc(f['message'])}{items}</td></tr>")
-    findings_html = "".join(rows) or "<tr><td colspan='3'>발견 사항 없음</td></tr>"
+    findings_html = "".join(rows) or "<tr><td colspan='3'>검출된 문제 없음</td></tr>"
 
     def mermaid_block(title: str, source: str | None, note: str = "") -> str:
         if not source:
             return f"<h3>{esc(title)}</h3><p class='meta'>해당 데이터 없음</p>"
         return f"<h3>{esc(title)}</h3>{note}<pre class='mermaid'>{esc(source)}</pre>"
-
-    # Large projects have thousands of graphs; the page keeps the biggest ones and links the rest.
-    all_flows = [(bp_name, gname, src) for bp_name, graphs in diagrams["flows"].items() for gname, src in graphs]
-    shown = sorted(all_flows, key=lambda f: -f[2].count("\n"))[:MAX_REPORT_FLOWS]
-    shown_keys = {(b, gname) for b, gname, _ in shown}
-    flows_html = []
-    for bp_name, graphs in diagrams["flows"].items():
-        inner = "".join(mermaid_block(f"{bp_name} · {gname}", src) for gname, src in graphs if (bp_name, gname) in shown_keys)
-        if inner:
-            flows_html.append(f"<details{' open' if len(shown) <= 12 else ''}><summary>{esc(bp_name)}</summary>{inner}</details>")
-    if len(all_flows) > len(shown):
-        flows_html.append(f"<p class='meta'>실행 흐름 {len(all_flows)}개 중 큰 {len(shown)}개만 표시했습니다. 전체는 flows/*.mmd 파일에 있습니다.</p>")
 
     calls_by_source = defaultdict(set)
     for r in g.edges("Calls"):
@@ -639,7 +784,7 @@ def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, dia
                        f"<td>{esc(short_name(bp['parent']))}</td><td>{len(bp['graphs'])}</td><td>{esc(targets)}</td></tr>")
 
     doc = f"""<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>dwo-Lens 리포트 · {esc(Path(meta['project']).stem)}</title><style>{REPORT_CSS}</style></head><body><main>
+<title>dwo-Forge DwoLens 리포트 · {esc(Path(meta['project']).stem)}</title><style>{REPORT_CSS}{lens_features.REPORT_CSS}</style></head><body><main>
 <section><div class="meta">{esc(run_id)} · UE {esc(meta['engineVersion'].split('-')[0])} · {esc(meta['extractedAtUtc'])}</div>
 <h1>{esc(Path(meta['project']).stem)} 아키텍처 리포트 <span class="badge {result['verdict']}">{result['verdict']}</span></h1>
 <div class="kpis">
@@ -650,21 +795,23 @@ def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, dia
 <div class="kpi"><b>{status.get('verified', 0)}</b><span>verified 관계</span></div>
 <div class="kpi"><b>{status.get('unknown', 0)}</b><span>unknown 관계</span></div>
 </div></section>
-<section><h2>검증 게이트</h2><div class="scroll"><table><thead><tr><th>판정</th><th>규칙</th><th>내용</th></tr></thead><tbody>{findings_html}</tbody></table></div></section>
+<section><h2>품질 게이트</h2><div class="scroll"><table><thead><tr><th>결과</th><th>규칙</th><th>내용</th></tr></thead><tbody>{findings_html}</tbody></table></div></section>
 {quality_html}
+{features_html}
 <section><h2>클래스 구조</h2>{mermaid_block('클래스 UML', diagrams['classes'])}</section>
 <section><h2>모듈 의존성</h2>{mermaid_block('모듈 · 플러그인', diagrams['modules'])}</section>
 <section><h2>에셋 참조</h2>{mermaid_block('에셋 참조 (실선 hard · 점선 soft)', diagrams['assets'])}</section>
 <section><h2>Blueprint</h2><div class="scroll"><table><thead><tr><th>이름</th><th>종류</th><th>부모</th><th>그래프</th><th>호출 대상 클래스</th></tr></thead>
-<tbody>{''.join(bp_rows) or "<tr><td colspan='5'>없음</td></tr>"}</tbody></table></div>
-<h3>실행 흐름</h3>{''.join(flows_html) or "<p class='meta'>실행 흐름 없음</p>"}</section>
-<section class="meta">산출물: graph.json · index.db · class_uml.puml · class_uml.mmd · findings.json · quality.json · statemonitor.json · flows/*.mmd</section>
+<tbody>{''.join(bp_rows) or "<tr><td colspan='5'>없음</td></tr>"}</tbody></table></div></section>
+<section class="meta">결과 파일: graph.json · index.db · class_uml.puml · class_uml.mmd · class_uml.xmi (Visual Paradigm 등 UML 도구용) · findings.json · quality.json · statemonitor.json · features.json · flows/*.mmd (Blueprint 실행 그래프)</section>
 </main>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script src="../../../vendor/mermaid.min.js"></script>
+<script>if(!window.mermaid)document.write('<script src="{MERMAID_CDN}"><\\/script>')</script>
 <script>mermaid.initialize({{startOnLoad:true,securityLevel:'strict',maxTextSize:200000,
 theme:matchMedia('(prefers-color-scheme: dark)').matches?'dark':'neutral'}});</script>
 </body></html>"""
     (out / "report.html").write_text(doc, encoding="utf-8")
+    vendor_mermaid(out.parent.parent.parent / "vendor")
 
 
 # --------------------------------------------------------------------------- main
@@ -706,17 +853,23 @@ def main() -> int:
         "relations": sorted(g.relations.values(), key=lambda r: (r["source"], r["target"], r["type"])),
     }
     (args.out / "graph.json").write_text(json.dumps(graph_doc, ensure_ascii=False, indent=1), encoding="utf-8")
+    # what each class does, by entry point (Blueprint wires + project C++ source)
+    features = lens_features.build_features({"reflection": load_json(args.raw / "reflection.json"),
+                                             "blueprints": load_json(args.raw / "blueprints.json")["blueprints"]},
+                                            args.project.parent, graph_doc["symbols"])
+    (args.out / "features.json").write_text(json.dumps(features, ensure_ascii=False, indent=1), encoding="utf-8")
     (args.out / "findings.json").write_text(json.dumps({"runId": args.run_id, **result}, ensure_ascii=False, indent=1), encoding="utf-8")
     (args.out / "class_uml.mmd").write_text(classes_mmd, encoding="utf-8")
     (args.out / "class_uml.puml").write_text(classes_puml, encoding="utf-8")
+    (args.out / "class_uml.xmi").write_text(class_xmi(g, args.project.stem), encoding="utf-8")
     if diagrams["modules"]:
         (args.out / "modules.mmd").write_text(diagrams["modules"], encoding="utf-8")
     if diagrams["assets"]:
         (args.out / "assets.mmd").write_text(diagrams["assets"], encoding="utf-8")
     write_sqlite(g, args.out / "index.db", ctx["meta"])
-    render_report(args.out, args.run_id, g, ctx, result, diagrams, lens_quality.render_html(quality))
+    render_report(args.out, args.run_id, g, ctx, result, diagrams, lens_quality.render_html(quality), lens_features.render_html(features))
 
-    print(f"[dwo-lens] symbols={len(g.symbols)} relations={len(g.relations)} verdict={result['verdict']} "
+    print(f"[dwo-forge] symbols={len(g.symbols)} relations={len(g.relations)} verdict={result['verdict']} "
           f"findings={len(result['findings'])}")
     return 0
 

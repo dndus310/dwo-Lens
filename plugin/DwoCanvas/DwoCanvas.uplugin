@@ -1,0 +1,23 @@
+{
+	"FileVersion": 3,
+	"Version": 2,
+	"VersionName": "0.2.0",
+	"FriendlyName": "DwoCanvas",
+	"Description": "dwo-Forge tool: turns tool-neutral design documents (dwocanvas/2 JSON from Figma, HTML, inference or hand-written) into Widget Blueprint designer trees, with incremental re-import, C++ binding checks, visual diff and extension widgets.",
+	"Category": "UI",
+	"CreatedBy": "",
+	"CanContainContent": true,
+	"IsBetaVersion": true,
+	"Modules": [
+		{
+			"Name": "DwoCanvasRuntime",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "DwoCanvasEditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	]
+}

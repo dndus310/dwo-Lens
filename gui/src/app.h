@@ -10,7 +10,7 @@ struct LineDef
 {
 	const char* line;       // run.json "line"
 	const char* prefix;     // run id prefix
-	const char* command;    // __dwo-lens.bat command
+	const char* command;    // __dwo-forge.bat command
 	const char* name;
 	const char* icon;
 	const char* desc;
@@ -23,10 +23,15 @@ static const LineDef kLines[] = {
 	{ "logs", "logs", "logs", "로그 분석", ICON_LIST, "Saved/Logs·크래시 분석, 이전 실행 대비 새 오류", false },
 	{ "smoke", "smoke", "smoke", "맵 스모크", ICON_PLAY, "맵마다 게임을 띄워 오류·ensure·크래시 수집", true },
 	{ "perf", "perf", "perf", "성능 캡처", ICON_SPEED, "CSV 프로파일러로 프레임·스레드 시간과 히치 측정", true },
-	{ "sizes", "sizes", "sizes", "콘텐츠 용량", ICON_PACKAGE, "에셋 용량, 폴더·유형별 분포, 하드 참조로 함께 로드되는 무게", false },
+	{ "sizes", "sizes", "sizes", "콘텐츠 용량", ICON_PACKAGE, "에셋 용량, 폴더·유형별 분포, 하드 참조로 함께 로드되는 용량", false },
 	{ "trace", "trace", "trace", "Insights 트레이스", ICON_DIAG, "Unreal Insights 트레이스 캡처", true },
+	{ "compile", "compile", "compile", "C++ 컴파일", ICON_CODE, "UnrealBuildTool로 에디터 대상 빌드, 컴파일 오류·경고 집계. 에디터를 닫고 실행하세요.", true },
+	{ "package", "package", "package", "패키지 빌드", ICON_PACKAGE, "RunUAT BuildCookRun으로 실행 파일 패키징. 결과물은 최근 3개만 보관", true },
 };
 static const int kLineCount = (int)(sizeof(kLines) / sizeof(kLines[0]));
+// The first lines are DwoLens checks; compile and package (the last two) belong to DwoBuilder.
+static const int kLensLineCount = 7;
+static bool IsBuildLine(int line) { return line >= kLensLineCount; }
 
 static int LineIndexOf(const std::string& line, const std::string& id)
 {
@@ -38,7 +43,7 @@ static int LineIndexOf(const std::string& line, const std::string& id)
 	return -1;
 }
 
-// ============================================================================ structure model (graph.json and flows/*.mmd)
+// ============================================================================ structure model (graph.json and features.json)
 
 struct ClassNode
 {
@@ -51,20 +56,89 @@ struct ClassNode
 	std::string parent;
 };
 
-struct FlowEdge
+// What a class does (features.json): its entry points (events, input, overrides, bindings...) and the steps each one
+// runs, with branches and expanded calls. Steps read from C++ source are estimates.
+struct FlowStep;
+struct FlowBranch
 {
-	std::string to;
-	std::string pin;
+	std::string label;
+	std::vector<FlowStep> steps;
 };
 
-struct Flow
+struct FlowStep
 {
-	std::string title;
-	std::map<std::string, std::string> labels;
-	std::map<std::string, std::vector<FlowEdge>> out;
-	std::vector<std::string> starts;
-	std::vector<std::string> order;
+	std::string kind;      // call, set, branch, sequence, loop, cast, spawn, widget, timer, dispatch, bind, macro, other
+	std::string text;
+	std::string target;    // class key the step reaches into (navigation)
+	bool estimated = false;
+	int repeat = 1;
+	std::vector<FlowBranch> branches;
+	std::vector<FlowStep> inner;   // the called function's own steps
 };
+
+struct Feature
+{
+	std::string id, name, category, trigger, owner, source, where;
+	bool estimated = false;
+	std::vector<FlowStep> steps;
+};
+
+struct ClassFeatures
+{
+	std::string key, name, kind, parent;
+	std::vector<Feature> features;
+};
+
+// Where a symbol lives, for the architecture view's location tree.
+// cat: 0 source code (Source/), 1 content (/Game), 2 project plugins (Plugins/), 3 engine and external.
+struct Location
+{
+	int cat = 3;
+	std::vector<std::string> dirs;   // folders under the category, outermost first
+	std::string badge;               // C++, BP, 위젯 BP, DataTable, 모듈 ...
+};
+
+static std::vector<std::string> SplitPath(const std::string& path)
+{
+	std::vector<std::string> parts;
+	std::string cur;
+	for (char c : path)
+	{
+		if (c == '/' || c == '\\') { if (!cur.empty()) parts.push_back(cur); cur.clear(); }
+		else cur += c;
+	}
+	if (!cur.empty()) parts.push_back(cur);
+	return parts;
+}
+
+// file: Source/... or Plugins/... header; package: /Game/... or /<Plugin>/... asset package.
+static Location LocateSymbol(const std::string& file, const std::string& package, bool external, const std::string& module, const std::string& badge)
+{
+	Location l;
+	l.badge = badge;
+	if (!file.empty())
+	{
+		auto parts = SplitPath(file);
+		if (!parts.empty()) parts.pop_back();   // the file itself
+		if (!parts.empty() && parts[0] == "Source") { l.cat = 0; l.dirs.assign(parts.begin() + 1, parts.end()); }
+		else if (!parts.empty() && parts[0] == "Plugins") { l.cat = 2; l.dirs.assign(parts.begin() + 1, parts.end()); }
+		else { l.cat = 0; l.dirs = parts; }
+		return l;
+	}
+	if (!package.empty() && package[0] == '/')
+	{
+		auto parts = SplitPath(package);
+		if (!parts.empty()) parts.pop_back();   // the asset itself
+		if (!parts.empty() && parts[0] == "Game") { l.cat = 1; l.dirs.assign(parts.begin() + 1, parts.end()); }
+		else if (!parts.empty() && parts[0] == "Script") { l.cat = external ? 3 : 0; l.dirs = { module.empty() ? (parts.size() > 1 ? parts[1] : "기타") : module }; }
+		else if (!parts.empty() && (parts[0] == "Engine" || external)) { l.cat = 3; l.dirs = parts; }
+		else if (!parts.empty()) { l.cat = 2; l.dirs = { parts[0], "Content" }; l.dirs.insert(l.dirs.end(), parts.begin() + 1, parts.end()); }
+		return l;
+	}
+	l.cat = external ? 3 : 0;
+	if (!module.empty()) l.dirs = { module };
+	return l;
+}
 
 struct Structure
 {
@@ -73,53 +147,65 @@ struct Structure
 		std::string src, dst, type;
 	};
 	bool loaded = false;
+	std::map<std::string, Location> locByKey;    // class/blueprint key -> location
+	std::map<std::string, Location> locByName;   // display name (refs lists) -> location
 	std::map<std::string, ClassNode> classes;
 	std::vector<std::string> classRoots;
 	std::vector<Ref> calls, assetRefs, moduleDeps;
-	std::vector<Flow> flows;
+	std::map<std::string, ClassFeatures> features;                  // class key -> features
+	std::vector<std::pair<std::string, std::string>> featureCats;   // category id -> name, in display order
+	int featureCount = 0;
 	int symbols = 0, relations = 0;
 };
 
-static std::string MermaidUnescape(std::string s)
+static FlowStep ParseStep(const json& j)
 {
-	auto replaceAll = [&s](const std::string& a, const std::string& b) {
-		for (size_t p = s.find(a); p != std::string::npos; p = s.find(a, p + b.size())) s.replace(p, a.size(), b);
-	};
-	replaceAll("#quot;", "\"");
-	replaceAll("#lt;", "<");
-	replaceAll("#gt;", ">");
-	return s;
+	FlowStep st;
+	st.kind = Str(j, "kind");
+	st.text = Str(j, "text");
+	st.target = Str(j, "target");
+	st.estimated = j.value("estimated", false);
+	st.repeat = (int)ImMax<long long>(1, Num(j, "repeat"));
+	for (auto& b : Arr(j, "branches"))
+	{
+		FlowBranch br;
+		br.label = Str(b, "label");
+		for (auto& x : Arr(b, "steps")) br.steps.push_back(ParseStep(x));
+		st.branches.push_back(std::move(br));
+	}
+	for (auto& x : Arr(j, "inner")) st.inner.push_back(ParseStep(x));
+	return st;
 }
 
-static Flow ParseFlow(const fs::path& file)
+static void LoadFeatures(const fs::path& file, Structure& s)
 {
-	Flow f;
-	f.title = PathUtf8(file.stem());
-	std::ifstream in(file, std::ios::binary);
-	std::string line;
-	std::set<std::string> hasIncoming;
-	static const std::regex edge(R"(^(\S+) -->(?:\|([^|]*)\|)? (\S+)$)");
-	std::smatch m;
-	while (std::getline(in, line))
+	auto doc = ReadJson(file);
+	if (!doc) return;
+	for (auto& c : Arr(*doc, "categories")) s.featureCats.push_back({ Str(c, "id"), Str(c, "name") });
+	for (auto& c : Arr(*doc, "classes"))
 	{
-		if (!line.empty() && line.back() == '\r') line.pop_back();
-		if (line.rfind("flowchart", 0) == 0 || line.empty()) continue;
-		if (std::regex_match(line, m, edge))
+		ClassFeatures cf;
+		cf.key = Str(c, "key");
+		cf.name = Str(c, "name");
+		cf.kind = Str(c, "kind");
+		cf.parent = Str(c, "parent");
+		for (auto& f : Arr(c, "features"))
 		{
-			f.out[m[1]].push_back({ m[3], MermaidUnescape(m[2]) });
-			hasIncoming.insert(m[3]);
-			continue;
+			Feature ft;
+			ft.id = Str(f, "id");
+			ft.name = Str(f, "name");
+			ft.category = Str(f, "category");
+			ft.trigger = Str(f, "trigger");
+			ft.owner = Str(f, "owner");
+			ft.source = Str(f, "source");
+			ft.where = Str(f, "where");
+			ft.estimated = f.value("estimated", false);
+			for (auto& x : Arr(f, "steps")) ft.steps.push_back(ParseStep(x));
+			cf.features.push_back(std::move(ft));
 		}
-		size_t cut = line.find_first_of("[({");
-		size_t q1 = line.find('"'), q2 = line.rfind('"');
-		if (cut == std::string::npos || q1 == std::string::npos || q2 <= q1) continue;
-		std::string id = line.substr(0, cut);
-		f.labels[id] = MermaidUnescape(line.substr(q1 + 1, q2 - q1 - 1));
-		f.order.push_back(id);
+		s.featureCount += (int)cf.features.size();
+		s.features[cf.key] = std::move(cf);
 	}
-	for (auto& id : f.order)
-		if (!hasIncoming.count(id)) f.starts.push_back(id);
-	return f;
 }
 
 static void LoadStructure(const fs::path& outDir, Structure& s)
@@ -130,12 +216,35 @@ static void LoadStructure(const fs::path& outDir, Structure& s)
 	std::map<std::string, std::string> names;
 	s.symbols = (int)Arr(*graph, "symbols").size();
 	s.relations = (int)Arr(*graph, "relations").size();
+	// modules that belong to a project plugin (plugin --Contains--> module)
+	std::map<std::string, std::string> pluginOfModule;
+	for (auto& r : Arr(*graph, "relations"))
+		if (Str(r, "type") == "Contains" && Str(r, "source").rfind("plugin:", 0) == 0 && Str(r, "target").rfind("module:", 0) == 0)
+			pluginOfModule[Str(r, "target").substr(7)] = Str(r, "source").substr(7);
 	for (auto& sym : Arr(*graph, "symbols"))
 	{
 		std::string key = Str(sym, "key"), kind = Str(sym, "kind");
 		std::string name = Str(sym, "name");
 		if (kind == "asset") name = Str(sym, "package", name);
 		names[key] = name;
+		bool external = sym.value("external", false);
+		std::string assetClass = Str(sym, "asset_class");
+		std::string badge = kind == "class" ? "C++" : kind == "blueprint" ? (assetClass.find("Widget") != std::string::npos ? "위젯 BP" : "BP")
+		                  : kind == "module" ? (external ? "엔진 모듈" : "모듈") : kind == "plugin" ? "플러그인"
+		                  : kind == "asset" ? assetClass.substr(assetClass.find_last_of(".") == std::string::npos ? 0 : assetClass.find_last_of(".") + 1) : kind;
+		Location loc;
+		if (kind == "module")
+		{
+			loc.badge = badge;
+			auto pl = pluginOfModule.find(name);
+			if (external) loc.cat = 3;
+			else if (pl != pluginOfModule.end()) { loc.cat = 2; loc.dirs = { pl->second }; }
+			else loc.cat = 0;
+		}
+		else if (kind == "plugin") { loc.badge = badge; loc.cat = external ? 3 : 2; }
+		else loc = LocateSymbol(Str(sym, "file"), Str(sym, "package"), external, Str(sym, "module"), badge);
+		s.locByKey[key] = loc;
+		s.locByName[name] = loc;
 		if (kind != "class" && kind != "blueprint") continue;
 		ClassNode& n = s.classes[key];
 		n.name = name;
@@ -155,6 +264,7 @@ static void LoadStructure(const fs::path& outDir, Structure& s)
 		if (type == "Inherits")
 		{
 			if (!s.classes.count(dst)) { s.classes[dst].name = nameOf(dst); s.classes[dst].external = true; }
+			if (!s.locByKey.count(dst)) s.locByKey[dst] = Location{ 3, {}, "C++" };
 			s.classes[dst].children.push_back(src);
 			s.classes[src].parent = dst;
 			hasParent.insert(src);
@@ -181,11 +291,7 @@ static void LoadStructure(const fs::path& outDir, Structure& s)
 	for (auto& [key, n] : s.classes)
 		if (!hasParent.count(key) && hasProject(key, 0)) s.classRoots.push_back(key);
 
-	std::error_code ec;
-	if (fs::is_directory(outDir / "flows", ec))
-		for (auto& e : fs::directory_iterator(outDir / "flows", ec))
-			if (e.path().extension() == ".mmd") s.flows.push_back(ParseFlow(e.path()));
-	std::sort(s.flows.begin(), s.flows.end(), [](const Flow& a, const Flow& b) { return a.title < b.title; });
+	LoadFeatures(outDir / "features.json", s);
 	s.loaded = true;
 }
 
@@ -240,10 +346,106 @@ enum class Activity
 	Logs,
 	Performance,
 	Live,
+	Canvas,
 	History,
-	Tools,
+	Launcher,   // the launcher home: projects, their tools, PC components (not a tool)
+	Ci,
 	Count
 };
+
+// ============================================================================ DwoCanvas reports (Saved/DwoCanvas/Reports/*.txt)
+
+struct CanvasEntry
+{
+	std::string severity;   // error | warn | info
+	std::string text;
+};
+
+struct CanvasReport
+{
+	fs::path path;
+	std::string name;
+	long long mtime = 0;     // file time in seconds, newest first
+	std::string status;      // first line: "DwoCanvas import - N error(s), M warning(s)"
+	std::string widgets;     // "Widgets: ..." line
+	int errors = 0, warnings = 0, infos = 0;
+	std::vector<std::pair<std::string, int>> counts;   // the Widgets line, parsed: created, regenerated, ...
+	std::vector<std::string> written;
+	std::vector<CanvasEntry> entries;
+	bool parsed = false;
+};
+
+static std::string TrimLeft(const std::string& s, size_t from)
+{
+	size_t p = s.find_first_not_of(' ', from);
+	return p == std::string::npos ? std::string() : s.substr(p);
+}
+
+// Reads a report written by the DwoCanvasImport commandlet or the editor importer. Lenient: unknown lines are
+// kept as info entries, so a newer report format still shows something useful.
+static void ParseCanvasReport(CanvasReport& r)
+{
+	r = CanvasReport{ r.path, r.name, r.mtime };
+	r.parsed = true;
+	std::ifstream in(r.path, std::ios::binary);
+	std::string line;
+	bool first = true;
+	bool counted = false;
+	static const std::regex head(R"((\d+)\s+error\(s\),\s*(\d+)\s+warning\(s\))");
+	static const std::regex count(R"((\d+)\s+([^,]+))");
+	std::smatch m;
+	while (std::getline(in, line))
+	{
+		if (!line.empty() && line.back() == '\r') line.pop_back();
+		if (first && line.size() >= 3 && (unsigned char)line[0] == 0xEF) line = line.substr(3);
+		if (first)
+		{
+			first = false;
+			r.status = line;
+			if (std::regex_search(line, m, head)) { r.errors = std::stoi(m[1]); r.warnings = std::stoi(m[2]); counted = true; }
+			continue;
+		}
+		if (line.rfind("Widgets:", 0) == 0)
+		{
+			r.widgets = line;
+			std::string rest = line.substr(8);
+			for (auto it = std::sregex_iterator(rest.begin(), rest.end(), count); it != std::sregex_iterator(); ++it)
+			{
+				std::string label = (*it)[2];
+				while (!label.empty() && label.back() == ' ') label.pop_back();
+				r.counts.push_back({ label, std::stoi((*it)[1]) });
+			}
+			continue;
+		}
+		if (line.rfind("  wrote ", 0) == 0) { r.written.push_back(line.substr(8)); continue; }
+		if (line.empty()) continue;
+		if (line.rfind("ERROR", 0) == 0) r.entries.push_back({ "error", TrimLeft(line, 5) });
+		else if (line.rfind("WARN", 0) == 0) r.entries.push_back({ "warn", TrimLeft(line, 4) });
+		else if (line.rfind("info", 0) == 0) r.entries.push_back({ "info", TrimLeft(line, 4) });
+		else r.entries.push_back({ "info", line });
+	}
+	int e = 0, w = 0;
+	for (auto& x : r.entries)
+	{
+		if (x.severity == "error") ++e;
+		else if (x.severity == "warn") ++w;
+		else ++r.infos;
+	}
+	if (!counted) { r.errors = e; r.warnings = w; }
+}
+
+// The "schema" value of a design file, read from its start (files can embed large base64 images).
+static std::string DesignSchemaOf(const fs::path& file)
+{
+	std::ifstream in(file, std::ios::binary);
+	std::string head(16384, '\0');
+	in.read(&head[0], (std::streamsize)head.size());
+	head.resize((size_t)in.gcount());
+	static const std::regex schema(R"re("(?:schema|format)"\s*:\s*"([^"]+)")re");
+	std::smatch m;
+	if (std::regex_search(head, m, schema)) return m[1];
+	return {};
+}
 
 struct LiveSettings
 {
@@ -263,8 +465,21 @@ struct App
 	bool hasUProject = false;
 	bool attached = false;
 	bool isCodeProject = false;
-	int stateMonitor = 0;        // 0 none, 1 installed by dwo-Lens, 2 part of the project
+	int stateMonitor = 0;        // 0 none, 1 installed by dwo-Forge, 2 part of the project
+	bool stateMonitorLegacy = false;   // installed by dwo-Lens 1.x as Plugins/__StateMonitor (update migrates it)
 	std::string stateMonitorMode;
+	int canvas = 0;              // DwoCanvas: 0 none, 1 installed by dwo-Forge (Plugins/__DwoCanvas), 2 part of the project
+	std::string canvasVersion;
+	fs::path canvasFile;         // design file picked in the DwoCanvas view
+	std::vector<std::string> canvasRecent;
+	std::vector<CanvasReport> canvasReports;
+	std::string canvasLastCommand;
+	bool legacyAttached = false; // project still has dwo-Lens 1.x __dwo-lens (migrated by the next command)
+	bool lensInstalled = false;  // Plugins/__DwoLensInspector (the DwoLens tool)
+	bool ciInstalled = false;    // __dwo-forge/ci.json (DwoBuilder tool)
+	bool toolsDirty = true;      // tool versions must be read again (forge.ps1 tools --json)
+	bool sidebarCollapsed = false; // sidebar shows icons only (saved in gui.json)
+	bool migrationStarted = false;
 	json state;
 	json catalog;
 	std::vector<RunInfo> runs;
@@ -276,7 +491,7 @@ struct App
 	std::string message;
 	fs::path saved;
 	bool confirmDetach = false;
-	Activity activity = Activity::Overview;
+	Activity activity = Activity::Launcher;
 	Activity requestActivity = Activity::Count;
 	bool showConsole = false;        // focus the run log
 	bool forgetAfterUninstall = false;
@@ -300,6 +515,8 @@ struct App
 		if (auto s = ReadJson(settingsDir / "gui.json"))
 		{
 			for (auto& r : Arr(*s, "recent")) if (r.is_string()) recent.push_back(r.get<std::string>());
+			for (auto& r : Arr(*s, "canvasRecent")) if (r.is_string()) canvasRecent.push_back(r.get<std::string>());
+			sidebarCollapsed = s->value("sidebarCollapsed", false);
 			const json& l = Obj(*s, "live");
 			liveSettings.port = (int)l.value("port", 47731);
 			liveSettings.autoObserve = l.value("auto", true);
@@ -313,6 +530,8 @@ struct App
 	{
 		json s;
 		s["recent"] = recent;
+		s["canvasRecent"] = canvasRecent;
+		s["sidebarCollapsed"] = sidebarCollapsed;
 		s["live"] = { { "port", liveSettings.port }, { "auto", liveSettings.autoObserve }, { "engine", liveSettings.engineProps },
 		              { "interval", liveSettings.interval }, { "watch", liveSettings.watch } };
 		std::error_code ec;
@@ -320,14 +539,15 @@ struct App
 		std::ofstream(settingsDir / "gui.json", std::ios::binary) << s.dump(1);
 	}
 
-	// Per-project GUI settings live inside the project's __dwo-lens folder, so uninstall removes them too.
-	fs::path ProjectSettingsFile() const { return project / "__dwo-lens" / "gui.json"; }
+	// Per-project GUI settings live inside the project's __dwo-forge folder, so uninstall removes them too.
+	fs::path ForgeDir() const { return project / "__dwo-forge"; }
+	fs::path ProjectSettingsFile() const { return ForgeDir() / "gui.json"; }
 
-	// The dwo-Lens install folder (where tools\lens.ps1 is).
+	// The dwo-Forge install folder (where tools\forge.ps1 is).
 	bool HomeValid() const
 	{
 		std::error_code ec;
-		return !home.empty() && fs::exists(home / "tools" / "lens.ps1", ec);
+		return !home.empty() && fs::exists(home / "tools" / "forge.ps1", ec);
 	}
 
 	void LoadProjectSettings()
@@ -344,7 +564,7 @@ struct App
 		s["mutes"] = std::vector<std::string>(mutes.begin(), mutes.end());
 		std::error_code ec;
 		problemsRevision = -1;
-		if (!fs::is_directory(project / "__dwo-lens", ec)) return;   // not attached: nothing to keep
+		if (!fs::is_directory(ForgeDir(), ec)) return;   // not attached: nothing to keep
 		std::ofstream(ProjectSettingsFile(), std::ios::binary) << s.dump(1);
 	}
 
@@ -353,6 +573,7 @@ struct App
 	void SetProject(const fs::path& path)
 	{
 		project = path;
+		migrationStarted = false;
 		std::string u = PathUtf8(path);
 		recent.erase(std::remove(recent.begin(), recent.end(), u), recent.end());
 		recent.insert(recent.begin(), u);
@@ -362,6 +583,7 @@ struct App
 		metrics.clear();
 		structureFor.clear();
 		LoadProjectSettings();
+		toolsDirty = true;
 		Refresh();
 	}
 
@@ -380,33 +602,105 @@ struct App
 				}
 		isCodeProject = fs::exists(project / "Source", ec);
 		stateMonitor = 0;
+		stateMonitorLegacy = false;
 		stateMonitorMode.clear();
-		fs::path own = project / "Plugins" / "__StateMonitor" / "StateMonitor.uplugin";
-		if (fs::exists(own, ec))
+		canvas = 0;
+		canvasVersion.clear();
+		fs::path managed = project / "Plugins" / "__DwoStateMonitor" / "DwoStateMonitor.uplugin";
+		fs::path legacy = project / "Plugins" / "__StateMonitor" / "StateMonitor.uplugin";
+		fs::path installed = fs::exists(managed, ec) ? managed : fs::exists(legacy, ec) ? legacy : fs::path();
+		if (!installed.empty())
 		{
 			stateMonitor = 1;
-			std::string text = ReadText(own);
+			stateMonitorLegacy = installed == legacy;
+			std::string text = ReadText(installed);
 			stateMonitorMode = text.find("TargetAllowList") != std::string::npos ? "editor" : "runtime";
 		}
-		else if (fs::is_directory(project / "Plugins", ec))
+		// Managed install: Plugins/__DwoCanvas (2.0.0 put it in Plugins/DwoCanvas with .dwo-forge-installed).
+		fs::path canvasManaged = project / "Plugins" / "__DwoCanvas";
+		fs::path canvasOld = project / "Plugins" / "DwoCanvas";
+		fs::path canvasPlugin;
+		if (fs::exists(canvasManaged / "DwoCanvas.uplugin", ec))
+		{
+			canvasPlugin = canvasManaged / "DwoCanvas.uplugin";
+			canvas = fs::exists(canvasManaged / ".dwo-forge-managed", ec) ? 1 : 2;
+		}
+		else if (fs::exists(canvasOld / ".dwo-forge-installed", ec) && fs::exists(canvasOld / "DwoCanvas.uplugin", ec))
+		{
+			canvasPlugin = canvasOld / "DwoCanvas.uplugin";
+			canvas = 1;
+		}
+		if (!canvasPlugin.empty())
+			if (auto u = ReadJson(canvasPlugin)) canvasVersion = Str(*u, "VersionName");
+		if (fs::is_directory(project / "Plugins", ec))
 			for (auto it = fs::recursive_directory_iterator(project / "Plugins", ec); it != fs::recursive_directory_iterator(); it.increment(ec))
 			{
 				if (ec) break;
+				if (it.depth() == 0 && PathUtf8(it->path().filename()).rfind("__", 0) == 0) { it.disable_recursion_pending(); continue; }
 				if (it.depth() > 3) { it.disable_recursion_pending(); continue; }
-				if (it->path().filename() == "StateMonitor.uplugin" && PathUtf8(it->path()).find("__") == std::string::npos) { stateMonitor = 2; break; }
+				fs::path name = it->path().filename();
+				if (stateMonitor == 0 && (name == "DwoStateMonitor.uplugin" || name == "StateMonitor.uplugin")) stateMonitor = 2;
+				if (canvas == 0 && name == "DwoCanvas.uplugin") canvas = 2;
 			}
-		auto st = ReadJson(project / "__dwo-lens" / "state.json");
+		auto st = ReadJson(ForgeDir() / "state.json");
 		attached = st.has_value();
 		state = st ? *st : json::object();
+		legacyAttached = !attached && fs::exists(project / "__dwo-lens" / "state.json", ec);
+		lensInstalled = fs::exists(project / "Plugins" / "__DwoLensInspector" / "DwoLensInspector.uplugin", ec);
+		ciInstalled = attached && fs::exists(ForgeDir() / "ci.json", ec);
+		LoadCanvasReports();
 		if (auto c = ReadJson(home / "tools" / "catalog.json")) catalog = *c;
 		LoadRuns();
+	}
+
+	// Saved/DwoCanvas/Reports, newest first. Reports are parsed lazily (only the ones shown).
+	void LoadCanvasReports()
+	{
+		std::vector<CanvasReport> list;
+		std::error_code ec;
+		fs::path dir = project / "Saved" / "DwoCanvas" / "Reports";
+		if (fs::is_directory(dir, ec))
+			for (auto& e : fs::directory_iterator(dir, ec))
+			{
+				if (e.path().extension() != ".txt") continue;
+				CanvasReport r;
+				r.path = e.path();
+				r.name = PathUtf8(e.path().filename());
+				auto ft = fs::last_write_time(e.path(), ec);
+				r.mtime = (long long)std::chrono::duration_cast<std::chrono::seconds>(ft.time_since_epoch()).count();
+				list.push_back(std::move(r));
+			}
+		std::sort(list.begin(), list.end(), [](const CanvasReport& a, const CanvasReport& b) { return a.mtime > b.mtime; });
+		if (list.size() > 200) list.resize(200);
+		// keep parsed results of reports that did not change
+		for (auto& r : list)
+			for (auto& old : canvasReports)
+				if (old.parsed && old.path == r.path && old.mtime == r.mtime) { r = old; break; }
+		canvasReports = std::move(list);
+	}
+
+	CanvasReport* CanvasReportAt(size_t i)
+	{
+		if (i >= canvasReports.size()) return nullptr;
+		if (!canvasReports[i].parsed) ParseCanvasReport(canvasReports[i]);
+		return &canvasReports[i];
+	}
+
+	void SetCanvasFile(const fs::path& file)
+	{
+		canvasFile = file;
+		std::string u = PathUtf8(file);
+		canvasRecent.erase(std::remove(canvasRecent.begin(), canvasRecent.end(), u), canvasRecent.end());
+		canvasRecent.insert(canvasRecent.begin(), u);
+		if (canvasRecent.size() > 12) canvasRecent.resize(12);
+		SaveSettings();
 	}
 
 	void LoadRuns()
 	{
 		runs.clear();
 		std::error_code ec;
-		fs::path root = project / "__dwo-lens" / "data" / "runs";
+		fs::path root = ForgeDir() / "data" / "runs";
 		if (fs::is_directory(root, ec))
 			for (auto& e : fs::directory_iterator(root, ec))
 			{
@@ -598,7 +892,16 @@ struct App
 			add("log:" + Str(g, "fingerprint"), sev, "로그", Str(g, "sample"), Str(g, "category"), &g);
 		}
 		for (auto& c : Arr(Obj(d, "logs"), "crashes"))
-			add("crash:" + Str(c, "id", Str(c, "dir")), "fatal", "크래시", Str(c, "error", Str(c, "message", "크래시")), Str(c, "dir"), &c);
+			add("crash:" + Str(c, "folder", Str(c, "dir")), c.value("new", true) ? "fatal" : "warn", "크래시",
+			    Str(c, "error", Str(c, "message", "크래시")), Str(c, "folder", Str(c, "dir")), &c);
+		for (const char* build : { "compile", "package" })
+			for (auto& e : Arr(Obj(d, build), "errors"))
+			{
+				std::string where = Str(e, "file");
+				if (Num(e, "line")) where += "(" + std::to_string(Num(e, "line")) + ")";
+				add(std::string(build) + ":" + Str(e, "code") + ":" + where + ":" + Str(e, "message"), "error",
+				    std::string(build) == "compile" ? "C++ 컴파일" : "패키지 빌드", Str(e, "message"), where.empty() ? Str(e, "code") : where, &e);
+			}
 		for (auto& map : Arr(Obj(d, "smoke"), "maps"))
 			if (Str(map, "verdict") != "pass")
 				add("smoke:" + Str(map, "map"), Str(map, "verdict"), "맵 스모크",
@@ -624,7 +927,7 @@ struct App
 	{
 		if (problemsRevision == runsRevision) return;
 		problems.clear();
-		for (int line = 0; line < kLineCount; ++line)
+		for (int line = 0; line < kLensLineCount; ++line)   // DwoLens problems; build errors are on the DwoBuilder screen
 		{
 			const RunInfo* latest = Latest(line);
 			if (!latest) continue;
@@ -652,7 +955,7 @@ struct App
 
 	// ---------------------------------------------------------------- commands
 
-	// Runs a dwo-Lens command (same as the command line) straight from the install folder.
+	// Runs a dwo-Forge command (same as the command line) straight from the install folder.
 	bool Run(const std::string& command)
 	{
 		if (runner.running)
@@ -663,18 +966,21 @@ struct App
 		}
 		if (!HomeValid())
 		{
-			message = "dwo-Lens 폴더를 찾을 수 없습니다: " + PathUtf8(home) + ". dwo-Lens 폴더의 dwo-Lens.bat으로 다시 여세요.";
+			message = "dwo-Forge 폴더를 찾을 수 없습니다: " + PathUtf8(home) + ". dwo-Forge 폴더의 dwo-Forge.bat으로 다시 여세요.";
 			PushToast("실행할 수 없음", message, col::Fail);
 			return false;
 		}
-		SetEnvironmentVariableW(L"DWO_LENS_HOME", home.wstring().c_str());
+		SetEnvironmentVariableW(L"DWO_FORGE_HOME", home.wstring().c_str());
+		SetEnvironmentVariableW(L"DWO_FORGE_FROM_BAT", nullptr);
 		SetEnvironmentVariableW(L"DWO_LENS_FROM_BAT", nullptr);
 		std::string verb = command.substr(0, command.find(' '));
 		std::string rest = command.size() > verb.size() ? command.substr(verb.size()) : "";
-		std::wstring ps = L"powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"" + (home / "tools" / "lens.ps1").wstring() +
-		                  L"\" -Command " + ToWide(verb) + L" -Project \"" + project.wstring() + L"\"" + ToWide(rest);
+		// PC-wide commands (DwoBuilder's Jenkins) also run with no project open: against the install folder.
+		fs::path target = project.empty() ? home : project;
+		std::wstring ps = L"powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"" + (home / "tools" / "forge.ps1").wstring() +
+		                  L"\" -Command " + ToWide(verb) + L" -Project \"" + target.wstring() + L"\"" + ToWide(rest);
 		runner.logDir = settingsDir / "logs";
-		if (runner.Start(ps, project, "dwo-lens " + command))
+		if (runner.Start(ps, target, "dwo-forge " + command))
 		{
 			message.clear();
 			lastCommand = command;
@@ -695,6 +1001,7 @@ struct App
 		{
 			std::string done = lastCommand;
 			int code = runner.exitCode;
+			toolsDirty = true;
 			Refresh();
 			int line = -1;
 			for (int i = 0; i < kLineCount; ++i)
@@ -712,7 +1019,17 @@ struct App
 			{
 				fs::path logFile = runner.logFile;
 				std::string verb = done.substr(0, done.find(' '));
-				std::string what = verb == "attach" ? "부착" : verb == "uninstall" ? "제거" : verb == "update" ? "업데이트" : verb;
+				std::string what = verb == "connect" ? "프로젝트 연결" : verb == "attach" ? "프로젝트 연결 (DwoLens 포함)" : verb == "uninstall" ? "연결 해제"
+				                 : verb == "update" ? "연결 새로 고침과 도구 업데이트" : verb == "tool" ? ToolCommandName(done)
+				                 : verb == "canvas-import" ? "DwoCanvas 가져오기" : verb == "canvas-validate" ? "디자인 파일 검사"
+				                 : verb == "canvas-install" ? "DwoCanvas 설치" : verb == "canvas-remove" ? "DwoCanvas 제거"
+				                 : verb == "sm-install" ? "DwoStateMonitor 설치" : verb == "sm-remove" ? "DwoStateMonitor 제거"
+				                 : verb == "status" && migrationStarted ? "dwo-Lens 1.x 이전" : verb == "status" ? "상태 확인"
+				                 : verb == "doctor" ? "환경 점검" : verb == "play" ? "게임 실행"
+				                 : verb == "ci-install" ? "DwoBuilder 설치" : verb == "ci-start" ? "DwoBuilder 시작" : verb == "ci-stop" ? "DwoBuilder 중지"
+				                 : verb == "ci-remove" ? "DwoBuilder 제거" : verb == "ci-job" ? "DwoBuilder 작업 설정" : verb == "ci-trigger" ? "DwoBuilder 빌드 요청" : verb;
+				for (int i = 0; i < kLineCount; ++i)
+					if (verb == kLines[i].command) what = kLines[i].name;   // a check that stopped before writing its run
 				std::string body = code == 0 ? "완료" : "실패 (종료 코드 " + std::to_string(code) + ") · " + runner.LastLine();
 				if (code == 0 && verb == "uninstall" && forgetAfterUninstall)
 				{
@@ -720,6 +1037,9 @@ struct App
 					SaveSettings();
 				}
 				forgetAfterUninstall = false;
+				if (verb == "canvas-import" && !canvasReports.empty())
+					body = std::string(code == 0 ? "오류 없음" : "오류 있음") + " · " + canvasReports.front().name;
+				if (verb.rfind("canvas-", 0) == 0) canvasLastCommand = done;
 				PushToast(what + (code == 0 ? " 완료" : " 실패"), body, code == 0 ? col::Pass : col::Fail,
 				          [logFile] { if (!logFile.empty()) ShellExecuteW(nullptr, L"open", L"notepad.exe", (L"\"" + logFile.wstring() + L"\"").c_str(), nullptr, SW_SHOWNORMAL); },
 				          "로그 파일 열기");
@@ -732,6 +1052,14 @@ struct App
 				Run(next);
 			}
 		}
+		// A project still attached with dwo-Lens 1.x: any command migrates it (__dwo-lens -> __dwo-forge), so run
+		// the cheapest one once and show the result.
+		if (legacyAttached && !migrationStarted && !runner.running && HomeValid())
+		{
+			migrationStarted = true;
+			PushToast("dwo-Lens 1.x 프로젝트", "__dwo-lens를 __dwo-forge로 옮깁니다 (기록과 설정 유지).", col::Info);
+			Run("status");
+		}
 		std::vector<LiveMessage> messages;
 		live.Drain(messages);
 		for (auto& m : messages)
@@ -739,6 +1067,16 @@ struct App
 			bool hello = store.Apply(m);
 			if (hello || m.connected) SendLiveSettings(m.client);
 		}
+	}
+
+	// "tool install lens" -> "DwoLens 설치"
+	static std::string ToolCommandName(const std::string& command)
+	{
+		std::istringstream in(command);
+		std::string verb, action, id;
+		in >> verb >> action >> id;
+		std::string name = id == "lens" ? "DwoLens" : id == "statemonitor" ? "DwoStateMonitor" : id == "canvas" ? "DwoCanvas" : id == "ci" || id == "builder" ? "DwoBuilder" : id == "--all" ? "모든 도구" : id;
+		return name + (action == "install" ? " 설치" : action == "update" ? " 업데이트" : action == "remove" ? " 제거" : " " + action);
 	}
 
 	static Activity ActivityOfLine(int line)
@@ -749,6 +1087,7 @@ struct App
 		case 1: return Activity::Tests;
 		case 2: return Activity::Logs;
 		case 3: return Activity::Tests;
+		case 7: case 8: return Activity::Ci;   // compile, package: DwoBuilder
 		default: return Activity::Performance;
 		}
 	}

@@ -1,0 +1,380 @@
+<title>dwo-Forge 런처 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a design-review document. Page chrome follows the viewer's theme; each mockup is a fixed-dark
+   "window" drawn in the real dwo-Forge GUI palette (ui.h col::*), one per proposal, with notes beside it. */
+:root {
+  --bg: #f4f5f8; --surface: #ffffff; --fg: #1b1d22; --muted: #5a606b; --line: #dbe0e7; --accent: #2f66d6;
+  --accent-soft: #e6eefc; --good: #2f8f55; --warn: #b5741d;
+  --display: "IBM Plex Sans KR", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+  --body: "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+  --mono: "JetBrains Mono", Consolas, "D2Coding", monospace;
+  /* the app itself (always dark) */
+  --app-bg: #1e1f22; --app-panel: #2b2d30; --app-panel2: #313337; --app-border: #3c3f41; --app-text: #dfe1e5;
+  --app-dim: #8c919a; --app-muted: #6f737a; --lens: #3574f0; --state: #4cb06e; --canvas: #a57be8; --ci: #3fb8af;
+  --app-warn: #e09b3a; --app-pass: #4cb06e;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #15161a; --surface: #1d1f24; --fg: #e4e6ea; --muted: #9aa0aa; --line: #30343b; --accent: #6b98f5;
+  --accent-soft: #1f2a40; --good: #5cc282; --warn: #e3a54c; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #15161a; --surface: #1d1f24; --fg: #e4e6ea; --muted: #9aa0aa; --line: #30343b; --accent: #6b98f5;
+  --accent-soft: #1f2a40; --good: #5cc282; --warn: #e3a54c; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.65;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 40px 72px }
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 56px }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -0.01em }
+h1 { font-size: 2.1rem; line-height: 1.25 }
+h2 { font-size: 1.45rem }
+h3 { font-size: 1.05rem }
+p { margin: 0; max-width: 68ch }
+code, .mono { font-family: var(--mono); font-size: 0.86em }
+.eyebrow { font-family: var(--mono); font-size: 0.76rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted) }
+.lead { color: var(--muted); font-size: 1.02rem }
+section { display: grid; gap: 18px }
+.stack { display: grid; gap: 10px }
+
+/* the split: what belongs to the launcher and what to a tool */
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px }
+.split > div { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; display: grid; gap: 8px; min-width: 0 }
+.split ul { margin: 0; padding-left: 1.1em; color: var(--muted) }
+.split li { margin: 2px 0 }
+.tag { display: inline-block; font-family: var(--mono); font-size: 0.72rem; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted) }
+
+/* tool model table */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface) }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 0.92rem }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top }
+th { font-family: var(--display); font-weight: 600; font-size: 0.82rem; color: var(--muted) }
+tr:last-child td { border-bottom: 0 }
+td.num { font-variant-numeric: tabular-nums }
+.mono-tile { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 5px; color: #fff;
+  font-family: var(--mono); font-size: 10px; font-weight: 600; margin-right: 8px; vertical-align: -5px }
+
+/* proposal blocks */
+.proposal { display: grid; gap: 18px; padding-top: 28px; border-top: 1px solid var(--line) }
+.proposal-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 16px }
+.letter { font-family: var(--display); font-weight: 700; font-size: 1.05rem; width: 34px; height: 34px; border-radius: 8px;
+  display: inline-grid; place-items: center; background: var(--fg); color: var(--bg) }
+.badge { font-size: 0.78rem; font-weight: 700; padding: 2px 10px; border-radius: 99px; background: var(--accent-soft); color: var(--accent) }
+.notes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px }
+.notes > div { min-width: 0; display: grid; gap: 6px; align-content: start }
+.notes h4 { margin: 0; font-family: var(--display); font-size: 0.86rem; color: var(--muted); font-weight: 600 }
+.notes ul { margin: 0; padding-left: 1.1em }
+.notes li { margin: 3px 0; font-size: 0.93rem }
+
+/* ---------- mockup window (fixed dark, the app's own palette) ---------- */
+.shot { overflow-x: auto; border-radius: 12px }
+.win { min-width: 860px; background: var(--app-bg); color: var(--app-text); border: 1px solid #000; border-radius: 12px; overflow: hidden;
+  font-family: var(--body); font-size: 12.5px; line-height: 1.45; box-shadow: 0 18px 40px -24px rgba(10, 14, 30, 0.55) }
+.titlebar { display: flex; align-items: center; gap: 12px; height: 34px; padding: 0 12px; background: var(--app-panel); border-bottom: 1px solid var(--app-border) }
+.dots { display: flex; gap: 6px } .dots i { width: 9px; height: 9px; border-radius: 50%; background: #45484d }
+.proj { display: flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 6px; background: var(--app-panel2); font-weight: 500 }
+.proj .caret { color: var(--app-dim) }
+.titlebar .meta { color: var(--app-dim); font-family: var(--mono); font-size: 11px }
+.titlebar .spacer { flex: 1 }
+.body { display: grid; height: 420px }
+.bar { background: var(--app-panel); border-right: 1px solid var(--app-border); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0 }
+.bar .cap { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.08em; color: var(--app-muted); margin-top: 6px }
+.ico { position: relative; width: 34px; height: 34px; border-radius: 7px; display: grid; place-items: center; color: var(--app-dim) }
+.ico.on { background: #393b40; color: var(--app-text) }
+.ico.on::before { content: ""; position: absolute; left: -7px; top: 7px; bottom: 7px; width: 3px; border-radius: 2px; background: var(--lens) }
+.ico .dot { position: absolute; right: 3px; top: 3px; width: 7px; height: 7px; border-radius: 50%; background: var(--app-warn); border: 1.5px solid var(--app-panel) }
+.ico svg { width: 17px; height: 17px }
+.tile { width: 22px; height: 22px; border-radius: 5px; display: grid; place-items: center; font-family: var(--mono); font-size: 9.5px; font-weight: 600; color: #fff }
+.t-lens { background: var(--lens) } .t-state { background: var(--state) } .t-canvas { background: var(--canvas) } .t-ci { background: var(--ci) }
+.bar .grow { flex: 1 }
+.mini { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; color: var(--app-dim) }
+.mini.on { background: #393b40; color: var(--app-text) }
+.mini svg { width: 14px; height: 14px }
+
+.main { padding: 16px 18px; display: grid; gap: 12px; align-content: start; overflow: hidden }
+.main-head { display: flex; align-items: center; gap: 10px }
+.main-head h5 { margin: 0; font-family: var(--display); font-size: 15px; font-weight: 600 }
+.main-head .sub { color: var(--app-dim) }
+.btn { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 5px; background: var(--app-panel2);
+  border: 1px solid var(--app-border); color: var(--app-text); font-size: 11.5px; white-space: nowrap }
+.btn.primary { background: var(--lens); border-color: var(--lens); color: #fff }
+.btn.ghost { background: transparent }
+.pill { font-size: 10.5px; padding: 1px 7px; border-radius: 99px; white-space: nowrap }
+.p-ok { background: rgba(76, 176, 110, 0.16); color: #7fd29b }
+.p-up { background: rgba(224, 155, 58, 0.16); color: #f0bb6c }
+.p-off { background: rgba(140, 145, 154, 0.14); color: var(--app-dim) }
+.cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px }
+.card { background: var(--app-panel); border: 1px solid var(--app-border); border-radius: 8px; padding: 11px 12px; display: grid; gap: 7px }
+.card.up { border-color: rgba(224, 155, 58, 0.55) }
+.card-top { display: flex; align-items: center; gap: 8px }
+.card-top b { font-weight: 600; font-size: 13px }
+.card-top .scope { margin-left: auto; font-size: 10px; color: var(--app-muted); font-family: var(--mono) }
+.ver { font-family: var(--mono); font-size: 11px; color: var(--app-dim) }
+.ver em { font-style: normal; color: #f0bb6c }
+.card .row { display: flex; gap: 6px; flex-wrap: wrap }
+.desc { color: var(--app-dim); font-size: 11.5px }
+.strip { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 7px; background: var(--app-panel2); color: var(--app-dim); font-size: 11.5px }
+.strip b { color: var(--app-text); font-weight: 500 }
+.statusbar { height: 22px; display: flex; align-items: center; gap: 14px; padding: 0 12px; background: var(--app-panel); border-top: 1px solid var(--app-border); color: var(--app-dim); font-size: 10.5px; font-family: var(--mono) }
+
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--app-border); margin: -16px -18px 0; padding: 0 12px; background: var(--app-panel) }
+.tabs span { padding: 8px 11px; color: var(--app-dim); border-bottom: 2px solid transparent; white-space: nowrap }
+.tabs span.on { color: var(--app-text); border-bottom-color: var(--lens) }
+.tabs .n { font-size: 10px; padding: 0 5px; border-radius: 99px; background: rgba(229, 83, 75, 0.2); color: #f08a84; margin-left: 4px }
+.sk { height: 9px; border-radius: 4px; background: var(--app-panel2) }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px }
+.kpi { background: var(--app-panel); border: 1px solid var(--app-border); border-radius: 7px; padding: 9px 10px; display: grid; gap: 4px }
+.kpi .k { color: var(--app-dim); font-size: 10.5px } .kpi .v { font-family: var(--mono); font-size: 16px; font-weight: 600 }
+.nav { background: var(--app-bg); border-right: 1px solid var(--app-border); padding: 12px 10px; display: grid; gap: 6px; align-content: start }
+.nav .h { font-size: 10px; color: var(--app-muted); font-family: var(--mono); letter-spacing: 0.06em; margin-top: 6px }
+.nav .it { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px }
+.nav .it.on { background: #393b40 }
+.nav .it .count { margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--app-warn) }
+.list { display: grid; gap: 6px }
+.lrow { display: grid; grid-template-columns: 22px 1fr auto auto; align-items: center; gap: 10px; padding: 9px 11px;
+  background: var(--app-panel); border: 1px solid var(--app-border); border-radius: 7px }
+.lrow b { font-weight: 600 } .lrow .desc { display: block }
+.seg { display: inline-flex; background: var(--app-panel2); border-radius: 6px; padding: 2px }
+.seg span { padding: 3px 11px; border-radius: 5px; color: var(--app-dim) } .seg span.on { background: #45484e; color: var(--app-text) }
+.caption { font-size: 0.85rem; color: var(--muted) }
+
+/* comparison */
+.score { display: inline-flex; gap: 3px; vertical-align: middle }
+.score i { width: 9px; height: 9px; border-radius: 2px; background: var(--line) }
+.score i.f { background: var(--accent) }
+.reco { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 10px; padding: 20px 22px; display: grid; gap: 10px }
+.reco ol { margin: 0; padding-left: 1.2em } .reco li { margin: 4px 0 }
+
+@media (max-width: 760px) {
+  .split, .notes { grid-template-columns: 1fr }
+  h1 { font-size: 1.7rem }
+}
+@media (prefers-reduced-motion: no-preference) { .btn, .ico { transition: background 0.15s } }
+</style>
+
+<div class="wrap">
+
+<header class="stack">
+  <span class="eyebrow">dwo-Forge 3.0 · 레이아웃 시안</span>
+  <h1>도구를 관리하는 런처로서의 dwo-Forge</h1>
+  <p class="lead">Lens, DwoStateMonitor, DwoCanvas, 로컬 CI를 모두 같은 자격의 "도구"로 다루고, dwo-Forge는 프로젝트에 도구를 설치·업데이트·제거하고 실행하는 런처가 됩니다. 아래 세 시안은 같은 도구 모델 위에서 화면을 어떻게 나눌지에 대한 선택지입니다.</p>
+</header>
+
+<section>
+  <h2>먼저 나눌 것: 연결은 런처, 설치는 도구</h2>
+  <p>지금의 "연동"은 dwo-Lens 시절의 흔적으로 Lens 설치까지 함께 합니다. 런처 구조에서는 둘을 분리합니다.</p>
+  <div class="split">
+    <div>
+      <h3>프로젝트 연결 <span class="tag">dwo-Forge</span></h3>
+      <ul>
+        <li><code>__dwo-forge</code> 폴더와 실행 파일 <code>__dwo-forge.bat</code></li>
+        <li>git 숨김(<code>.git/info/exclude</code>)과 연결 전 상태 기록</li>
+        <li>설치된 도구와 버전 목록(<code>state.json</code>의 <code>tools</code>)</li>
+        <li>연결 해제: 모든 도구 제거 후 흔적 정리</li>
+      </ul>
+    </div>
+    <div>
+      <h3>도구 설치 <span class="tag">각 도구</span></h3>
+      <ul>
+        <li>Lens: <code>Plugins/__DwoLensInspector</code> 설치</li>
+        <li>DwoStateMonitor·DwoCanvas: 플러그인 설치</li>
+        <li>로컬 CI: Jenkins 작업과 git 훅 (PC 공용 Jenkins는 처음 한 번)</li>
+        <li>도구마다 설치·업데이트·제거·버전이 따로 있음</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>공통 도구 모델</h2>
+  <p>어느 시안을 고르든 바탕은 같습니다. 런처는 도구마다 아래 정보를 한 번에 받아(<code>__dwo-forge.bat tools --json</code>) 카드·배지·업데이트 알림을 그립니다.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>도구</th><th>범위</th><th>프로젝트에 설치되는 것</th><th>업데이트 판단</th><th>화면</th></tr></thead>
+      <tbody>
+        <tr><td><span class="mono-tile" style="background:#3574f0">Ln</span>Lens</td><td>프로젝트</td><td><code>Plugins/__DwoLensInspector</code></td><td>플러그인 소스 해시</td><td class="num">7 (대시보드 … 실행 기록)</td></tr>
+        <tr><td><span class="mono-tile" style="background:#4cb06e">SM</span>DwoStateMonitor</td><td>프로젝트</td><td><code>Plugins/__DwoStateMonitor</code></td><td>플러그인 소스 해시</td><td class="num">1 (라이브)</td></tr>
+        <tr><td><span class="mono-tile" style="background:#a57be8">Cv</span>DwoCanvas</td><td>프로젝트</td><td><code>Plugins/__DwoCanvas</code></td><td>플러그인 소스 해시</td><td class="num">1 (가져오기)</td></tr>
+        <tr><td><span class="mono-tile" style="background:#3fb8af">CI</span>로컬 CI</td><td>프로젝트 + PC</td><td>Jenkins 작업, git 훅</td><td>파이프라인 해시, Jenkins 번들 버전</td><td class="num">1 (빌드)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="caption">상태는 다섯 가지입니다: 설치 안 됨 · 최신 · 업데이트 있음 · 프로젝트 자체 포함(손대지 않음) · 이전 형식(옮기기 필요). dwo-Forge 폴더를 새 버전으로 바꾸면 해시가 달라진 도구만 "업데이트 있음"이 됩니다.</p>
+</section>
+
+<!-- ======================= A ======================= -->
+<section class="proposal" id="a">
+  <div class="proposal-head"><span class="letter">A</span><h2>런처 홈 + 도구 작업공간</h2></div>
+  <p>활동 바는 <b>홈</b>과 <b>설치된 도구</b>만 보여 줍니다. 홈에서 모든 도구를 관리하고, 도구 아이콘을 누르면 그 도구의 화면들이 위쪽 탭으로 펼쳐집니다.</p>
+
+  <div class="shot"><div class="win" role="img" aria-label="시안 A 홈 화면">
+    <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="proj">DWO_Proj_01 <span class="caret">▾</span></span><span class="meta">UE 5.7.4 · git</span><span class="spacer"></span><span class="meta">dwo-Forge 3.0.0</span></div>
+    <div class="body" style="grid-template-columns: 48px 1fr">
+      <div class="bar">
+        <div class="ico on" title="홈"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></div>
+        <span class="cap">TOOLS</span>
+        <div class="ico"><span class="tile t-lens">Ln</span></div>
+        <div class="ico"><span class="tile t-state">SM</span><span class="dot"></span></div>
+        <div class="ico"><span class="tile t-ci">CI</span></div>
+        <span class="grow"></span>
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></div>
+      </div>
+      <div class="main">
+        <div class="main-head"><h5>도구</h5><span class="sub">설치 3 · 업데이트 1</span><span class="spacer" style="flex:1"></span><span class="btn primary">모두 업데이트</span></div>
+        <div class="cards">
+          <div class="card"><div class="card-top"><span class="tile t-lens">Ln</span><b>Lens</b><span class="pill p-ok">최신</span><span class="scope">프로젝트</span></div>
+            <div class="desc">분석·검증 검사: 아키텍처, 문제, 검증, 로그, 성능·용량</div><div class="ver">3.0.0 · a91f3c</div>
+            <div class="row"><span class="btn primary">열기</span><span class="btn">기본 검사 실행</span><span class="btn ghost">제거</span></div></div>
+          <div class="card up"><div class="card-top"><span class="tile t-state">SM</span><b>DwoStateMonitor</b><span class="pill p-up">업데이트 있음</span><span class="scope">프로젝트</span></div>
+            <div class="desc">실행 중인 게임 상태를 실시간으로 보는 플러그인 · 에디터 전용</div><div class="ver">2.1.2 → <em>3.0.0</em></div>
+            <div class="row"><span class="btn primary">업데이트</span><span class="btn">열기</span><span class="btn ghost">제거</span></div></div>
+          <div class="card"><div class="card-top"><span class="tile t-ci">CI</span><b>로컬 CI</b><span class="pill p-ok">최신</span><span class="scope">프로젝트+PC</span></div>
+            <div class="desc">push·merge·커밋 시 컴파일 → Lens → 패키지 · 최근 빌드 #41 성공</div><div class="ver">작업 3.0.0 · Jenkins 2.580.2</div>
+            <div class="row"><span class="btn primary">열기</span><span class="btn">지금 빌드</span><span class="btn ghost">제거</span></div></div>
+          <div class="card"><div class="card-top"><span class="tile t-canvas">Cv</span><b>DwoCanvas</b><span class="pill p-off">설치 안 됨</span><span class="scope">프로젝트</span></div>
+            <div class="desc">*.dwocanvas.json 디자인을 UMG 위젯 블루프린트로 가져오기</div><div class="ver">사용 가능 3.0.0</div>
+            <div class="row"><span class="btn primary">설치</span></div></div>
+        </div>
+        <div class="strip">PC 구성요소 <b>Jenkins 2.580.2</b> 실행 중 · 127.0.0.1:8098 <span style="flex:1"></span><span class="btn ghost">관리</span></div>
+      </div>
+    </div>
+    <div class="statusbar"><span>● 연결됨</span><span>엔진 UE 5.7.4</span><span>업데이트 1</span></div>
+  </div></div>
+
+  <div class="shot"><div class="win" role="img" aria-label="시안 A Lens 작업공간">
+    <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="proj">DWO_Proj_01 <span class="caret">▾</span></span><span class="meta">Lens</span><span class="spacer"></span></div>
+    <div class="body" style="grid-template-columns: 48px 1fr; height: 250px">
+      <div class="bar">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></div>
+        <span class="cap">TOOLS</span>
+        <div class="ico on"><span class="tile t-lens">Ln</span></div>
+        <div class="ico"><span class="tile t-state">SM</span><span class="dot"></span></div>
+        <div class="ico"><span class="tile t-ci">CI</span></div>
+      </div>
+      <div class="main">
+        <div class="tabs"><span class="on">대시보드</span><span>아키텍처</span><span>문제<span class="n">3</span></span><span>검증</span><span>로그</span><span>성능·용량</span><span>실행 기록</span></div>
+        <div class="kpis"><div class="kpi"><span class="k">심볼</span><span class="v">574</span></div><div class="kpi"><span class="k">관계</span><span class="v">1,745</span></div><div class="kpi"><span class="k">새 크래시</span><span class="v">12</span></div><div class="kpi"><span class="k">콘텐츠</span><span class="v">135 MB</span></div></div>
+        <div class="sk" style="width:72%"></div><div class="sk" style="width:58%"></div><div class="sk" style="width:64%"></div>
+      </div>
+    </div>
+  </div></div>
+  <p class="caption">도구를 누르면 그 도구의 화면이 탭으로 열립니다. Ctrl+1~9는 "활성 도구의 n번째 탭"으로 바뀌고, Ctrl+Shift+1~9가 도구 전환입니다.</p>
+
+  <div class="notes">
+    <div><h4>좋은 점</h4><ul><li>런처 정체성이 가장 분명함: 홈이 곧 도구 관리</li><li>새 도구는 아이콘 하나 + 자기 탭만 추가하면 됨</li><li>설치 안 한 도구는 화면에서 사라져 단순함</li></ul></div>
+    <div><h4>아쉬운 점</h4><ul><li>Lens 화면 이동이 한 단계(탭) 늘어남</li><li>Ctrl+1~6 단축키 의미가 바뀜</li></ul></div>
+    <div><h4>확장성</h4><ul><li>도구 8~10개까지 활동 바가 버팀</li><li>도구별 화면 수에 제한 없음 (탭)</li><li>여러 프로젝트는 제목 표시줄 전환으로</li></ul></div>
+  </div>
+</section>
+
+<!-- ======================= B ======================= -->
+<section class="proposal" id="b">
+  <div class="proposal-head"><span class="letter">B</span><h2>홈 + 도구 그룹 유지</h2></div>
+  <p>지금의 활동 바(도구별 그룹과 하위 화면 아이콘)를 그대로 두고, 맨 위에 <b>홈</b>을 추가합니다. 설치된 도구의 그룹만 보입니다.</p>
+
+  <div class="shot"><div class="win" role="img" aria-label="시안 B">
+    <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span class="proj">DWO_Proj_01 <span class="caret">▾</span></span><span class="meta">UE 5.7.4</span><span class="spacer"></span></div>
+    <div class="body" style="grid-template-columns: 48px 1fr; height: 440px">
+      <div class="bar">
+        <div class="ico on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></div>
+        <span class="cap" style="color:#3574f0">LENS</span>
+        <div class="mini"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+        <div class="mini"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></svg></div>
+        <div class="mini"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l10 18H2z"/></svg></div>
+        <div class="mini"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12l5 5L20 6"/></svg></div>
+        <div class="mini"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg></div>
+        <div class="mini"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 13l4-4"/><circle cx="12" cy="14" r="8"/></svg></div>
+        <span class="cap" style="color:#4cb06e">STATE</span>
+        <div class="mini"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></div>
+        <span class="cap" style="color:#3fb8af">CI</span>
+        <div class="mini"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></svg></div>
+        <span class="cap">FORGE</span>
+        <div class="mini"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></div>
+      </div>
+      <div class="main">
+        <div class="main-head"><h5>홈</h5><span class="sub">DWO_Proj_01에 설치된 도구 3 · 업데이트 1</span><span style="flex:1"></span><span class="btn primary">모두 업데이트</span></div>
+        <div class="list">
+          <div class="lrow"><span class="tile t-lens">Ln</span><span><b>Lens</b><span class="desc">3.0.0 · 화면 6개</span></span><span class="pill p-ok">최신</span><span class="btn ghost">제거</span></div>
+          <div class="lrow"><span class="tile t-state">SM</span><span><b>DwoStateMonitor</b><span class="desc">2.1.2 → 3.0.0</span></span><span class="pill p-up">업데이트 있음</span><span class="btn primary">업데이트</span></div>
+          <div class="lrow"><span class="tile t-ci">CI</span><span><b>로컬 CI</b><span class="desc">작업 3.0.0 · Jenkins 2.580.2</span></span><span class="pill p-ok">최신</span><span class="btn ghost">제거</span></div>
+          <div class="lrow" style="opacity:.75"><span class="tile t-canvas">Cv</span><span><b>DwoCanvas</b><span class="desc">설치하면 활동 바에 CANVAS 그룹이 생깁니다</span></span><span class="pill p-off">설치 안 됨</span><span class="btn primary">설치</span></div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="notes">
+    <div><h4>좋은 점</h4><ul><li>지금 사용자에게 가장 익숙함, 단축키 유지</li><li>Lens 화면을 한 번에 이동</li><li>구현 범위가 가장 작음</li></ul></div>
+    <div><h4>아쉬운 점</h4><ul><li>Lens가 활동 바를 차지해 "도구 중 하나"로 보이지 않음</li><li>실행 기록이 FORGE에 남아 소속이 애매함</li></ul></div>
+    <div><h4>확장성</h4><ul><li>도구가 늘면 활동 바가 세로로 넘침</li><li>화면이 많은 도구가 생기면 같은 문제 반복</li></ul></div>
+  </div>
+</section>
+
+<!-- ======================= C ======================= -->
+<section class="proposal" id="c">
+  <div class="proposal-head"><span class="letter">C</span><h2>라이브러리형 런처 + 도구 창</h2><span class="badge">선택 · 3.0에 구현</span></div>
+  <p>JetBrains Toolbox나 Epic Games Launcher처럼, 첫 화면이 <b>프로젝트 목록 + 도구 라이브러리</b>입니다. 도구를 "열기"하면 그 도구 전용 작업 창(시안 A의 작업공간)으로 들어갑니다.</p>
+
+  <div class="shot"><div class="win" role="img" aria-label="시안 C">
+    <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><b style="font-weight:600">dwo-Forge</b><span class="seg"><span class="on">프로젝트</span><span>PC 구성요소</span><span>설정</span></span><span class="spacer"></span><span class="meta">3.0.0</span></div>
+    <div class="body" style="grid-template-columns: 230px 1fr">
+      <div class="nav">
+        <span class="h">프로젝트</span>
+        <div class="it on"><span>DWO_Proj_01</span><span class="count">업데이트 1</span></div>
+        <div class="it"><span>Sample</span></div>
+        <div class="it"><span>Sample (사본)</span></div>
+        <div class="it" style="color:var(--app-dim)">+ 프로젝트 연결</div>
+        <span class="h">PC 구성요소</span>
+        <div class="it"><span>Jenkins 2.580.2</span><span class="count" style="color:#7fd29b">실행 중</span></div>
+        <div class="it"><span>UE 5.7.4</span></div>
+      </div>
+      <div class="main">
+        <div class="main-head"><h5>DWO_Proj_01</h5><span class="sub">C:\Users\…\DWO_Proj_01 · UE 5.7.4 · git</span><span style="flex:1"></span><span class="btn">연결 해제</span></div>
+        <div class="list">
+          <div class="lrow"><span class="tile t-lens">Ln</span><span><b>Lens</b><span class="desc">마지막 검사 오늘 06:56 · 문제 3</span></span><span class="pill p-ok">3.0.0</span><span class="btn primary">열기</span></div>
+          <div class="lrow"><span class="tile t-state">SM</span><span><b>DwoStateMonitor</b><span class="desc">에디터 전용</span></span><span class="pill p-up">2.1.2 → 3.0.0</span><span class="btn primary">업데이트</span></div>
+          <div class="lrow"><span class="tile t-ci">CI</span><span><b>로컬 CI</b><span class="desc">#41 성공 · develop push</span></span><span class="pill p-ok">3.0.0</span><span class="btn primary">열기</span></div>
+          <div class="lrow"><span class="tile t-canvas">Cv</span><span><b>DwoCanvas</b><span class="desc">디자인 파일 → UMG</span></span><span class="pill p-off">설치 안 됨</span><span class="btn">설치</span></div>
+        </div>
+        <div class="strip">도구를 열면 별도 작업 창이 뜹니다 (Lens 탭 7개, 라이브, 가져오기, 빌드)</div>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="notes">
+    <div><h4>좋은 점</h4><ul><li>"런처"라는 정체성이 가장 강함</li><li>여러 프로젝트를 한눈에 보고 일괄 업데이트</li><li>PC 공용 구성요소(Jenkins, 엔진)가 제자리를 가짐</li></ul></div>
+    <div><h4>아쉬운 점</h4><ul><li>창이 둘(런처·작업)이 되어 이동이 늘어남</li><li>구현 범위가 가장 큼 (창 관리, 프로젝트 목록)</li></ul></div>
+    <div><h4>확장성</h4><ul><li>도구·프로젝트 수 모두 목록이라 제한 없음</li><li>공유 서버·팀 대시보드(로드맵 3단계)로 이어가기 쉬움</li></ul></div>
+  </div>
+</section>
+
+<section>
+  <h2>비교</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>기준</th><th>A 홈 + 작업공간</th><th>B 그룹 유지</th><th>C 라이브러리</th></tr></thead>
+      <tbody>
+        <tr><td>런처 정체성</td><td><span class="score"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i></i></span></td><td><span class="score"><i class="f"></i><i class="f"></i><i></i><i></i><i></i></span></td><td><span class="score"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span></td></tr>
+        <tr><td>도구 추가 확장성</td><td><span class="score"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i></i></span></td><td><span class="score"><i class="f"></i><i class="f"></i><i></i><i></i><i></i></span></td><td><span class="score"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span></td></tr>
+        <tr><td>여러 프로젝트 관리</td><td><span class="score"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i></span></td><td><span class="score"><i class="f"></i><i class="f"></i><i></i><i></i><i></i></span></td><td><span class="score"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span></td></tr>
+        <tr><td>기존 사용자 익숙함</td><td><span class="score"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i></span></td><td><span class="score"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span></td><td><span class="score"><i class="f"></i><i class="f"></i><i></i><i></i><i></i></span></td></tr>
+        <tr><td>구현 범위 (작을수록 높음)</td><td><span class="score"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i></span></td><td><span class="score"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i></i></span></td><td><span class="score"><i class="f"></i><i class="f"></i><i></i><i></i><i></i></span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="reco">
+  <h2>결정</h2>
+  <p><b>C로 구현했습니다(dwo-Forge 3.0).</b> 도구 창은 별도 OS 창이 아니라 같은 창 안의 작업 화면으로 열립니다(명령 대기열과 DwoStateMonitor 연결을 하나로 유지하기 위해). 활동 바에는 런처와 설치된 도구만 보이고, 연 도구가 자기 화면들을 펼칩니다. 아래는 결정 전의 제안입니다.</p>
+  <p><b>A를 이번에 구현하고, C의 "PC 구성요소"와 프로젝트 전환을 A 안에 작게 넣는 것</b>을 권합니다. A의 홈과 도구 작업공간은 C로 가더라도 그대로 쓰이므로 버려지는 작업이 없습니다. 여러 프로젝트를 자주 오가게 되면 그때 홈을 C의 라이브러리 화면으로 키우면 됩니다.</p>
+  <ol>
+    <li>CLI: <code>connect</code>(연결만), <code>tool install|update|remove &lt;lens|statemonitor|canvas|ci&gt;</code>, <code>tool update --all</code>, <code>tools --json</code>. 기존 명령(<code>attach</code>, <code>sm-install</code> 등)은 그대로 동작.</li>
+    <li><code>state.json</code>에 도구별 설치 버전·해시 기록. 기존 연결 프로젝트는 처음 열 때 지금 설치된 도구를 읽어 채움.</li>
+    <li>GUI: 홈(도구 카드, 모두 업데이트, PC 구성요소 줄) + 도구 아이콘 + 도구별 탭. 실행 기록은 Lens 탭으로.</li>
+  </ol>
+</section>
+
+</div>

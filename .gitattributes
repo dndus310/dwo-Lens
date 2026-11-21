@@ -6,3 +6,4 @@
 *.cpp text eol=crlf
 *.uplugin text eol=crlf
 gui/third_party/** -text
+tools/vendor/** -text

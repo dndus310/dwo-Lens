@@ -1,0 +1,687 @@
+{
+ "schema": "dwocanvas/2",
+ "source": {
+  "tool": "html",
+  "adapter": "dwocanvas-html/0.1.0",
+  "mode": "extract",
+  "file": "html_flex_row.html",
+  "x-html": {
+   "browser": "chrome",
+   "viewport": [
+    400,
+    300
+   ]
+  }
+ },
+ "capabilities": [
+  "layout.flow",
+  "paint.gradient",
+  "paint.image",
+  "effects",
+  "preview",
+  "stable-ids"
+ ],
+ "assets": {
+  "preview": {
+   "data": "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",
+   "sha256": "8ae4e39161ae6b6db614771895dc765c071f31db78e7a92b6af6d4a45b157d2f",
+   "scale": 1
+  }
+ },
+ "documents": [
+  {
+   "id": "HtmlFlexRow",
+   "name": "HtmlFlexRow",
+   "kind": "screen",
+   "root": {
+    "id": "root",
+    "name": "HtmlFlexRow",
+    "type": "frame",
+    "box": {
+     "x": 0,
+     "y": 0,
+     "w": 400,
+     "h": 300
+    },
+    "sizing": {
+     "h": "fixed",
+     "v": "fixed"
+    },
+    "clip": true,
+    "fills": [
+     {
+      "type": "solid",
+      "color": [
+       0.1216,
+       0.1412,
+       0.1882,
+       1.0
+      ]
+     }
+    ],
+    "children": [
+     {
+      "id": "row1",
+      "name": "Row1",
+      "type": "frame",
+      "box": {
+       "x": 16.0,
+       "y": 16.0,
+       "w": 368.0,
+       "h": 80.0
+      },
+      "sizing": {
+       "h": "fixed",
+       "v": "fixed"
+      },
+      "fills": [
+       {
+        "type": "solid",
+        "color": [
+         0.1686,
+         0.1961,
+         0.251,
+         1.0
+        ]
+       }
+      ],
+      "radius": [
+       8.0,
+       8.0,
+       8.0,
+       8.0
+      ],
+      "layout": {
+       "mode": "horizontal",
+       "gap": 12.0,
+       "padding": [
+        16.0,
+        12.0,
+        16.0,
+        12.0
+       ],
+       "mainAlign": "start",
+       "crossAlign": "center"
+      },
+      "children": [
+       {
+        "id": "r1a",
+        "name": "r1a",
+        "type": "rectangle",
+        "box": {
+         "x": 16.0,
+         "y": 20.0,
+         "w": 40.0,
+         "h": 40.0
+        },
+        "sizing": {
+         "h": "fixed",
+         "v": "fixed"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.3529,
+           0.7686,
+           1.0,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         4.0,
+         4.0,
+         4.0,
+         4.0
+        ],
+        "variable": false,
+        "widgetName": "r1a"
+       },
+       {
+        "id": "r1b",
+        "name": "r1b",
+        "type": "rectangle",
+        "box": {
+         "x": 68.0,
+         "y": 12.0,
+         "w": 24.0,
+         "h": 56.0
+        },
+        "sizing": {
+         "h": "fixed",
+         "v": "fixed"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           1.0,
+           0.7059,
+           0.2902,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         4.0,
+         4.0,
+         4.0,
+         4.0
+        ],
+        "variable": false,
+        "widgetName": "r1b"
+       },
+       {
+        "id": "r1c",
+        "name": "r1c",
+        "type": "rectangle",
+        "box": {
+         "x": 104.0,
+         "y": 28.0,
+         "w": 64.0,
+         "h": 24.0
+        },
+        "sizing": {
+         "h": "fixed",
+         "v": "fixed"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.5451,
+           0.8784,
+           0.5412,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         4.0,
+         4.0,
+         4.0,
+         4.0
+        ],
+        "variable": false,
+        "widgetName": "r1c"
+       },
+       {
+        "id": "r1label",
+        "name": "r1label",
+        "type": "text",
+        "box": {
+         "x": 180.0,
+         "y": 32.5,
+         "w": 92.67,
+         "h": 15.0
+        },
+        "sizing": {
+         "h": "hug",
+         "v": "hug"
+        },
+        "text": {
+         "content": "Gap 12 / pad 16",
+         "font": {
+          "family": "Roboto",
+          "weight": 700,
+          "italic": false,
+          "size": 13.0,
+          "style": "Bold"
+         },
+         "color": [
+          0.949,
+          0.9529,
+          0.9608,
+          1.0
+         ],
+         "lineHeight": {
+          "unit": "px",
+          "value": 15.0
+         },
+         "align": "left",
+         "valign": "top",
+         "autoResize": "width"
+        },
+        "variable": false,
+        "widgetName": "r1label"
+       }
+      ],
+      "variable": false,
+      "widgetName": "Row1"
+     },
+     {
+      "id": "row2",
+      "name": "Row2",
+      "type": "frame",
+      "box": {
+       "x": 16.0,
+       "y": 112.0,
+       "w": 368.0,
+       "h": 72.0
+      },
+      "sizing": {
+       "h": "fixed",
+       "v": "fixed"
+      },
+      "fills": [
+       {
+        "type": "solid",
+        "color": [
+         0.1686,
+         0.1961,
+         0.251,
+         1.0
+        ]
+       }
+      ],
+      "radius": [
+       8.0,
+       8.0,
+       8.0,
+       8.0
+      ],
+      "layout": {
+       "mode": "horizontal",
+       "gap": 8.0,
+       "padding": [
+        8.0,
+        8.0,
+        8.0,
+        8.0
+       ],
+       "mainAlign": "center",
+       "crossAlign": "end"
+      },
+      "children": [
+       {
+        "id": "r2a",
+        "name": "r2a",
+        "type": "rectangle",
+        "box": {
+         "x": 104.0,
+         "y": 32.0,
+         "w": 48.0,
+         "h": 32.0
+        },
+        "sizing": {
+         "h": "fixed",
+         "v": "fixed"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.3529,
+           0.7686,
+           1.0,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         4.0,
+         4.0,
+         4.0,
+         4.0
+        ],
+        "variable": false,
+        "widgetName": "r2a"
+       },
+       {
+        "id": "r2b",
+        "name": "r2b",
+        "type": "rectangle",
+        "box": {
+         "x": 160.0,
+         "y": 16.0,
+         "w": 48.0,
+         "h": 48.0
+        },
+        "sizing": {
+         "h": "fixed",
+         "v": "fixed"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           1.0,
+           0.7059,
+           0.2902,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         4.0,
+         4.0,
+         4.0,
+         4.0
+        ],
+        "variable": false,
+        "widgetName": "r2b"
+       },
+       {
+        "id": "r2c",
+        "name": "r2c",
+        "type": "rectangle",
+        "box": {
+         "x": 216.0,
+         "y": 44.0,
+         "w": 48.0,
+         "h": 20.0
+        },
+        "sizing": {
+         "h": "fixed",
+         "v": "fixed"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.5451,
+           0.8784,
+           0.5412,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         4.0,
+         4.0,
+         4.0,
+         4.0
+        ],
+        "variable": false,
+        "widgetName": "r2c"
+       }
+      ],
+      "variable": false,
+      "widgetName": "Row2"
+     },
+     {
+      "id": "row3",
+      "name": "Row3",
+      "type": "frame",
+      "box": {
+       "x": 16.0,
+       "y": 200.0,
+       "w": 368.0,
+       "h": 84.0
+      },
+      "sizing": {
+       "h": "fixed",
+       "v": "fixed"
+      },
+      "fills": [
+       {
+        "type": "solid",
+        "color": [
+         0.1686,
+         0.1961,
+         0.251,
+         1.0
+        ]
+       }
+      ],
+      "radius": [
+       8.0,
+       8.0,
+       8.0,
+       8.0
+      ],
+      "layout": {
+       "mode": "horizontal",
+       "gap": 10.0,
+       "padding": [
+        10.0,
+        10.0,
+        10.0,
+        10.0
+       ],
+       "mainAlign": "start",
+       "crossAlign": "stretch"
+      },
+      "children": [
+       {
+        "id": "r3a",
+        "name": "r3a",
+        "type": "rectangle",
+        "box": {
+         "x": 10.0,
+         "y": 10.0,
+         "w": 56.0,
+         "h": 64.0
+        },
+        "sizing": {
+         "h": "fixed",
+         "v": "fill"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.3529,
+           0.7686,
+           1.0,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         4.0,
+         4.0,
+         4.0,
+         4.0
+        ],
+        "variable": false,
+        "widgetName": "r3a"
+       },
+       {
+        "id": "r3grow",
+        "name": "r3grow",
+        "type": "frame",
+        "box": {
+         "x": 76.0,
+         "y": 10.0,
+         "w": 232.0,
+         "h": 64.0
+        },
+        "sizing": {
+         "h": "fill",
+         "v": "fill"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.2392,
+           0.2745,
+           0.3451,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         4.0,
+         4.0,
+         4.0,
+         4.0
+        ],
+        "layout": {
+         "mode": "horizontal",
+         "gap": 6.0,
+         "padding": [
+          12.0,
+          0.0,
+          12.0,
+          0.0
+         ],
+         "mainAlign": "end",
+         "crossAlign": "center"
+        },
+        "children": [
+         {
+          "id": "r3label",
+          "name": "r3label",
+          "type": "text",
+          "box": {
+           "x": 166.34,
+           "y": 24.5,
+           "w": 17.66,
+           "h": 15.0
+          },
+          "sizing": {
+           "h": "hug",
+           "v": "hug"
+          },
+          "text": {
+           "content": "Fill",
+           "font": {
+            "family": "Roboto",
+            "weight": 700,
+            "italic": false,
+            "size": 13.0,
+            "style": "Bold"
+           },
+           "color": [
+            0.949,
+            0.9529,
+            0.9608,
+            1.0
+           ],
+           "lineHeight": {
+            "unit": "px",
+            "value": 15.0
+           },
+           "align": "left",
+           "valign": "top",
+           "autoResize": "width"
+          },
+          "variable": false,
+          "widgetName": "r3label"
+         },
+         {
+          "id": "r3dot1",
+          "name": "r3dot1",
+          "type": "rectangle",
+          "box": {
+           "x": 190.0,
+           "y": 26.0,
+           "w": 12.0,
+           "h": 12.0
+          },
+          "sizing": {
+           "h": "fixed",
+           "v": "fixed"
+          },
+          "fills": [
+           {
+            "type": "solid",
+            "color": [
+             1.0,
+             0.4196,
+             0.5059,
+             1.0
+            ]
+           }
+          ],
+          "radius": [
+           6.0,
+           6.0,
+           6.0,
+           6.0
+          ],
+          "variable": false,
+          "widgetName": "r3dot1"
+         },
+         {
+          "id": "r3dot2",
+          "name": "r3dot2",
+          "type": "rectangle",
+          "box": {
+           "x": 208.0,
+           "y": 26.0,
+           "w": 12.0,
+           "h": 12.0
+          },
+          "sizing": {
+           "h": "fixed",
+           "v": "fixed"
+          },
+          "fills": [
+           {
+            "type": "solid",
+            "color": [
+             1.0,
+             0.4196,
+             0.5059,
+             1.0
+            ]
+           }
+          ],
+          "radius": [
+           6.0,
+           6.0,
+           6.0,
+           6.0
+          ],
+          "variable": false,
+          "widgetName": "r3dot2"
+         }
+        ],
+        "variable": false,
+        "widgetName": "r3grow"
+       },
+       {
+        "id": "r3c",
+        "name": "r3c",
+        "type": "rectangle",
+        "box": {
+         "x": 318.0,
+         "y": 10.0,
+         "w": 40.0,
+         "h": 64.0
+        },
+        "sizing": {
+         "h": "fixed",
+         "v": "fill"
+        },
+        "fills": [
+         {
+          "type": "solid",
+          "color": [
+           0.5451,
+           0.8784,
+           0.5412,
+           1.0
+          ]
+         }
+        ],
+        "radius": [
+         4.0,
+         4.0,
+         4.0,
+         4.0
+        ],
+        "variable": false,
+        "widgetName": "r3c"
+       }
+      ],
+      "variable": false,
+      "widgetName": "Row3"
+     }
+    ],
+    "variable": false,
+    "widgetName": "HtmlFlexRow"
+   },
+   "preview": "preview"
+  }
+ ],
+ "lint": [],
+ "x-conformance": {
+  "maxDiff": 0.015,
+  "notes": "Measured 0.50% (UE 5.7, Chrome 157 preview): flex rows with gap / padding / centre / end / stretch / grow. Remaining pixels are the two Roboto Bold labels (text rasterization)."
+ }
+}

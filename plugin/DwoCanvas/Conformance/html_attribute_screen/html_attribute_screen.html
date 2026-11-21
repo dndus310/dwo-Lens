@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="dwocanvas:viewport" content="788x540">
+<meta name="dwocanvas:name" content="HtmlAttributeScreen">
+<title>DWO Attribute screen (HTML source)</title>
+<!--
+  The DWO Attribute screen rebuilt in HTML/CSS: the same screen as the Figma-built
+  plugin/DwoCanvas/Samples/DwoMockup.dwocanvas.json (colours, sizes, spacing and text styles copied from it),
+  with the two panels placed side by side so the case stays small. Differences from the Figma file:
+  - list entry names use Roboto Regular (Figma: Medium; UE's engine Roboto has no Medium face, so the Figma
+    import renders Regular too),
+  - "Add Attribute" has one space after "+" (HTML collapses the double space),
+  - the panels are shorter (540 px screen instead of 900) and the list / tile areas fill the rest.
+-->
+<style>
+@font-face { font-family: "Roboto"; font-weight: 400; font-style: normal; src: url("file:///C:/Program%20Files/Epic%20Games/UE_5.7/Engine/Content/Slate/Fonts/Roboto-Regular.ttf"); }
+@font-face { font-family: "Roboto"; font-weight: 700; font-style: normal; src: url("file:///C:/Program%20Files/Epic%20Games/UE_5.7/Engine/Content/Slate/Fonts/Roboto-Bold.ttf"); }
+
+:root {
+  --screen: #6b8cb8;
+  --panel: rgba(28, 31, 36, 0.9);
+  --well: #33383f;
+  --text: #f5f5f7;
+  --muted: #c4c9d1;
+  --accent: #59c4ff;
+  --primary: #59b3fa;
+  --neutral: #757a87;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body { width: 788px; height: 540px; background: var(--screen); font-family: "Roboto"; color: var(--text);
+       display: flex; flex-direction: row; gap: 16px; padding: 16px; align-items: stretch; }
+
+.panel { flex: none; display: flex; flex-direction: column; padding: 14px; background: var(--panel); border-radius: 8px;
+         box-shadow: 0px 6px 18px 0px rgba(0, 0, 0, 0.35); overflow: hidden; }
+#LeftPanel { width: 300px; }
+#RightPanel { width: 440px; }
+
+.title { font-size: 16px; line-height: 19px; font-weight: 700; text-transform: uppercase; color: var(--text); }
+.hint, .status { font-size: 9px; line-height: 11px; color: var(--muted); }
+.spacer10 { height: 10px; flex: none; }
+.spacer8 { height: 8px; flex: none; }
+
+.tabs { display: flex; flex-direction: row; gap: 4px; flex: none; }
+.button { height: 32px; border-radius: 6px; padding: 0 12px; display: flex; align-items: center; justify-content: center;
+          font-size: 13px; line-height: 15px; font-weight: 700; color: var(--text); }
+.tabs .button { flex: 1 1 0; }
+.selected { background: var(--accent); }
+.neutral { background: var(--neutral); }
+.primary { background: var(--primary); }
+
+/* Left: attribute list */
+#AttributeList { flex: 1 1 0; display: flex; flex-direction: column; gap: 4px; padding: 6px; background: var(--well); border-radius: 4px; }
+.entry { height: 30px; flex: none; display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 0 10px 0 8px;
+         background: var(--neutral); border-radius: 4px; }
+.bar { width: 4px; height: 18px; background: var(--accent); flex: none; }
+.entry-name { flex: 1 1 0; font-size: 12px; line-height: 14px; color: var(--text); }
+.entry-tag { font-size: 9px; line-height: 11px; color: var(--muted); }
+#btn_AddAttribute { height: 36px; flex: none; }
+
+/* Right: asset library */
+.header { display: flex; flex-direction: row; align-items: center; height: 32px; flex: none; }
+.header .title { flex: 1 1 0; }
+#btn_CloseButton { width: 32px; flex: none; }
+#AssetTiles { flex: 1 1 0; display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; padding: 4px; align-content: flex-start;
+              align-items: flex-start; background: var(--well); border-radius: 4px; }
+.card { width: 120px; height: 146px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px;
+        background: var(--well); border: 1px solid rgba(245, 245, 247, 0.08); border-radius: 6px; }
+.thumb { width: 96px; height: 96px; flex: none; border-radius: 4px; background: linear-gradient(to bottom, #525c70, #1f2129);
+         display: flex; align-items: center; justify-content: center; }
+.preview { width: 48px; height: 48px; border-radius: 24px; background: var(--muted); flex: none; }
+.item-name { width: 108px; font-size: 11px; line-height: 13px; font-weight: 700; text-align: center; white-space: nowrap;
+             overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.item-tag { font-size: 9px; line-height: 11px; color: var(--accent); }
+.buttons { display: flex; flex-direction: row; gap: 6px; flex: none; }
+.buttons .button { flex: 1 1 0; }
+</style>
+</head>
+<body data-db-id="AttributeScreen">
+  <div class="panel" id="LeftPanel">
+    <div class="title" id="LeftTitle" data-name="Title">Attributes</div>
+    <div class="hint" id="LeftHint" data-name="Hint">Click an item to spawn it</div>
+    <div class="spacer10" id="LeftGap1" data-name="spacer_gap1"></div>
+    <div class="tabs" id="LeftTabs" data-name="Tabs">
+      <div class="button selected" id="LeftBuildingTab" data-name="btn_BuildingTab"><span id="LeftBuildingLabel" data-name="Label">Building</span></div>
+      <div class="button neutral" id="LeftLoadTab" data-name="btn_LoadTab"><span id="LeftLoadLabel" data-name="Label">Load</span></div>
+    </div>
+    <div class="spacer10" id="LeftGap2" data-name="spacer_gap2"></div>
+    <div id="AttributeList">
+      <div class="entry" id="Entry1" data-name="AttributeListEntry"><div class="bar" id="Entry1Bar" data-name="LayerBar"></div><div class="entry-name" id="Entry1Name" data-name="$EntryName">Box Building</div><div class="entry-tag" id="Entry1Tag" data-name="$EntryTag">DT</div></div>
+      <div class="entry" id="Entry2" data-name="AttributeListEntry"><div class="bar" id="Entry2Bar" data-name="LayerBar"></div><div class="entry-name" id="Entry2Name" data-name="$EntryName">Chamfer Block</div><div class="entry-tag" id="Entry2Tag" data-name="$EntryTag">DT</div></div>
+      <div class="entry" id="Entry3" data-name="AttributeListEntry"><div class="bar" id="Entry3Bar" data-name="LayerBar"></div><div class="entry-name" id="Entry3Name" data-name="$EntryName">Silo</div><div class="entry-tag" id="Entry3Tag" data-name="$EntryTag">DT</div></div>
+      <div class="entry" id="Entry4" data-name="AttributeListEntry"><div class="bar" id="Entry4Bar" data-name="LayerBar"></div><div class="entry-name" id="Entry4Name" data-name="$EntryName">Quarter Hall</div><div class="entry-tag" id="Entry4Tag" data-name="$EntryTag">DT</div></div>
+      <div class="entry" id="Entry5" data-name="AttributeListEntry"><div class="bar" id="Entry5Bar" data-name="LayerBar"></div><div class="entry-name" id="Entry5Name" data-name="$EntryName">Cone Tower</div><div class="entry-tag" id="Entry5Tag" data-name="$EntryTag">DT</div></div>
+    </div>
+    <div class="spacer10" id="LeftGap3" data-name="spacer_gap3"></div>
+    <div class="button primary" id="btn_AddAttribute"><span id="AddAttributeLabel" data-name="Label">+ Add Attribute</span></div>
+    <div class="spacer8" id="LeftGap4" data-name="spacer_gap4"></div>
+    <div class="status" id="LeftStatus" data-name="$StatusText">Spawned Box Building (BUILDING)</div>
+  </div>
+
+  <div class="panel" id="RightPanel">
+    <div class="header" id="RightHeader" data-name="Header">
+      <div class="title" id="RightTitle" data-name="Title">Asset Library</div>
+      <div class="button neutral" id="btn_CloseButton"><span id="CloseLabel" data-name="Label">X</span></div>
+    </div>
+    <div class="hint" id="RightHint" data-name="Hint">Pick an asset and Apply to add it to the attribute list</div>
+    <div class="spacer10" id="RightGap1" data-name="spacer_gap1"></div>
+    <div class="tabs" id="RightTabs" data-name="Tabs">
+      <div class="button selected" id="RightBuildingTab" data-name="btn_BuildingTab"><span id="RightBuildingLabel" data-name="Label">Building</span></div>
+      <div class="button neutral" id="RightLoadTab" data-name="btn_LoadTab"><span id="RightLoadLabel" data-name="Label">Load</span></div>
+    </div>
+    <div class="spacer10" id="RightGap2" data-name="spacer_gap2"></div>
+    <div id="AssetTiles">
+      <div class="card" id="Card1" data-name="AttributeAssetItem"><div class="thumb" id="Card1Thumb" data-name="$Thumbnail"><div class="preview" id="Card1Preview" data-name="Preview"></div></div><div class="item-name" id="Card1Name" data-name="$ItemName">Box Building</div><div class="item-tag" id="Card1Tag" data-name="$ItemTag">BUILDING</div></div>
+      <div class="card" id="Card2" data-name="AttributeAssetItem"><div class="thumb" id="Card2Thumb" data-name="$Thumbnail"><div class="preview" id="Card2Preview" data-name="Preview"></div></div><div class="item-name" id="Card2Name" data-name="$ItemName">Chamfer Block</div><div class="item-tag" id="Card2Tag" data-name="$ItemTag">BUILDING</div></div>
+      <div class="card" id="Card3" data-name="AttributeAssetItem"><div class="thumb" id="Card3Thumb" data-name="$Thumbnail"><div class="preview" id="Card3Preview" data-name="Preview"></div></div><div class="item-name" id="Card3Name" data-name="$ItemName">Silo</div><div class="item-tag" id="Card3Tag" data-name="$ItemTag">BUILDING</div></div>
+      <div class="card" id="Card4" data-name="AttributeAssetItem"><div class="thumb" id="Card4Thumb" data-name="$Thumbnail"><div class="preview" id="Card4Preview" data-name="Preview"></div></div><div class="item-name" id="Card4Name" data-name="$ItemName">Quarter Hall</div><div class="item-tag" id="Card4Tag" data-name="$ItemTag">BUILDING</div></div>
+      <div class="card" id="Card5" data-name="AttributeAssetItem"><div class="thumb" id="Card5Thumb" data-name="$Thumbnail"><div class="preview" id="Card5Preview" data-name="Preview"></div></div><div class="item-name" id="Card5Name" data-name="$ItemName">Cone Tower</div><div class="item-tag" id="Card5Tag" data-name="$ItemTag">BUILDING</div></div>
+      <div class="card" id="Card6" data-name="AttributeAssetItem"><div class="thumb" id="Card6Thumb" data-name="$Thumbnail"><div class="preview" id="Card6Preview" data-name="Preview"></div></div><div class="item-name" id="Card6Name" data-name="$ItemName">car</div><div class="item-tag" id="Card6Tag" data-name="$ItemTag">BUILDING | USER</div></div>
+    </div>
+    <div class="spacer8" id="RightGap3" data-name="spacer_gap3"></div>
+    <div class="status" id="RightStatus" data-name="$StatusText">Select an asset, then Apply.</div>
+    <div class="spacer8" id="RightGap4" data-name="spacer_gap4"></div>
+    <div class="buttons" id="RightButtons" data-name="Buttons">
+      <div class="button neutral" id="btn_ImportUserAsset"><span id="ImportLabel" data-name="Label">Import User Asset...</span></div>
+      <div class="button primary" id="btn_Apply"><span id="ApplyLabel" data-name="Label">Apply</span></div>
+    </div>
+  </div>
+</body>
+</html>

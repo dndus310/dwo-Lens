@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="dwocanvas:viewport" content="400x300">
+<meta name="dwocanvas:name" content="HtmlGrid">
+<title>Grid: columns, gaps, padding</title>
+<style>
+@font-face { font-family: "Roboto"; font-weight: 400; font-style: normal; src: url("file:///C:/Program%20Files/Epic%20Games/UE_5.7/Engine/Content/Slate/Fonts/Roboto-Regular.ttf"); }
+@font-face { font-family: "Roboto"; font-weight: 700; font-style: normal; src: url("file:///C:/Program%20Files/Epic%20Games/UE_5.7/Engine/Content/Slate/Fonts/Roboto-Bold.ttf"); }
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #1d2330; font-family: "Roboto"; color: #f2f3f5; font-size: 12px; line-height: 14px; }
+
+/* Three fixed 104 px columns, 2 rows; column gap 10, row gap 8 */
+#grid { position: absolute; left: 24px; top: 24px; display: grid; grid-template-columns: repeat(3, 104px); column-gap: 10px; row-gap: 8px;
+        padding: 12px; background: #2a3242; border-radius: 8px; border: 1px solid #46526a; }
+.cell { height: 108px; border-radius: 6px; background: #374257; position: relative; }
+.swatch { position: absolute; left: 10px; top: 10px; width: 84px; height: 56px; border-radius: 4px; }
+.name { position: absolute; left: 10px; top: 78px; font-weight: 700; }
+.s1 { background: #5ac4ff; } .s2 { background: #ffb44a; } .s3 { background: #8be08a; }
+.s4 { background: #ff6b81; } .s5 { background: #c38cff; } .s6 { background: #f5f5f7; }
+</style>
+</head>
+<body>
+  <div id="grid" data-name="Grid">
+    <div class="cell" id="g1"><div class="swatch s1" id="g1s"></div><div class="name" id="g1n">Sky</div></div>
+    <div class="cell" id="g2"><div class="swatch s2" id="g2s"></div><div class="name" id="g2n">Amber</div></div>
+    <div class="cell" id="g3"><div class="swatch s3" id="g3s"></div><div class="name" id="g3n">Mint</div></div>
+    <div class="cell" id="g4"><div class="swatch s4" id="g4s"></div><div class="name" id="g4n">Rose</div></div>
+    <div class="cell" id="g5"><div class="swatch s5" id="g5s"></div><div class="name" id="g5n">Lilac</div></div>
+    <div class="cell" id="g6"><div class="swatch s6" id="g6s"></div><div class="name" id="g6n">Snow</div></div>
+  </div>
+</body>
+</html>

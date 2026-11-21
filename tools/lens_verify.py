@@ -1,4 +1,4 @@
-"""dwo-Lens verify (ST-3) and logs (ST-4) lines: turn wrapped tool outputs into one verdict and report.
+"""dwo-Forge DwoLens verify (ST-3) and logs (ST-4) lines: turn wrapped tool outputs into one verdict and report.
 
     python lens_verify.py verify --run <run dir> [--baseline <previous logs.json>]
     python lens_verify.py logs   --run <run dir> --files <log files...> [--crashes <dir>] [--baseline <json>]
@@ -78,7 +78,7 @@ def log_groups_html(summary: dict, limit: int = 40) -> str:
         rows.append(f"<tr><td><span class='badge {sev}'>{g['severity']}</span>{new}</td><td>{g['count']}</td>"
                     f"<td><code>{esc(g['category'])}</code></td><td>{esc(g['sample'][:300])}{detail}"
                     f"<div class='meta'>{esc(', '.join(g['where']))}</div></td></tr>")
-    crashes = "".join(f"<tr><td><span class='badge fail'>crash</span></td><td>1</td><td><code>{esc(c['folder'])}</code></td>"
+    crashes = "".join(f"<tr><td><span class='badge {'fail' if c.get('new', True) else 'warn'}'>crash</span>{" <span class='badge info'>new</span>" if c.get('new', True) else ''}</td><td>1</td><td><code>{esc(c['folder'])}</code></td>"
                       f"<td>{esc(c['error'])}<details><summary>콜스택</summary><code>{'<br>'.join(esc(l) for l in c['callstack'])}</code></details></td></tr>"
                       for c in summary.get("crashes", []))
     body = crashes + "".join(rows)
@@ -113,7 +113,7 @@ def render_verify(result: dict, run_id: str) -> str:
                          f"<div class='scroll'><table><thead><tr><th>테스트</th><th>결과</th><th>오류</th></tr></thead><tbody>{rows or '<tr><td colspan=3>없음</td></tr>'}</tbody></table></div></section>")
         else:
             parts.append(head + f"<p class='meta'>{esc(step.get('note', '실행 안 함'))}</p></section>")
-    return page("검증 라인", result["verdict"], run_id, "".join(parts))
+    return page("검증", result["verdict"], run_id, "".join(parts))
 
 
 # --------------------------------------------------------------------------- main
@@ -134,7 +134,7 @@ def main() -> int:
 
     baseline = None
     if args.baseline and args.baseline.exists():
-        baseline = json.loads(args.baseline.read_text(encoding="utf-8"))
+        baseline = json.loads(args.baseline.read_text(encoding="utf-8-sig"))
     run_id = args.run.name
     out = args.run / "out"
     out.mkdir(parents=True, exist_ok=True)
@@ -143,19 +143,19 @@ def main() -> int:
         result = verify(args.run, baseline)
         (out / "verify.json").write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
         (out / "report.html").write_text(render_verify(result, run_id), encoding="utf-8")
-        print(f"[dwo-lens] verify: " + ", ".join(f"{s['id']}={s['verdict']}" for s in result["steps"]) + f" -> {result['verdict']}")
+        print(f"[dwo-forge] verify: " + ", ".join(f"{s['id']}={s['verdict']}" for s in result["steps"]) + f" -> {result['verdict']}")
     else:
         summary = lens_logs.run(args.files, args.crashes, set(args.ignore), baseline)
         summary["verdict"] = lens_logs.verdict_of(summary)
         (out / "logs.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1), encoding="utf-8")
         c = summary["counts"]
         body = (f"<section><h2>요약</h2><p class='meta'>파일 {len(summary['files'])}개 · Fatal {c['Fatal']} · Error {c['Error']} · "
-                f"Warning {c['Warning']} · 그룹 {len(summary['groups'])} · 새 그룹 {summary['newGroups']} · 크래시 {len(summary['crashes'])}</p>"
+                f"Warning {c['Warning']} · 그룹 {len(summary['groups'])} · 새 그룹 {summary['newGroups']} · 크래시 {len(summary['crashes'])} (새 크래시 {summary['newCrashes']})</p>"
                 f"<code>{'<br>'.join(html.escape(f) for f in summary['files'])}</code></section>"
                 f"<section><h2>오류 · 경고 그룹</h2>{log_groups_html(summary, 80)}</section>")
-        (out / "report.html").write_text(page("로그 라인", summary["verdict"], run_id, body), encoding="utf-8")
-        print(f"[dwo-lens] logs: {c} groups={len(summary['groups'])} new={summary['newGroups']} "
-              f"crashes={len(summary['crashes'])} verdict={summary['verdict']}")
+        (out / "report.html").write_text(page("로그 분석", summary["verdict"], run_id, body), encoding="utf-8")
+        print(f"[dwo-forge] logs: {c} groups={len(summary['groups'])} new={summary['newGroups']} "
+              f"crashes={len(summary['crashes'])} newCrashes={summary['newCrashes']} verdict={summary['verdict']}")
     return 0
 
 

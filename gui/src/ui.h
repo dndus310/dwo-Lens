@@ -44,6 +44,8 @@
 #define ICON_CLOSE     u8"\uE711"
 #define ICON_DELETE    u8"\uE74D"
 #define ICON_RIGHT     u8"\uE76C"
+#define ICON_LEFT      u8"\uE76B"
+#define ICON_COMMAND   u8"\uE756"   // command prompt: the command palette (the magnifier is DwoLens)
 #define ICON_DOWN      u8"\uE70D"
 #define ICON_GAME      u8"\uE7FC"
 #define ICON_BOLT      u8"\uE945"
@@ -55,6 +57,8 @@
 #define ICON_POWER     u8"\uE7E8"
 #define ICON_SORT      u8"\uE8CB"
 #define ICON_PIN       u8"\uE718"
+#define ICON_CANVAS    u8"\uE790"
+#define ICON_FORGE     u8"\uE90F"
 
 // ============================================================================ palette
 
@@ -134,7 +138,10 @@ struct Fonts
 	ImFont* title = nullptr;
 	ImFont* big = nullptr;
 	ImFont* mono = nullptr;
-	ImFont* icon = nullptr;     // icons only, larger, for the activity bar
+	ImFont* icon = nullptr;     // icons only, larger, for the sidebar
+	ImFont* iconLarge = nullptr; // the few tool glyphs drawn on launcher thumbnails, at full size (not scaled up)
+	ImFont* graph = nullptr;     // 2x text for zoomed graphs (Latin + the Hangul the window uses)
+	ImFont* graphBold = nullptr;
 };
 static Fonts g_fonts;
 static float g_scale = 1.0f;
@@ -191,6 +198,36 @@ static void LoadFonts(float scale)
 		ImFontConfig cfg;
 		cfg.PixelSnapH = true;
 		g_fonts.icon = exists(icons) ? io.Fonts->AddFontFromFileTTF(icons, 20.0f * scale, &cfg, iconRanges) : g_fonts.body;
+		// search (DwoLens), canvas (DwoCanvas), eye (DwoStateMonitor), package (DwoBuilder)
+		static const ImWchar thumbRanges[] = { 0xE721, 0xE721, 0xE790, 0xE790, 0xE7B3, 0xE7B3, 0xE7B8, 0xE7B8, 0 };
+		g_fonts.iconLarge = exists(icons) ? io.Fonts->AddFontFromFileTTF(icons, 26.0f * scale, &cfg, thumbRanges) : g_fonts.icon;
+	}
+	{
+		// Graphs zoom up to 250%; drawing the 15 px glyphs that large shows their pixels. These 2x fonts keep zoomed
+		// text sharp. Hangul is limited to what the window itself writes (the full set at this size would make the
+		// atlas huge); text with other Hangul (e.g. Korean Blueprint node titles) stays on the regular font.
+		static const char* kGraphHangul = u8"가각간값강같개객거걸검것게겠겨결경계고골곳공과관교구규균그근금기긴김깁까깜깨꺼께꿉꿔뀌뀐뀜끄끊끌끝끼나난남납내냅너넌널넘넣네넷노녹놓누눈는능니님닙다단닫달대더덮데도돌동되된됨됩두둡뒤듈드든들듭등디따때또띄라란래랜량러런럼레렉렌려력렸령례로록롤롭료루룹류르른를름릅리릭린릴립릿마막만많말맞맨맵머먼멈메며면명몇모목못무묶문물므미밀밋밍바밖받방배백버번범법벤변별보복본볼봅부분불브블비빈빌빡빨빼뺍사삭산상새색샘생서석선설성세셋션소속수순숨스습시식신실심쌓쓰쓸씁씩아안않알았앞앤야약어언얼업없었에엔여연열영예오온올옮옵와완외왼요용우운울움웁웃워원월위유율으은을음읍의이인일읽임입있자작잔잘잠잡장재저적전점접정제젝젯져조존좁종주준줄줍중증지직진질짐집징째쪽차찰참창찾채처청체쳐초최추출춰취츠측층치칙친침카캡커컬컴켓코콘콜크큰클키타탈탐태택터테텍텐토통트튼티파팔패퍼편펼평포폴표품프플필하한할함합항해했행향헤혀현형호홈화확환황회획횟후훅휠흐흔히";
+		static ImVector<ImWchar> graphRanges;
+		if (graphRanges.empty())
+		{
+			ImFontGlyphRangesBuilder b;
+			b.AddRanges(io.Fonts->GetGlyphRangesDefault());
+			b.AddText(kGraphHangul);
+			b.BuildRanges(&graphRanges);
+		}
+		auto addGraph = [&](const char* primary, const char* korean) -> ImFont* {
+			ImFontConfig cfg;
+			cfg.OversampleH = 1;
+			if (!exists(primary)) return nullptr;
+			ImFont* f = io.Fonts->AddFontFromFileTTF(primary, 30.0f * scale, &cfg, io.Fonts->GetGlyphRangesDefault());
+			ImFontConfig merge;
+			merge.MergeMode = true;
+			merge.OversampleH = 1;
+			if (exists(korean)) io.Fonts->AddFontFromFileTTF(korean, 30.0f * scale, &merge, graphRanges.Data);
+			return f;
+		};
+		g_fonts.graph = addGraph(latin, hangul);
+		g_fonts.graphBold = addGraph(latinBold, hangulBold);
 	}
 	io.FontDefault = g_fonts.body;
 }
@@ -277,9 +314,11 @@ static void ApplyTheme(float scale)
 
 // ============================================================================ widgets
 
+// NoBordersInBody: columns resize from the header row only. Without it the (invisible) resize zone of every column
+// border runs down the whole body and takes the hover from the row while the mouse crosses cells, so rows flicker.
 static const ImGuiTableFlags kTable = ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_RowBg |
-                                      ImGuiTableFlags_Resizable | ImGuiTableFlags_Hideable | ImGuiTableFlags_ScrollY |
-                                      ImGuiTableFlags_SizingStretchProp;
+                                      ImGuiTableFlags_Resizable | ImGuiTableFlags_NoBordersInBody | ImGuiTableFlags_Hideable |
+                                      ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingStretchProp;
 
 static void Pill(const std::string& text, ImU32 color, bool filled = false)
 {
@@ -312,12 +351,19 @@ static void SeverityPill(const std::string& severity)
 	Pill(label, SemanticColor(severity));
 }
 
+// Vertical centre of the text on the current line. After AlignTextToFramePadding() the text sits FramePadding.y
+// lower than the cursor (status bar, toolbars); markers drawn beside it must follow it.
+static float TextCenterY()
+{
+	return ImGui::GetCursorScreenPos().y + ImGui::GetCurrentWindow()->DC.CurrLineTextBaseOffset + ImGui::GetTextLineHeight() * 0.5f;
+}
+
 static void StatusDot(ImU32 color, float radius = 4.0f, bool pulse = false)
 {
 	ImVec2 p = ImGui::GetCursorScreenPos();
 	float h = ImGui::GetTextLineHeight();
 	float r = S(radius);
-	ImVec2 c(p.x + r + S(1), p.y + h * 0.5f);
+	ImVec2 c(p.x + r + S(1), TextCenterY());
 	ImDrawList* dl = ImGui::GetWindowDrawList();
 	if (pulse)
 	{
@@ -376,13 +422,23 @@ static void KeyValue(const char* key, const std::string& value, float keyWidth =
 	ImGui::TextWrapped("%s", value.empty() ? "-" : value.c_str());
 }
 
+// Every tooltip gets the same padding, whatever its parent window pushed: the activity bar draws with no side
+// padding and the status bar with 1px, and a tooltip opened inside them would inherit it.
+static bool BeginTip()
+{
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(10), S(6)));
+	bool open = ImGui::BeginTooltip();
+	ImGui::PopStyleVar();
+	return open;
+}
+
 static void HelpMarker(const char* text)
 {
 	ImGui::SameLine();
 	TextDim(ICON_INFO);
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
 	{
-		ImGui::BeginTooltip();
+		BeginTip();
 		ImGui::PushTextWrapPos(S(380));
 		ImGui::TextUnformatted(text);
 		ImGui::PopTextWrapPos();
@@ -394,7 +450,7 @@ static void Tooltip(const char* text)
 {
 	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_AllowWhenDisabled))
 	{
-		ImGui::BeginTooltip();
+		BeginTip();
 		ImGui::PushTextWrapPos(S(380));
 		ImGui::TextUnformatted(text);
 		ImGui::PopTextWrapPos();
@@ -601,7 +657,7 @@ static void Spinner(float radius, ImU32 color)
 	ImVec2 p = ImGui::GetCursorScreenPos();
 	float h = ImGui::GetTextLineHeight();
 	float r = S(radius);
-	ImVec2 c(p.x + r, p.y + h * 0.5f);
+	ImVec2 c(p.x + r, TextCenterY());
 	float t = (float)ImGui::GetTime() * 6.0f;
 	ImGui::GetWindowDrawList()->PathArcTo(c, r, t, t + IM_PI * 1.4f, 16);
 	ImGui::GetWindowDrawList()->PathStroke(color, 0, S(2));

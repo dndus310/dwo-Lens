@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="dwocanvas:viewport" content="400x300">
+<meta name="dwocanvas:name" content="HtmlPaint">
+<title>Paint: solid, gradients, radius, border, shadows</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #e9edf2; }
+.p { position: absolute; width: 104px; height: 80px; }
+
+/* Row 1 */
+#solid { left: 20px; top: 20px; background: #3a7bd5; }
+#linear { left: 148px; top: 20px; background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%); border-radius: 8px; }
+#radial { left: 276px; top: 20px; background: radial-gradient(circle at 50% 50%, #ffffff 0%, #5ac4ff 70%, #1f6fb2 100%); border-radius: 40px; }
+
+/* Row 2 */
+#corners { left: 20px; top: 120px; background: #8be08a; border-radius: 0 24px 8px 32px; }
+#border { left: 148px; top: 120px; background: #ffffff; border: 3px solid #3a7bd5; border-radius: 12px; }
+#vertical { left: 276px; top: 120px; background: linear-gradient(to bottom, #515b70, #1f232b); border-radius: 6px; }
+
+/* Row 3: shadows and translucency */
+#drop { left: 20px; top: 204px; height: 72px; background: #ffffff; border-radius: 10px; box-shadow: 0px 6px 14px 0px rgba(0, 0, 0, 0.35); }
+#inset { left: 148px; top: 204px; height: 72px; background: #c9d3e0; border-radius: 10px; box-shadow: inset 0px 4px 10px 0px rgba(0, 0, 0, 0.45); }
+#glass { left: 276px; top: 204px; height: 72px; background: rgba(58, 123, 213, 0.5); border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.8); }
+</style>
+</head>
+<body>
+  <div class="p" id="solid"></div>
+  <div class="p" id="linear"></div>
+  <div class="p" id="radial"></div>
+  <div class="p" id="corners"></div>
+  <div class="p" id="border"></div>
+  <div class="p" id="vertical"></div>
+  <div class="p" id="drop"></div>
+  <div class="p" id="inset"></div>
+  <div class="p" id="glass"></div>
+</body>
+</html>

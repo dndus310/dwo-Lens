@@ -1,6 +1,7 @@
 {
   "schema": "lens.config/0.1",
-  "_comment": "Defaults. A project can override any key with __dwo-lens/config.json (same shape, merged key by key).",
+  "_product": "dwo-Forge (Lens analysis settings; the schema id keeps its 1.x name so project overrides still apply)",
+  "_comment": "Defaults. A project can override any key with __dwo-forge/config.json (__dwo-lens/config.json before dwo-Forge 2.0 is migrated automatically) (same shape, merged key by key).",
 
   "naming": {
     "_comment": "Asset class name -> allowed prefixes (UE5 style guide, allar/ue5-style-guide). Classes not listed are not checked.",
@@ -103,9 +104,42 @@
     "nullrhi": false
   },
 
+  "build": {
+    "_comment": "compile: UnrealBuildTool for the editor target (C++ projects). package: RunUAT BuildCookRun into the run folder (kept by retention.packages).",
+    "platform": "Win64",
+    "configuration": "Development",
+    "compileTimeoutMinutes": 60,
+    "packageTimeoutMinutes": 180,
+    "extraPackageArgs": ""
+  },
+
+  "retention": {
+    "_comment": "After every run the oldest run folders beyond these limits are deleted (one prefix = one check). Packages keep fewer because each holds a full build. Before packaging, old packages are removed while free disk space is below minFreeDiskGB.",
+    "runsPerCheck": 30,
+    "packages": 3,
+    "minFreeDiskGB": 20
+  },
+
+  "ci": {
+    "_comment": "Local CI (Jenkins on 127.0.0.1, installed from an offline bundle). keepBuilds/keepArtifacts: Jenkins keeps the newest N builds and drops the oldest. triggers: git events of this PC's user; branches are glob patterns, stages pick compile / lens / package. Run __dwo-forge.bat ci-job again after changing this section.",
+    "port": 8098,
+    "jobPrefix": "dwo-forge",
+    "keepBuilds": 30,
+    "keepArtifacts": 10,
+    "quietPeriodSeconds": 10,
+    "lensChecks": ["analyze", "logs", "sizes"],
+    "triggers": {
+      "push": { "branches": ["develop"], "stages": ["compile", "lens", "package"] },
+      "merge": { "branches": ["develop"], "stages": ["compile", "lens"] },
+      "branchCreate": { "branches": ["feature/*"], "stages": ["compile", "lens"] },
+      "commit": { "branches": ["develop", "feature/*"], "stages": ["lens"] },
+      "external": { "stages": ["compile", "lens", "package"] }
+    }
+  },
+
   "stateMonitor": {
-    "_comment": "Optional adapter. Active only when the project itself contains the StateMonitor plugin.",
-    "pluginName": "StateMonitor",
+    "_comment": "Optional adapter. Active when the project contains the DwoStateMonitor plugin (installed by sm-install or its own copy). StateMonitor is the dwo-Lens 1.x name. Automation tests keep the StateMonitor. prefix.",
+    "pluginName": ["DwoStateMonitor", "StateMonitor"],
     "testFilter": "StateMonitor."
   }
 }

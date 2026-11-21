@@ -206,8 +206,12 @@ static void DrawOverviewMain(App& app)
 	                  (app.isCodeProject ? "C++" : "Blueprint 전용") + (app.attached ? "  ·  dwo-Forge " + app.SystemCommit() : "");
 	TextDim(sub);
 	float right = ImGui::GetWindowContentRegionMax().x;
-	ImGui::SameLine();
-	ImGui::SetCursorPosX(right - S(330));
+	float buttonsW = S(330);
+	if (ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x + S(16) < right - buttonsW)
+	{
+		ImGui::SameLine();
+		ImGui::SetCursorPosX(right - buttonsW);
+	}
 	ImGui::BeginDisabled(!app.attached);
 	if (PrimaryButton((std::string(ICON_PLAY) + "  기본 검사 실행").c_str())) app.RunAll();
 	Tooltip("아키텍처 분석 → 로그 분석 → 콘텐츠 용량을 차례로 실행합니다 (빨리 끝나는 검사만).");
@@ -427,8 +431,13 @@ static void DrawOverviewInspector(App& app)
 		if (steps[i].done) TextDim(steps[i].text);
 		else
 		{
+			float buttonX = ImGui::GetContentRegionAvail().x + ImGui::GetCursorPosX() - S(54);
+			ImVec2 wp = ImGui::GetWindowPos();
+			ImGui::PushClipRect(ImVec2(wp.x, wp.y), ImVec2(wp.x + buttonX - S(6), wp.y + ImGui::GetWindowHeight()), true);   // narrow panel: text stops before the button
 			ImGui::TextUnformatted(steps[i].text);
-			ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetCursorPosX() - S(54));
+			ImGui::PopClipRect();
+			Tooltip(steps[i].text);
+			ImGui::SameLine(buttonX);
 			ImGui::BeginDisabled(!app.attached && i != 0);
 			if (ImGui::SmallButton(steps[i].action)) steps[i].fn();
 			ImGui::EndDisabled();

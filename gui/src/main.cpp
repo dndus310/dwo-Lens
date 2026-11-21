@@ -318,12 +318,16 @@ static void DrawMenuBar(App& app, bool& quit)
 	}
 	// right side: project chip and palette button
 	float right = ImGui::GetWindowWidth();
+	float menusEnd = ImGui::GetCursorPosX();
 	std::string chip = app.hasUProject ? std::string(ICON_FOLDER) + "  " + app.projectName : std::string(ICON_FOLDER) + "  프로젝트 없음";
-	float chipW = ImGui::CalcTextSize(chip.c_str()).x + S(24);
-	float paletteW = S(240);
-	ImGui::SetCursorPosX(right - chipW - paletteW - S(24));
+	float chipW = ImMin(ImGui::CalcTextSize(chip.c_str()).x + S(24), S(220));
+	// narrow window: the command search button becomes an icon so it never covers the menus
+	bool compact = right - menusEnd < chipW + S(240) + S(40);
+	float paletteW = compact ? ImGui::GetFrameHeight() + S(8) : S(240);
+	ImGui::SetCursorPosX(ImMax(menusEnd + S(8), right - chipW - paletteW - S(24)));
 	ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(255, 255, 255, 12));
-	if (ImGui::Button((std::string(ICON_SEARCH) + "  명령 검색        Ctrl+K").c_str(), ImVec2(paletteW, 0))) g_paletteOpen = true;
+	if (ImGui::Button(compact ? ICON_COMMAND "##palette" : (std::string(ICON_COMMAND) + "  명령 검색        Ctrl+K").c_str(), ImVec2(paletteW, 0))) g_paletteOpen = true;
+	if (compact) Tooltip("명령 검색 (Ctrl+K)");
 	ImGui::PopStyleColor();
 	ImGui::SameLine();
 	if (ImGui::Button(chip.c_str(), ImVec2(chipW, 0))) ImGui::OpenPopup("projects");
@@ -346,7 +350,8 @@ static std::map<std::string, Activity> g_lastToolScreen;   // tool id -> last sc
 static void DrawActivityBar(App& app)
 {
 	ImGuiViewport* vp = ImGui::GetMainViewport();
-	bool collapsed = app.sidebarCollapsed;
+	bool narrow = vp->WorkSize.x < S(1180);
+	bool collapsed = app.sidebarCollapsed || narrow;
 	g_activityWidth = collapsed ? S(56) : S(220);
 	ImGui::SetNextWindowPos(vp->WorkPos);
 	ImGui::SetNextWindowSize(ImVec2(g_activityWidth, vp->WorkSize.y - g_statusHeight));
@@ -377,6 +382,7 @@ static void DrawActivityBar(App& app)
 	// One row. icon: glyph, or a tool tile when 'tool' is set. badge: text pill (expanded) or a dot (collapsed / no text).
 	auto row = [&](const char* id, const char* icon, const ToolMeta* tool, const std::string& label, bool active, int depth,
 	               ImU32 badgeColor, const std::string& badge, const std::string& tip) -> bool {
+		ImDrawList* dl = ImGui::GetWindowDrawList();
 		float h = depth ? S(34) : S(40);
 		ImVec2 p = ImGui::GetCursorScreenPos();
 		ImGui::PushID(id);
@@ -386,19 +392,15 @@ static void DrawActivityBar(App& app)
 		if (active) dl->AddRectFilled(a, b, IM_COL32(255, 255, 255, 26), S(6));
 		else if (hov) dl->AddRectFilled(a, b, IM_COL32(255, 255, 255, 12), S(6));
 		float indent = collapsed ? 0 : depth * S(16);
-		float glyphX;
-		if (tool)
 		{
-			float t = S(22);
-			glyphX = collapsed ? (W - t) * 0.5f : S(18) + indent;
-			DrawToolTile(dl, ImVec2(p.x + glyphX, p.y + (h - t) * 0.5f), t, *tool, active || hov ? 1.0f : 0.82f);
-		}
-		else
-		{
+			// tools use their own glyph (the one on the launcher thumbnail) in their colour; the rest are grey
+			const char* glyph = tool ? tool->icon : icon;
 			float fs = g_fonts.icon->FontSize * (depth ? 0.8f : 0.92f);
-			ImVec2 is = g_fonts.icon->CalcTextSizeA(fs, FLT_MAX, 0, icon);
-			glyphX = collapsed ? (W - is.x) * 0.5f : S(18) + indent + (S(22) - is.x) * 0.5f;
-			dl->AddText(g_fonts.icon, fs, ImVec2(p.x + glyphX, p.y + (h - is.y) * 0.5f), active ? col::Text : hov ? IM_COL32(0xD0, 0xD3, 0xD8, 255) : col::Dim, icon);
+			ImVec2 is = g_fonts.icon->CalcTextSizeA(fs, FLT_MAX, 0, glyph);
+			float glyphX = collapsed ? (W - is.x) * 0.5f : S(18) + indent + (S(22) - is.x) * 0.5f;
+			ImU32 c = tool ? (active || hov ? Mix(tool->color, IM_COL32(255, 255, 255, 255), 0.25f) : tool->color)
+			               : (active ? col::Text : hov ? IM_COL32(0xD0, 0xD3, 0xD8, 255) : col::Dim);
+			dl->AddText(g_fonts.icon, fs, ImVec2(p.x + glyphX, p.y + (h - is.y) * 0.5f), c, glyph);
 		}
 		if (!collapsed)
 		{
@@ -436,6 +438,7 @@ static void DrawActivityBar(App& app)
 		return clicked;
 	};
 	auto rule = [&](const char* caption) {
+		ImDrawList* dl = ImGui::GetWindowDrawList();
 		ImGui::Dummy(ImVec2(W, S(4)));
 		ImVec2 c = ImGui::GetCursorScreenPos();
 		dl->AddLine(c + ImVec2(S(16), 0), c + ImVec2(W - S(16), 0), col::Border, 1);
@@ -463,6 +466,10 @@ static void DrawActivityBar(App& app)
 		lu.page = launcher::Pc;
 	}
 	rule("도구");
+	// The tools and their screens scroll between the fixed top rows and the bottom rows (short windows).
+	float bottomH = (S(40) + S(2)) * 3 + S(14) + S(12);   // three rows, the rule above them, window padding
+	ImGui::BeginChild("tools", ImVec2(W - 1, ImMax(S(40), ImGui::GetContentRegionAvail().y - bottomH)), ImGuiChildFlags_None,
+	                  ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoBackground);
 	bool anyTool = false;
 	for (int i = 0; i < kToolCount; ++i)
 	{
@@ -508,17 +515,18 @@ static void DrawActivityBar(App& app)
 		ImGui::PopTextWrapPos();
 	}
 
+	ImGui::EndChild();
 	// bottom
-	float bottomH = (S(40) + S(2)) * 3 + S(14) + S(12);   // three rows, the rule above them, window padding
-	if (ImGui::GetCursorPosY() < ImGui::GetWindowHeight() - bottomH) ImGui::SetCursorPosY(ImGui::GetWindowHeight() - bottomH);
+	ImGui::SetCursorPosY(ImGui::GetWindowHeight() - bottomH);
 	rule(nullptr);
-	if (row("palette", ICON_SEARCH, nullptr, "명령 검색", false, 0, 0, "", "Ctrl+K")) g_paletteOpen = true;
+	if (row("palette", ICON_COMMAND, nullptr, "명령 검색", false, 0, 0, "", "Ctrl+K")) g_paletteOpen = true;
 	if (row("about", ICON_INFO, nullptr, "정보", inLauncher && lu.page == launcher::About, 0, 0, "", collapsed ? "버전, 문서, 도구 카탈로그" : ""))
 	{
 		app.requestActivity = Activity::Launcher;
 		lu.page = launcher::About;
 	}
-	if (row("collapse", collapsed ? ICON_RIGHT : ICON_LEFT, nullptr, "접기", false, 0, 0, "", collapsed ? "펼치기" : ""))
+	if (row("collapse", collapsed ? ICON_RIGHT : ICON_LEFT, nullptr, "접기", false, 0, 0, "",
+	        narrow ? "창이 좁아 자동으로 접혀 있습니다" : collapsed ? "펼치기" : "") && !narrow)
 	{
 		app.sidebarCollapsed = !app.sidebarCollapsed;
 		app.SaveSettings();
@@ -540,6 +548,26 @@ static void DrawStatusBar(App& app)
 	ImGui::PushStyleColor(ImGuiCol_WindowBg, running ? IM_COL32(0x23, 0x4A, 0x8A, 255) : IM_COL32(0x2B, 0x2D, 0x30, 255));
 	ImGui::Begin("##status", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking |
 	                                      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNav);
+	// right side first: what fits decides how much room the left text gets
+	app.RebuildProblems();
+	int errors = 0, warnings = 0;
+	for (auto& p : app.problems)
+	{
+		if (p.muted) continue;
+		int r = SeverityRank(p.severity);
+		errors += r >= 4;
+		warnings += r == 3;
+	}
+	int connected = app.live.ConnectedCount();
+	std::string liveText = app.live.listening ? (connected ? Fmt("DwoStateMonitor %d 연결", connected) : Fmt("DwoStateMonitor :%d", app.live.port)) : "DwoStateMonitor 꺼짐";
+	std::string probText = Fmt("%s %d   %s %d", ICON_ERROR, errors, ICON_WARNING, warnings);
+	float winW = ImGui::GetWindowWidth();
+	float liveW = ImGui::CalcTextSize(liveText.c_str()).x + S(40);
+	float probW = ImGui::CalcTextSize(probText.c_str()).x + S(20);
+	bool showLive = winW > S(760), showProb = winW > S(560);
+	float rightW = (showLive ? liveW : 0) + (showProb ? probW : 0) + S(20);
+	ImVec2 wp = ImGui::GetWindowPos();
+	ImGui::PushClipRect(wp, ImVec2(wp.x + winW - rightW - S(8), wp.y + ImGui::GetWindowHeight()), true);
 	ImGui::AlignTextToFramePadding();
 	if (running)
 	{
@@ -560,26 +588,19 @@ static void DrawStatusBar(App& app)
 		ImGui::SameLine();
 		ImGui::TextUnformatted(app.hasUProject ? (app.projectName + (app.attached ? "  ·  UE " + app.Engine() : app.legacyAttached ? "  ·  dwo-Lens 1.x (이전 중)" : "  ·  연결 안 됨")).c_str() : "프로젝트 없음");
 	}
-	// right side
-	app.RebuildProblems();
-	int errors = 0, warnings = 0;
-	for (auto& p : app.problems)
+	ImGui::PopClipRect();
+	if (showProb || showLive)
 	{
-		if (p.muted) continue;
-		int r = SeverityRank(p.severity);
-		errors += r >= 4;
-		warnings += r == 3;
+		ImGui::SameLine(winW - rightW + S(10));
+		if (showProb && ImGui::Selectable(probText.c_str(), false, 0, ImVec2(ImGui::CalcTextSize(probText.c_str()).x, 0))) app.requestActivity = Activity::Problems;
+		if (showProb && showLive) ImGui::SameLine(0, S(20));
+		if (showLive)
+		{
+			StatusDot(connected ? col::Pass : app.live.listening ? col::Info : col::Fail, 3.5f, connected > 0);
+			ImGui::SameLine();
+			if (ImGui::Selectable(liveText.c_str(), false, 0, ImVec2(ImGui::CalcTextSize(liveText.c_str()).x, 0))) app.requestActivity = Activity::Live;
+		}
 	}
-	int connected = app.live.ConnectedCount();
-	std::string liveText = app.live.listening ? (connected ? Fmt("DwoStateMonitor %d 연결", connected) : Fmt("DwoStateMonitor :%d", app.live.port)) : "DwoStateMonitor 꺼짐";
-	std::string probText = Fmt("%s %d   %s %d", ICON_ERROR, errors, ICON_WARNING, warnings);
-	float w = ImGui::CalcTextSize(liveText.c_str()).x + ImGui::CalcTextSize(probText.c_str()).x + S(80);
-	ImGui::SameLine(ImGui::GetWindowWidth() - w);
-	if (ImGui::Selectable(probText.c_str(), false, 0, ImVec2(ImGui::CalcTextSize(probText.c_str()).x, 0))) app.requestActivity = Activity::Problems;
-	ImGui::SameLine(0, S(20));
-	StatusDot(connected ? col::Pass : app.live.listening ? col::Info : col::Fail, 3.5f, connected > 0);
-	ImGui::SameLine();
-	if (ImGui::Selectable(liveText.c_str(), false, 0, ImVec2(ImGui::CalcTextSize(liveText.c_str()).x, 0))) app.requestActivity = Activity::Live;
 	ImGui::End();
 	ImGui::PopStyleColor();
 	ImGui::PopStyleVar(2);
@@ -1150,6 +1171,14 @@ static LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		DragFinish(drop);
 		return 0;
 	}
+	case WM_GETMINMAXINFO:
+	{
+		// Below this the sidebar, the launcher card and the docked tool panels no longer fit side by side.
+		MINMAXINFO* mm = (MINMAXINFO*)lParam;
+		mm->ptMinTrackSize.x = (LONG)(960 * g_scale);
+		mm->ptMinTrackSize.y = (LONG)(620 * g_scale);
+		return 0;
+	}
 	case WM_SIZE:
 		if (wParam == SIZE_MINIMIZED) return 0;
 		g_resizeWidth = (UINT)LOWORD(lParam);
@@ -1209,6 +1238,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 	std::wstring canvasFileArg = ArgValue(argc, argv, L"--canvas-file");
 	// --hover x,y (window pixels): park the mouse there, so --screenshot can capture hover states and tooltips.
 	std::wstring hoverArg = ArgValue(argc, argv, L"--hover");
+	std::wstring sizeArg = ArgValue(argc, argv, L"--size");   // WxH in logical pixels (screenshots of other window sizes)
+	int sizeW = 1500, sizeH = 920;
+	if (!sizeArg.empty()) swscanf_s(sizeArg.c_str(), L"%dx%d", &sizeW, &sizeH);
 	float hoverX = -1, hoverY = -1;
 	if (!hoverArg.empty()) swscanf_s(hoverArg.c_str(), L"%f,%f", &hoverX, &hoverY);
 	double shotDelay = delayArg.empty() ? 0.8 : _wtof(delayArg.c_str());
@@ -1249,7 +1281,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 	}
 	float scale = ImGui_ImplWin32_GetDpiScaleForHwnd(hwnd);
 	g_scale = scale;
-	SetWindowPos(hwnd, nullptr, 0, 0, (int)(1500 * scale), (int)(920 * scale), SWP_NOMOVE | SWP_NOZORDER);
+	SetWindowPos(hwnd, nullptr, 0, 0, (int)(sizeW * scale), (int)(sizeH * scale), SWP_NOMOVE | SWP_NOZORDER);
 	DragAcceptFiles(hwnd, TRUE);
 	ShowWindow(hwnd, shotArg.empty() ? SW_SHOWDEFAULT : SW_SHOWNOACTIVATE);
 	UpdateWindow(hwnd);

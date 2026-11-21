@@ -45,6 +45,7 @@
 #define ICON_DELETE    u8"\uE74D"
 #define ICON_RIGHT     u8"\uE76C"
 #define ICON_LEFT      u8"\uE76B"
+#define ICON_COMMAND   u8"\uE756"   // command prompt: the command palette (the magnifier is DwoLens)
 #define ICON_DOWN      u8"\uE70D"
 #define ICON_GAME      u8"\uE7FC"
 #define ICON_BOLT      u8"\uE945"

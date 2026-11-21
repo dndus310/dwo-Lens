@@ -285,13 +285,14 @@ static bool Banner(const char* id, ImU32 color, const std::string& text, const c
 {
 	ImVec2 p = ImGui::GetCursorScreenPos();
 	float w = ImGui::GetContentRegionAvail().x;
-	float h = ImGui::GetFrameHeight() + S(16);
+	float wrap = w - S(160) - S(14);
+	float textH = ImGui::CalcTextSize(text.c_str(), nullptr, false, wrap).y;
+	float h = ImMax(ImGui::GetFrameHeight(), textH) + S(16);
 	ImDrawList* dl = ImGui::GetWindowDrawList();
 	dl->AddRectFilled(p, p + ImVec2(w, h), WithAlpha(color, 0.10f), S(6));
 	dl->AddRect(p, p + ImVec2(w, h), WithAlpha(color, 0.45f), S(6));
-	ImGui::SetCursorScreenPos(p + ImVec2(S(14), S(8)));
-	ImGui::AlignTextToFramePadding();
-	ImGui::PushTextWrapPos(p.x + w - S(160));
+	ImGui::SetCursorScreenPos(p + ImVec2(S(14), S(8) + (h - S(16) - textH) * 0.5f));
+	ImGui::PushTextWrapPos(p.x + S(14) + wrap);
 	ImGui::TextUnformatted(text.c_str());
 	ImGui::PopTextWrapPos();
 	bool clicked = false;
@@ -299,7 +300,7 @@ static bool Banner(const char* id, ImU32 color, const std::string& text, const c
 	{
 		ImGui::PushID(id);
 		float bw = ImGui::CalcTextSize(action).x + ImGui::GetStyle().FramePadding.x * 2 + S(8);
-		ImGui::SetCursorScreenPos(ImVec2(p.x + w - bw - S(12), p.y + S(8)));
+		ImGui::SetCursorScreenPos(ImVec2(p.x + w - bw - S(12), p.y + (h - ImGui::GetFrameHeight()) * 0.5f));
 		ImGui::BeginDisabled(false);
 		clicked = PrimaryButton(action, ImVec2(bw, 0));
 		ImGui::EndDisabled();
@@ -421,15 +422,24 @@ static void DrawToolItem(App& app, const ToolMeta& m, const ToolView& v, const j
 	if (hovered && ImGui::IsMouseDoubleClicked(0) && (present || id == "ci")) app.requestActivity = m.open;
 	if (hovered) dl->AddRectFilled(p + ImVec2(-S(8), S(4)), p + ImVec2(w + S(8), h - S(4)), IM_COL32(255, 255, 255, 8), S(8));
 
-	// thumbnail
+	// thumbnail: full size, smaller in a narrow card, none when there is no room
+	ImVec2 thumb = w >= S(720) ? ImVec2(S(172), S(96)) : w >= S(520) ? ImVec2(S(124), S(70)) : ImVec2(0, S(96));
 	ImVec2 ta = p + ImVec2(0, S(15));
-	ImVec2 tb = ta + ImVec2(S(172), S(96));
-	DrawToolThumb(dl, ta, tb, m, v.state == "none");
+	ImVec2 tb = ta + thumb;
+	if (thumb.x > 0)
+	{
+		ta.y = p.y + (h - thumb.y) * 0.5f;
+		tb = ta + thumb;
+		DrawToolThumb(dl, ta, tb, m, v.state == "none");
+	}
+	ta.y = p.y + S(15);
+	tb.y = ta.y + S(96);
 
 	// text block
-	float rightW = S(190);
-	float tx = tb.x + S(20);
-	float textW = p.x + w - rightW - tx - S(16);
+	float rightW = S(170);
+	float tx = thumb.x > 0 ? tb.x + S(20) : p.x;
+	float textW = ImMax(S(80), p.x + w - rightW - tx - S(16));
+	ImGui::PushClipRect(ImVec2(tx, p.y), ImVec2(tx + textW, p.y + h), true);
 	ImGui::SetCursorScreenPos(ImVec2(tx, ta.y - S(1)));
 	ImGui::PushFont(g_fonts.bold);
 	ImGui::PushStyleColor(ImGuiCol_Text, StateColor(v));
@@ -443,20 +453,26 @@ static void DrawToolItem(App& app, const ToolMeta& m, const ToolView& v, const j
 	ImGui::TextUnformatted(m.name);
 	ImGui::PopFont();
 	ImGui::SetCursorScreenPos(ImVec2(tx, ImGui::GetCursorScreenPos().y + S(1)));
-	ImGui::PushTextWrapPos(tx + textW);
-	ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0xC4, 0xC7, 0xCC, 255));
-	ImGui::TextWrapped("%s", m.summary);
-	ImGui::PopStyleColor();
-	ImGui::PopTextWrapPos();
+	{
+		// description: at most the space above the tag line
+		float top = ImGui::GetCursorScreenPos().y;
+		float bottom = tb.y - ImGui::GetTextLineHeight() - S(2);
+		ImGui::PushClipRect(ImVec2(tx, top), ImVec2(tx + textW, bottom), true);
+		ImGui::PushTextWrapPos(tx + textW);
+		ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0xC4, 0xC7, 0xCC, 255));
+		ImGui::TextWrapped("%s", m.summary);
+		ImGui::PopStyleColor();
+		ImGui::PopTextWrapPos();
+		ImGui::PopClipRect();
+	}
 	ImGui::SetCursorScreenPos(ImVec2(tx, tb.y - ImGui::GetTextLineHeight() + S(1)));
 	ImGui::PushStyleColor(ImGuiCol_Text, col::Dim);
 	ImGui::SetWindowFontScale(0.9f);
 	std::string tags = TagLine(app, m, v);
-	ImGui::PushClipRect(ImVec2(tx, p.y), ImVec2(tx + textW, p.y + h), true);
 	ImGui::TextUnformatted(tags.c_str());
-	ImGui::PopClipRect();
 	ImGui::SetWindowFontScale(1.0f);
 	ImGui::PopStyleColor();
+	ImGui::PopClipRect();
 
 	// actions: primary button + "..." menu, version under them
 	std::string primary, icon;
@@ -618,19 +634,26 @@ static void DrawProjectPage(App& app)
 	CardRule();
 	ImGui::Dummy(ImVec2(0, S(6)));
 
-	// filter row: project, facts, search, project menu
+	// filter row: project, facts, search, project menu. In a narrow card the facts drop out, then search narrows.
+	float rowW = ImGui::GetContentRegionAvail().x;
+	float pickerW = S(300), menuW = ImGui::GetFrameHeight() + S(14);
+	float searchW = ImClamp(rowW - pickerW - menuW - S(24), S(120), S(260));
 	ProjectPicker(app);
+	std::string factsText;
 	if (app.hasUProject)
 	{
+		std::string eng = Str(pj, "engine", app.attached ? app.Engine() : "");
+		factsText = std::string(app.isCodeProject ? "C++" : "Blueprint 전용") + (eng.empty() ? "" : "  ·  UE " + eng) +
+		            (app.attached ? (Str(app.state, "vcs") == "none" ? "  ·  버전 관리 없음" : "  ·  git") : "  ·  연결 안 됨");
+	}
+	bool showFacts = !factsText.empty() && rowW - pickerW - searchW - menuW - S(40) > ImGui::CalcTextSize(factsText.c_str()).x;
+	if (showFacts)
+	{
 		ImGui::SameLine(0, S(14));
-		std::string engine = Str(pj, "engine", app.attached ? app.Engine() : "");
-		std::string facts = std::string(app.isCodeProject ? "C++" : "Blueprint 전용") + (engine.empty() ? "" : "  ·  UE " + engine) +
-		                    (app.attached ? (Str(app.state, "vcs") == "none" ? "  ·  버전 관리 없음" : "  ·  git") : "  ·  연결 안 됨");
 		ImGui::AlignTextToFramePadding();
-		TextDim(facts);
+		TextDim(factsText);
 	}
 	float right = ImGui::GetWindowContentRegionMax().x;
-	float searchW = S(260);
 	ImGui::SameLine(right - searchW - ImGui::GetFrameHeight() - S(14));
 	SearchBox("##toolsearch", u.search, sizeof(u.search), ICON_SEARCH "  도구 검색", searchW);
 	ImGui::SameLine();

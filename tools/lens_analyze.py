@@ -16,13 +16,13 @@ from collections import defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import lens_features  # noqa: E402
 import lens_quality  # noqa: E402
 
 SCHEMA = "lens.graph/0.1"
 EXTRACTOR_VERSION = "lens-analyze/0.1"
 MAX_DIAGRAM_NODES = 120
 MAX_FLOW_NODES = 60
-MAX_REPORT_FLOWS = 60
 TICK_EVENTS = {"ReceiveTick", "Tick"}
 EXTERNAL_PREFIXES = ("__ExternalActors__", "__ExternalObjects__")
 
@@ -748,7 +748,8 @@ summary{cursor:pointer;color:var(--ink2)}code{font-family:Consolas,monospace;fon
 """
 
 
-def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, diagrams: dict, quality_html: str = ""):
+def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, diagrams: dict, quality_html: str = "",
+                  features_html: str = ""):
     meta = ctx["meta"]
     esc = html.escape
     project_syms = [s for s in g.symbols.values() if not s["external"]]
@@ -773,18 +774,6 @@ def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, dia
             return f"<h3>{esc(title)}</h3><p class='meta'>해당 데이터 없음</p>"
         return f"<h3>{esc(title)}</h3>{note}<pre class='mermaid'>{esc(source)}</pre>"
 
-    # Large projects have thousands of graphs; the page keeps the biggest ones and links the rest.
-    all_flows = [(bp_name, gname, src) for bp_name, graphs in diagrams["flows"].items() for gname, src in graphs]
-    shown = sorted(all_flows, key=lambda f: -f[2].count("\n"))[:MAX_REPORT_FLOWS]
-    shown_keys = {(b, gname) for b, gname, _ in shown}
-    flows_html = []
-    for bp_name, graphs in diagrams["flows"].items():
-        inner = "".join(mermaid_block(f"{bp_name} · {gname}", src) for gname, src in graphs if (bp_name, gname) in shown_keys)
-        if inner:
-            flows_html.append(f"<details{' open' if len(shown) <= 12 else ''}><summary>{esc(bp_name)}</summary>{inner}</details>")
-    if len(all_flows) > len(shown):
-        flows_html.append(f"<p class='meta'>실행 흐름 {len(all_flows)}개 중 큰 {len(shown)}개만 표시했습니다. 전체는 flows/*.mmd 파일에 있습니다.</p>")
-
     calls_by_source = defaultdict(set)
     for r in g.edges("Calls"):
         calls_by_source[r["source"]].add(g.symbols.get(r["target"], {"name": r["target"]})["name"])
@@ -795,7 +784,7 @@ def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, dia
                        f"<td>{esc(short_name(bp['parent']))}</td><td>{len(bp['graphs'])}</td><td>{esc(targets)}</td></tr>")
 
     doc = f"""<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>dwo-Forge DwoLens 리포트 · {esc(Path(meta['project']).stem)}</title><style>{REPORT_CSS}</style></head><body><main>
+<title>dwo-Forge DwoLens 리포트 · {esc(Path(meta['project']).stem)}</title><style>{REPORT_CSS}{lens_features.REPORT_CSS}</style></head><body><main>
 <section><div class="meta">{esc(run_id)} · UE {esc(meta['engineVersion'].split('-')[0])} · {esc(meta['extractedAtUtc'])}</div>
 <h1>{esc(Path(meta['project']).stem)} 아키텍처 리포트 <span class="badge {result['verdict']}">{result['verdict']}</span></h1>
 <div class="kpis">
@@ -808,13 +797,13 @@ def render_report(out: Path, run_id: str, g: Graph, ctx: dict, result: dict, dia
 </div></section>
 <section><h2>품질 게이트</h2><div class="scroll"><table><thead><tr><th>결과</th><th>규칙</th><th>내용</th></tr></thead><tbody>{findings_html}</tbody></table></div></section>
 {quality_html}
+{features_html}
 <section><h2>클래스 구조</h2>{mermaid_block('클래스 UML', diagrams['classes'])}</section>
 <section><h2>모듈 의존성</h2>{mermaid_block('모듈 · 플러그인', diagrams['modules'])}</section>
 <section><h2>에셋 참조</h2>{mermaid_block('에셋 참조 (실선 hard · 점선 soft)', diagrams['assets'])}</section>
 <section><h2>Blueprint</h2><div class="scroll"><table><thead><tr><th>이름</th><th>종류</th><th>부모</th><th>그래프</th><th>호출 대상 클래스</th></tr></thead>
-<tbody>{''.join(bp_rows) or "<tr><td colspan='5'>없음</td></tr>"}</tbody></table></div>
-<h3>실행 흐름</h3>{''.join(flows_html) or "<p class='meta'>실행 흐름 없음</p>"}</section>
-<section class="meta">결과 파일: graph.json · index.db · class_uml.puml · class_uml.mmd · class_uml.xmi (Visual Paradigm 등 UML 도구용) · findings.json · quality.json · statemonitor.json · flows/*.mmd</section>
+<tbody>{''.join(bp_rows) or "<tr><td colspan='5'>없음</td></tr>"}</tbody></table></div></section>
+<section class="meta">결과 파일: graph.json · index.db · class_uml.puml · class_uml.mmd · class_uml.xmi (Visual Paradigm 등 UML 도구용) · findings.json · quality.json · statemonitor.json · features.json · flows/*.mmd (Blueprint 실행 그래프)</section>
 </main>
 <script src="../../../vendor/mermaid.min.js"></script>
 <script>if(!window.mermaid)document.write('<script src="{MERMAID_CDN}"><\\/script>')</script>
@@ -864,6 +853,11 @@ def main() -> int:
         "relations": sorted(g.relations.values(), key=lambda r: (r["source"], r["target"], r["type"])),
     }
     (args.out / "graph.json").write_text(json.dumps(graph_doc, ensure_ascii=False, indent=1), encoding="utf-8")
+    # what each class does, by entry point (Blueprint wires + project C++ source)
+    features = lens_features.build_features({"reflection": load_json(args.raw / "reflection.json"),
+                                             "blueprints": load_json(args.raw / "blueprints.json")["blueprints"]},
+                                            args.project.parent, graph_doc["symbols"])
+    (args.out / "features.json").write_text(json.dumps(features, ensure_ascii=False, indent=1), encoding="utf-8")
     (args.out / "findings.json").write_text(json.dumps({"runId": args.run_id, **result}, ensure_ascii=False, indent=1), encoding="utf-8")
     (args.out / "class_uml.mmd").write_text(classes_mmd, encoding="utf-8")
     (args.out / "class_uml.puml").write_text(classes_puml, encoding="utf-8")
@@ -873,7 +867,7 @@ def main() -> int:
     if diagrams["assets"]:
         (args.out / "assets.mmd").write_text(diagrams["assets"], encoding="utf-8")
     write_sqlite(g, args.out / "index.db", ctx["meta"])
-    render_report(args.out, args.run_id, g, ctx, result, diagrams, lens_quality.render_html(quality))
+    render_report(args.out, args.run_id, g, ctx, result, diagrams, lens_quality.render_html(quality), lens_features.render_html(features))
 
     print(f"[dwo-forge] symbols={len(g.symbols)} relations={len(g.relations)} verdict={result['verdict']} "
           f"findings={len(result['findings'])}")

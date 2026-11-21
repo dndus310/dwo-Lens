@@ -9,13 +9,15 @@ struct UiState
 {
 	char filter[256] = {};
 	// architecture
-	int archMode = 0;              // 0 classes, 1 flows, 2 calls, 3 assets, 4 modules, 5 quality
+	int archMode = 0;              // 0 classes, 1 features, 2 calls, 3 assets, 4 modules, 5 quality
 	int archGroup = 0;             // 0 by location (folder tree), 1 inheritance (classes) / by link count (lists)
 	std::string archSel;           // class key / flow title / asset name / module
 	std::string archRun;
 	std::string archNode;          // selected graph node id
 	GraphView archGraph;
 	std::string archGraphKey;
+	std::string featSel;           // feature id (class key#n) in the 기능 view
+	std::map<std::string, std::string> featTargets;   // feature graph node id -> class key it reaches into
 	// problems
 	std::string problemSel;
 	int groupBy = 0;               // 0 none, 1 category, 2 severity, 3 line
@@ -469,6 +471,111 @@ static void DrawOverviewInspector(App& app)
 
 // ============================================================================ architecture
 
+// ---- features: what a class does, by entry point, and the steps each one runs
+static const char* StepKindLabel(const std::string& k)
+{
+	static const std::map<std::string, const char*> labels = {
+		{ "call", "호출" }, { "set", "값 설정" }, { "branch", "분기" }, { "sequence", "순서대로" }, { "loop", "반복" },
+		{ "cast", "형변환" }, { "spawn", "스폰" }, { "widget", "위젯" }, { "timer", "타이머" }, { "dispatch", "디스패처" },
+		{ "bind", "연결" }, { "macro", "매크로" }, { "other", "노드" } };
+	auto it = labels.find(k);
+	return it != labels.end() ? it->second : "단계";
+}
+
+static ImU32 StepAccent(const std::string& k)
+{
+	if (k == "branch" || k == "sequence" || k == "loop" || k == "macro") return IM_COL32(0x8A, 0x6D, 0x1E, 255);
+	if (k == "set") return IM_COL32(0x1F, 0x7A, 0x6E, 255);
+	if (k == "cast") return IM_COL32(0x2F, 0x6F, 0x4E, 255);
+	if (k == "spawn" || k == "widget") return IM_COL32(0x6A, 0x4F, 0xB5, 255);
+	if (k == "timer" || k == "dispatch" || k == "bind") return IM_COL32(0x9C, 0x4A, 0x8C, 255);
+	if (k == "other") return IM_COL32(0x55, 0x5A, 0x64, 255);
+	return IM_COL32(0x35, 0x74, 0xF0, 255);
+}
+
+static const char* FeatureIcon(const std::string& cat)
+{
+	if (cat == "lifecycle") return ICON_POWER;
+	if (cat == "input") return ICON_GAME;
+	if (cat == "ui") return ICON_DASHBOARD;
+	if (cat == "collision") return ICON_BOLT;
+	if (cat == "interface") return ICON_LINK;
+	if (cat == "network") return ICON_NETWORK;
+	if (cat == "timer") return ICON_TIMER;
+	if (cat == "public") return ICON_CODE;
+	return ICON_FLAG;
+}
+
+static std::string StepText(const FlowStep& st)
+{
+	return st.repeat > 1 ? st.text + Fmt("  ×%d", st.repeat) : st.text;
+}
+
+static std::string ClassDisplayName(const Structure& s, const std::string& key)
+{
+	auto f = s.features.find(key);
+	if (f != s.features.end()) return f->second.name;
+	auto c = s.classes.find(key);
+	if (c != s.classes.end()) return c->second.name;
+	return key.substr(key.find_last_of("./:") == std::string::npos ? 0 : key.find_last_of("./:") + 1);
+}
+
+// The selected class, the project classes it inherits from, and its direct children: a Blueprint's input events and
+// the C++ functions they call read together.
+static std::vector<const ClassFeatures*> FeatureFamily(const Structure& s, const std::string& key)
+{
+	std::vector<const ClassFeatures*> out;
+	std::vector<std::string> chain;
+	for (std::string k = key; !k.empty() && chain.size() < 16;)
+	{
+		chain.push_back(k);
+		auto c = s.classes.find(k);
+		if (c == s.classes.end()) break;
+		k = c->second.parent;
+	}
+	for (auto& k : chain)
+	{
+		auto f = s.features.find(k);
+		if (f != s.features.end()) out.push_back(&f->second);
+	}
+	auto c = s.classes.find(key);
+	if (c != s.classes.end())
+		for (auto& ch : c->second.children)
+		{
+			auto f = s.features.find(ch);
+			if (f != s.features.end()) out.push_back(&f->second);
+		}
+	return out;
+}
+
+static const Feature* FindFeature(const Structure& s, const std::string& id)
+{
+	auto hash = id.rfind('#');
+	if (hash == std::string::npos) return nullptr;
+	auto c = s.features.find(id.substr(0, hash));
+	if (c == s.features.end()) return nullptr;
+	for (auto& f : c->second.features) if (f.id == id) return &f;
+	return nullptr;
+}
+
+static void CollectSteps(const std::vector<FlowStep>& steps, std::map<std::string, int>& kinds, std::set<std::string>& targets, int& total)
+{
+	for (auto& st : steps)
+	{
+		++total;
+		++kinds[st.kind];
+		if (!st.target.empty()) targets.insert(st.target);
+		for (auto& b : st.branches) CollectSteps(b.steps, kinds, targets, total);
+		CollectSteps(st.inner, kinds, targets, total);
+	}
+}
+
+static std::string CategoryName(const Structure& s, const std::string& id)
+{
+	for (auto& [cid, name] : s.featureCats) if (cid == id) return name;
+	return id;
+}
+
 static GraphNode ClassGraphNode(const Structure& s, const std::string& key)
 {
 	GraphNode n;
@@ -489,7 +596,7 @@ static GraphNode ClassGraphNode(const Structure& s, const std::string& key)
 
 static void BuildArchGraph(App& app, const Structure& s)
 {
-	std::string key = ui.archRun + "|" + std::to_string(ui.archMode) + "|" + ui.archSel;
+	std::string key = ui.archRun + "|" + std::to_string(ui.archMode) + "|" + ui.archSel + "|" + (ui.archMode == 1 ? ui.featSel : "");
 	if (key == ui.archGraphKey) return;
 	ui.archGraphKey = key;
 	std::vector<GraphNode> nodes;
@@ -512,6 +619,7 @@ static void BuildArchGraph(App& app, const Structure& s)
 	};
 	ui.archGraph.horizontal = true;
 	ui.archGraph.rowLimit = 8;
+	ui.archGraph.frameTop = false;
 	if (ui.archMode == 0 && s.classes.count(ui.archSel))
 	{
 		// ancestors, the class, and descendants (limited)
@@ -544,29 +652,89 @@ static void BuildArchGraph(App& app, const Structure& s)
 	}
 	else if (ui.archMode == 1)
 	{
-		for (auto& f : s.flows)
+		// the trigger, then the steps top to bottom: runs of plain steps share a node, branches fan out with their
+		// labels, an expanded call continues into its function on a dashed "내부" wire
+		ui.featTargets.clear();
+		if (const Feature* f = FindFeature(s, ui.featSel))
 		{
-			if (f.title != ui.archSel) continue;
-			for (auto& id : f.order)
-			{
-				GraphNode n;
-				n.id = id;
-				std::string label = f.labels.count(id) ? f.labels.at(id) : id;
-				auto nl = label.find('\n');
-				n.title = nl == std::string::npos ? label : label.substr(0, nl);
-				if (nl != std::string::npos) n.subtitle = label.substr(nl + 1);
-				bool event = std::find(f.starts.begin(), f.starts.end(), id) != f.starts.end();
-				n.accent = event ? IM_COL32(0xC0, 0x3A, 0x2B, 255) : IM_COL32(0x35, 0x74, 0xF0, 255);
-				n.icon = event ? ICON_BOLT : "";
-				addNode(std::move(n));
-			}
-			for (auto& [from, edges] : f.out)
-				for (auto& e : edges)
+			GraphNode t;
+			t.id = "trigger";
+			t.title = f->name;
+			t.subtitle = f->trigger;
+			t.icon = ICON_BOLT;
+			t.accent = IM_COL32(0xC0, 0x3A, 0x2B, 255);
+			t.rows.push_back({ "클래스", f->owner });
+			t.rows.push_back({ "위치", f->where.substr(f->where.find_last_of('/') == std::string::npos ? 0 : f->where.find_last_of('/') + 1) });
+			t.footer = f->source == "bp" ? "Blueprint" : "C++ 소스에서 추정";
+			int root = addNode(std::move(t));
+			int counter = 0;
+			const ImU32 wire = IM_COL32(0xE6, 0xE6, 0xE6, 220);
+			std::function<void(const std::vector<FlowStep>&, int, std::string, bool)> emit =
+				[&](const std::vector<FlowStep>& steps, int prev, std::string label, bool dashed) {
+				size_t i = 0;
+				while (i < steps.size() && nodes.size() < 240)
 				{
-					if (!index.count(from) || !index.count(e.to)) continue;
-					links.push_back({ index[from], index[e.to], e.pin, 1, false, 0, IM_COL32(0xE6, 0xE6, 0xE6, 220) });
+					const FlowStep& st = steps[i];
+					bool plain = st.branches.empty() && st.inner.empty();
+					GraphNode n;
+					n.id = "s" + std::to_string(counter++);
+					if (plain)
+					{
+						size_t j = i;
+						while (j < steps.size() && steps[j].branches.empty() && steps[j].inner.empty()) ++j;
+						if (j - i == 1)
+						{
+							n.title = StepText(st);
+							n.subtitle = std::string(StepKindLabel(st.kind)) + (st.estimated ? "  ·  C++" : "");
+							n.accent = StepAccent(st.kind);
+							if (!st.target.empty()) ui.featTargets[n.id] = st.target;
+						}
+						else
+						{
+							std::map<std::string, int> kinds;
+							bool cpp = false;
+							for (size_t k = i; k < j; ++k)
+							{
+								++kinds[steps[k].kind];
+								cpp |= steps[k].estimated;
+								n.rows.push_back({ StepKindLabel(steps[k].kind), StepText(steps[k]) });
+							}
+							std::string title;
+							for (auto& [k, c] : kinds) title += (title.empty() ? "" : " · ") + std::string(StepKindLabel(k)) + Fmt(" %d", c);
+							n.title = title;
+							n.subtitle = Fmt("%d단계", (int)(j - i)) + (cpp ? "  ·  C++" : "");
+							n.accent = kinds.size() == 1 ? StepAccent(kinds.begin()->first) : IM_COL32(0x3D, 0x4F, 0x7A, 255);
+						}
+						i = j;
+					}
+					else
+					{
+						n.title = StepText(st);
+						std::string kind = st.branches.empty() ? "호출  ·  안쪽 펼침" : (st.text == StepKindLabel(st.kind) ? "" : StepKindLabel(st.kind));
+						n.subtitle = kind + (st.estimated ? (kind.empty() ? "C++" : "  ·  C++") : "");
+						n.accent = StepAccent(st.kind);
+						if (!st.target.empty()) ui.featTargets[n.id] = st.target;
+						++i;
+					}
+					int idx = addNode(std::move(n));
+					links.push_back({ prev, idx, label, 1, dashed, 0, dashed ? (ImU32)0 : wire });
+					label.clear();
+					dashed = false;
+					if (!plain)
+					{
+						for (auto& b : st.branches)
+							if (!b.steps.empty()) emit(b.steps, idx, b.label, false);
+						if (!st.inner.empty()) emit(st.inner, idx, "내부", true);
+						if (!st.branches.empty()) label = "이후";
+					}
+					prev = idx;
 				}
+			};
+			emit(f->steps, root, "", false);
 		}
+		ui.archGraph.horizontal = false;
+		ui.archGraph.rowLimit = 10;
+		ui.archGraph.frameTop = true;
 	}
 	else if (ui.archMode == 2 || ui.archMode == 3 || ui.archMode == 4)
 	{
@@ -731,14 +899,15 @@ static void DrawArchitectureNav(App& app)
 	const RunInfo* r = PickRunCombo(app, "##archrun", 0, ui.archRun);
 	if (!r) { TextDim("분석 기록이 없습니다."); return; }
 	const Structure& s = app.StructureOf(*r);
-	const char* modes[] = { "클래스 계층", "BP 실행 흐름", "BP 호출 관계", "에셋 참조", "모듈 의존성", "품질 점검" };
-	int counts[] = { (int)s.classes.size(), (int)s.flows.size(), (int)s.calls.size(), (int)s.assetRefs.size(), (int)s.moduleDeps.size(), -1 };
-	const char* icons[] = { ICON_LAYERS, ICON_SORT, ICON_LINK, ICON_PACKAGE, ICON_LIBRARY, ICON_CHECKLIST };
+	const char* modes[] = { "클래스 계층", "기능", "BP 호출 관계", "에셋 참조", "모듈 의존성", "품질 점검" };
+	int counts[] = { (int)s.classes.size(), s.featureCount, (int)s.calls.size(), (int)s.assetRefs.size(), (int)s.moduleDeps.size(), -1 };
+	const char* icons[] = { ICON_LAYERS, ICON_BOLT, ICON_LINK, ICON_PACKAGE, ICON_LIBRARY, ICON_CHECKLIST };
 	SectionHeader("보기");
 	for (int i = 0; i < 6; ++i)
 	{
 		std::string label = std::string(icons[i]) + "  " + modes[i] + (counts[i] >= 0 ? Fmt("  (%d)", counts[i]) : "");
-		if (ImGui::Selectable(label.c_str(), ui.archMode == i)) { ui.archMode = i; ui.archSel.clear(); ui.archNode.clear(); }
+		if (ImGui::Selectable(label.c_str(), ui.archMode == i)) { ui.archMode = i; ui.archSel.clear(); ui.archNode.clear(); ui.featSel.clear(); }
+		if (i == 1 && ImGui::IsItemHovered()) Tooltip("클래스마다 입력·이벤트·오버라이드 같은 진입점별로 기능을 나누고, 각 기능이 어떤 순서로 전개되는지 보여 줍니다.");
 	}
 	SectionHeader(modes[ui.archMode]);
 	if (ui.archMode == 0 || (ui.archMode >= 2 && ui.archMode <= 4))
@@ -792,11 +961,18 @@ static void DrawArchitectureNav(App& app)
 	}
 	else if (ui.archMode == 1)
 	{
-		for (auto& f : s.flows)
+		// classes that do something, in the project's folder tree; the number is how many features each has
+		static const Location unknown{ 0, {}, "C++" };
+		std::vector<LocItem> items;
+		for (auto& [key, cf] : s.features)
 		{
-			if (!ContainsNoCase(f.title, ui.filter)) continue;
-			if (ImGui::Selectable((f.title + Fmt("  (%d)", (int)f.labels.size())).c_str(), ui.archSel == f.title)) ui.archSel = f.title;
+			auto loc = s.locByKey.find(key);
+			items.push_back({ key, cf.name, loc != s.locByKey.end() ? &loc->second : &unknown, (int)cf.features.size(), false });
 		}
+		std::string before = ui.archSel;
+		if (items.empty()) TextDim("다시 분석하면 기능 정보가 만들어집니다.");
+		else DrawLocationTree(app, items, ui.archSel, nullptr);
+		if (ui.archSel != before) { ui.featSel.clear(); ui.archNode.clear(); }
 	}
 	else if (ui.archMode >= 2 && ui.archMode <= 4)
 	{
@@ -925,6 +1101,9 @@ static void QualityTables(App& app, const RunInfo& r)
 	}
 }
 
+static void DrawArchCanvas(App& app, const Structure& s);
+static void DrawFeatureMain(App& app, const Structure& s);
+
 static void DrawArchitectureMain(App& app)
 {
 	const RunInfo* r = ui.archRun.empty() ? app.Latest(0) : app.FindRun(ui.archRun);
@@ -940,13 +1119,19 @@ static void DrawArchitectureMain(App& app)
 	if (ui.archSel.empty() && ui.archMode == 0)
 		for (auto& [key, c] : s.classes)
 			if (!c.external) { ui.archSel = key; break; }
-	if (ui.archSel.empty() && ui.archMode == 1 && !s.flows.empty())
+	if (ui.archSel.empty() && ui.archMode == 1 && !s.features.empty())
 	{
-		const Flow* best = &s.flows.front();
-		for (auto& f : s.flows) if (f.labels.size() > best->labels.size()) best = &f;
-		ui.archSel = best->title;
+		// the class with the widest range of features (not a function library)
+		int best = -1;
+		for (auto& [key, cf] : s.features)
+		{
+			std::set<std::string> cats;
+			for (auto& f : cf.features) if (f.category != "public") cats.insert(f.category);
+			int score = (int)cats.size() * 100 + (int)ImMin<size_t>(cf.features.size(), 99);
+			if (score > best) { best = score; ui.archSel = key; }
+		}
 	}
-	const char* modes[] = { "클래스 계층", "BP 실행 흐름", "BP 호출 관계", "에셋 참조", "모듈 의존성", "품질 점검" };
+	const char* modes[] = { "클래스 계층", "기능", "BP 호출 관계", "에셋 참조", "모듈 의존성", "품질 점검" };
 	ViewHeader(ICON_LAYERS, "아키텍처", StampOf(r->id) + "  ·  심볼 " + std::to_string(s.symbols) + " · 관계 " + std::to_string(s.relations));
 	ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - S(250));
 	VerdictPill(r->verdict);
@@ -961,7 +1146,7 @@ static void DrawArchitectureMain(App& app)
 	if (!ui.archSel.empty())
 	{
 		ImGui::SameLine(); TextDim(ICON_RIGHT); ImGui::SameLine();
-		std::string name = ui.archMode == 0 && s.classes.count(ui.archSel) ? s.classes.at(ui.archSel).name : ui.archSel;
+		std::string name = (ui.archMode == 0 || ui.archMode == 1) ? ClassDisplayName(s, ui.archSel) : ui.archSel;
 		ImGui::TextUnformatted(name.c_str());
 	}
 	ImGui::Separator();
@@ -973,11 +1158,22 @@ static void DrawArchitectureMain(App& app)
 	}
 	if ((ui.archMode == 0 || ui.archMode == 1) && ui.archSel.empty())
 	{
-		EmptyState(ui.archMode == 0 ? ICON_LAYERS : ICON_SORT, ui.archMode == 0 ? "클래스를 고르세요" : "Blueprint 그래프를 고르세요",
-		           ui.archMode == 0 ? "왼쪽 계층에서 클래스를 고르면 부모 체인과 자식 클래스를 노드 그래프로 보여 줍니다."
-		                            : "왼쪽 목록에서 그래프를 고르면 이벤트부터 실행 순서를 Blueprint처럼 노드로 보여 줍니다.");
+		if (ui.archMode == 0)
+			EmptyState(ICON_LAYERS, "클래스를 고르세요", "왼쪽 계층에서 클래스를 고르면 부모 체인과 자식 클래스를 노드 그래프로 보여 줍니다.");
+		else if (EmptyState(ICON_BOLT, "기능 정보가 없습니다", "이 분석 기록은 기능 보기 이전 버전입니다. 다시 분석하면 클래스별 기능과 그 흐름을 볼 수 있습니다.", app.attached ? "다시 분석" : nullptr))
+			app.Run("analyze");
 		return;
 	}
+	if (ui.archMode == 1)
+	{
+		DrawFeatureMain(app, s);
+		return;
+	}
+	DrawArchCanvas(app, s);
+}
+
+static void DrawArchCanvas(App& app, const Structure& s)
+{
 	BuildArchGraph(app, s);
 	// toolbar
 	if (ToolButton(ICON_REFRESH, "자동 배치 (노드 위치 초기화)")) ui.archGraph.RequestLayout();
@@ -994,10 +1190,87 @@ static void DrawArchitectureMain(App& app)
 	}
 	int clicked = ui.archGraph.Draw("##archcanvas", ImVec2(0, 0));
 	if (clicked >= 0) ui.archNode = ui.archGraph.nodes[clicked].id;
-	if (ui.archGraph.hovered >= 0 && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && ui.archMode != 1)
+	if (ui.archGraph.hovered >= 0 && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
 	{
-		ui.archSel = ui.archGraph.nodes[ui.archGraph.hovered].id;
+		const std::string& id = ui.archGraph.nodes[ui.archGraph.hovered].id;
+		if (ui.archMode != 1) ui.archSel = id;
+		else if (ui.featTargets.count(id) && s.features.count(ui.featTargets[id]))
+		{
+			// into the class the step reaches
+			ui.archSel = ui.featTargets[id];
+			ui.featSel.clear();
+			ui.archNode.clear();
+		}
 	}
+}
+
+// 기능 view: the family's features by category on the left, the selected one's flow on the right.
+static void DrawFeatureMain(App& app, const Structure& s)
+{
+	auto family = FeatureFamily(s, ui.archSel);
+	bool inFamily = false;
+	for (auto* cf : family) for (auto& f : cf->features) inFamily |= f.id == ui.featSel;
+	if (!inFamily)
+	{
+		ui.featSel.clear();
+		ui.archNode.clear();
+		// open on the feature that unfolds the most (the class's own first, public library functions last)
+		int best = -1;
+		for (auto* cf : family)
+			for (auto& f : cf->features)
+			{
+				std::map<std::string, int> kinds;
+				std::set<std::string> targets;
+				int total = 0;
+				CollectSteps(f.steps, kinds, targets, total);
+				int score = ImMin(total, 60) + (cf->key == ui.archSel ? 1000 : 0) + (f.category == "public" ? -500 : 0);
+				if (score > best) { best = score; ui.featSel = f.id; }
+			}
+	}
+	if (family.empty())
+	{
+		EmptyState(ICON_BOLT, "기능을 찾지 못했습니다", "이벤트·입력·오버라이드 같은 진입점이 없는 클래스입니다. 왼쪽에서 다른 클래스를 고르세요.");
+		return;
+	}
+	float listW = ImClamp(ImGui::GetContentRegionAvail().x * 0.34f, S(220), S(320));
+	ImGui::BeginChild("featlist", ImVec2(listW, 0));
+	for (auto& [cat, catName] : s.featureCats)
+	{
+		std::vector<std::pair<const ClassFeatures*, const Feature*>> items;
+		for (auto* cf : family)
+			for (auto& f : cf->features)
+				if (f.category == cat && ContainsNoCase(f.name + " " + f.trigger, ui.filter)) items.push_back({ cf, &f });
+		if (items.empty()) continue;
+		SectionHeader((std::string(FeatureIcon(cat)) + "  " + catName).c_str(), std::to_string(items.size()).c_str());
+		for (auto& [cf, f] : items)
+		{
+			ImGui::PushID(f->id.c_str());
+			bool own = cf->key == ui.archSel;
+			bool child = !own && cf->parent == ui.archSel;
+			std::string kindTag = f->source == "bp" ? "BP" : "C++";
+			std::string tag = own ? kindTag : (child ? "자식 " : "부모 ") + kindTag;
+			float right = ImGui::GetContentRegionAvail().x;
+			float tagW = ImGui::CalcTextSize(tag.c_str()).x * 0.9f;
+			if (ImGui::Selectable("##feat", ui.featSel == f->id, ImGuiSelectableFlags_None, ImVec2(0, 0))) { ui.featSel = f->id; ui.archNode.clear(); }
+			if (ImGui::IsItemHovered()) Tooltip((f->trigger + "\n" + f->where + (own ? "" : "\n" + cf->name + "에서 정의")).c_str());
+			ImGui::SameLine(S(8));
+			ImVec2 p = ImGui::GetCursorScreenPos();
+			ImGui::PushClipRect(p, ImVec2(p.x + right - tagW - S(16), p.y + ImGui::GetTextLineHeight()), true);
+			ImGui::TextUnformatted(f->name.c_str());
+			ImGui::PopClipRect();
+			ImGui::SameLine(right - tagW);
+			ImGui::SetWindowFontScale(0.9f);
+			TextColored(own ? col::Dim : col::Info, tag.c_str());
+			ImGui::SetWindowFontScale(1.0f);
+			ImGui::PopID();
+		}
+	}
+	ImGui::EndChild();
+	ImGui::SameLine();
+	ImGui::BeginChild("featflow");
+	if (ui.featSel.empty()) EmptyState(ICON_BOLT, "기능을 고르세요", "왼쪽 목록에서 기능을 고르면 그 기능이 어떤 순서로 전개되는지 보여 줍니다.");
+	else DrawArchCanvas(app, s);
+	ImGui::EndChild();
 }
 
 static void DrawArchitectureInspector(App& app)
@@ -1037,16 +1310,65 @@ static void DrawArchitectureInspector(App& app)
 		for (auto& rf : refs) if (rf.dst == key) { ImGui::BulletText("%s", rf.src.c_str()); ImGui::SameLine(); TextDim(rf.type); }
 		return;
 	}
-	if (ui.archMode == 1 && !ui.archNode.empty())
+	if (ui.archMode == 1)
 	{
-		for (auto& n : ui.archGraph.nodes)
-			if (n.id == ui.archNode) { Title(n.title); TextDim(n.subtitle); }
+		const Feature* f = FindFeature(s, ui.featSel);
+		if (!f) { TextDim("기능을 고르세요"); return; }
+		auto jump = [&](const std::string& target) {
+			if (s.features.count(target)) { ui.archSel = target; ui.featSel.clear(); ui.archNode.clear(); }
+			else if (s.classes.count(target)) { ui.archMode = 0; ui.archSel = target; ui.archNode = target; }
+		};
+		if (!ui.archNode.empty() && ui.archNode != "trigger")
+			for (auto& n : ui.archGraph.nodes)
+			{
+				if (n.id != ui.archNode) continue;
+				SectionHeader("선택한 단계");
+				TextBold(n.title);
+				TextDim(n.subtitle);
+				for (auto& row : n.rows) { ImGui::BulletText("%s", row.value.c_str()); ImGui::SameLine(); TextDim(row.key); }
+				auto t = ui.featTargets.find(n.id);
+				if (t != ui.featTargets.end() && (s.features.count(t->second) || s.classes.count(t->second)))
+					if (ImGui::SmallButton((std::string(ICON_RIGHT) + " " + ClassDisplayName(s, t->second) + "(으)로 이동").c_str())) jump(t->second);
+			}
+		SectionHeader("기능");
+		Title(f->name);
+		TextDim(CategoryName(s, f->category) + "  ·  " + (f->source == "bp" ? "Blueprint" : "C++"));
+		KeyValue("시작", f->trigger, 70);
+		KeyValue("클래스", f->owner, 70);
+		KeyValue("위치", f->where, 70);
+		if (f->estimated)
+		{
+			ImGui::PushStyleColor(ImGuiCol_Text, col::Dim);
+			ImGui::TextWrapped("C++ 소스의 패턴(바인딩, 호출, if/for)으로 읽은 추정입니다. 매크로·람다·가상 호출은 빠지거나 다르게 보일 수 있습니다.");
+			ImGui::PopStyleColor();
+		}
+		std::map<std::string, int> kinds;
+		std::set<std::string> targets;
+		int total = 0;
+		CollectSteps(f->steps, kinds, targets, total);
+		SectionHeader("단계", std::to_string(total).c_str());
+		for (auto& [k, c] : kinds) KeyValue(StepKindLabel(k), std::to_string(c), 90);
+		targets.erase(ui.archSel);
+		if (!targets.empty())
+		{
+			SectionHeader("닿는 클래스", std::to_string(targets.size()).c_str());
+			for (auto& t : targets)
+			{
+				ImGui::PushID(t.c_str());
+				bool known = s.features.count(t) || s.classes.count(t);
+				ImGui::BeginDisabled(!known);
+				if (ImGui::Selectable(ClassDisplayName(s, t).c_str())) jump(t);
+				ImGui::EndDisabled();
+				if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) Tooltip(t.c_str());
+				ImGui::PopID();
+			}
+		}
 		return;
 	}
 	SectionHeader("분석 요약");
 	const RunMetrics& m = app.Metrics(*r);
 	KeyValue("클래스", std::to_string(s.classes.size()));
-	KeyValue("BP 그래프", std::to_string(s.flows.size()));
+	KeyValue("기능", Fmt("%d개 · 클래스 %d", s.featureCount, (int)s.features.size()));
 	KeyValue("호출 관계", std::to_string(s.calls.size()));
 	KeyValue("에셋 참조", std::to_string(s.assetRefs.size()));
 	KeyValue("검출 항목", Fmt("실패 %d · 경고 %d · 정보 %d", m.findingsFail, m.findingsWarn, m.findingsInfo));

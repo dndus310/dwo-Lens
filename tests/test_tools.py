@@ -19,6 +19,7 @@ FIXTURE = Path(__file__).resolve().parent / "fixtures" / "raw_temp_proj"
 sys.path.insert(0, str(TOOLS))
 
 import lens_analyze as analyze  # noqa: E402
+import lens_features as features  # noqa: E402
 import lens_logs as logs  # noqa: E402
 import lens_quality as quality  # noqa: E402
 import lens_runtime as runtime  # noqa: E402
@@ -182,14 +183,14 @@ class AnalyzerFixtureTests(TempDir):
         hard = {(r["source"], r["target"]) for r in graph["relations"] if r["type"] == "AssetHardRef"}
         self.assertIn(("asset:/Game/WBP_ListView", "asset:/Game/WBP_Item"), hard)
         self.assertTrue(all(r["status"] in ("verified", "rule", "inferred", "unknown") for r in graph["relations"]))
-        for name in ("report.html", "index.db", "class_uml.puml", "findings.json", "quality.json", "statemonitor.json"):
+        for name in ("report.html", "index.db", "class_uml.puml", "findings.json", "quality.json", "statemonitor.json", "features.json"):
             self.assertTrue((out / name).exists(), name)
         self.assertTrue(list((out / "flows").glob("*.mmd")))
 
     def test_deterministic_output(self):
         a = self.run_cli(self.tmp / "a")
         b = self.run_cli(self.tmp / "b")
-        for name in ("graph.json", "findings.json", "quality.json", "class_uml.mmd"):
+        for name in ("graph.json", "findings.json", "quality.json", "class_uml.mmd", "features.json"):
             ha = hashlib.sha256((a / name).read_bytes()).hexdigest()
             hb = hashlib.sha256((b / name).read_bytes()).hexdigest()
             self.assertEqual(ha, hb, f"{name} differs between identical runs")
@@ -238,6 +239,153 @@ class ModuleScanTests(TempDir):
         result = analyze.run_checks(g, ctx)
         self.assertEqual(result["verdict"], "fail")
         self.assertEqual(result["findings"][0]["rule"], "module-cycle")
+
+
+CHARACTER_CPP = """
+#include "HeroCharacter.h"
+
+void AHeroCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+	// a comment with Fake(); calls and { braces
+	ResetHealth();
+	GetWorld()->GetTimerManager().SetTimer(RegenTimer, this, &AHeroCharacter::Regen, 1.0f, true);
+}
+
+void AHeroCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	if (UEnhancedInputComponent* Input = Cast<UEnhancedInputComponent>(PlayerInputComponent))
+	{
+		Input->BindAction(JumpAction, ETriggerEvent::Started, this, &AHeroCharacter::DoJump);
+		Input->BindAction(FireAction, ETriggerEvent::Triggered, this, &AHeroCharacter::Fire);
+	}
+	Hitbox->OnComponentBeginOverlap.AddDynamic(this, &AHeroCharacter::OnHitboxOverlap);
+}
+
+void AHeroCharacter::DoJump()
+{
+	if (bCanJump && !IsDead())
+	{
+		Jump();
+	}
+	else
+	{
+		PlayFailSound();
+	}
+	JumpCount += 1;
+}
+
+void AHeroCharacter::Fire()
+{
+	const FVector Muzzle(0.f, 0.f, 10.f);
+	for (int32 i = 0; i < Pellets; ++i)
+	{
+		GetWorld()->SpawnActor<AProjectile>(ProjectileClass, Muzzle, FRotator::ZeroRotator);
+	}
+}
+
+void AHeroCharacter::ResetHealth() { Health = MaxHealth; }
+void AHeroCharacter::Regen() { Health = FMath::Min(Health + 1.f, MaxHealth); }
+void AHeroCharacter::OnHitboxOverlap(UPrimitiveComponent* Comp, AActor* Other, UPrimitiveComponent* OtherComp, int32 Index, bool bSweep, const FHitResult& Hit)
+{
+	TakeHit(Other);
+}
+void AHeroCharacter::Heal_Implementation(float Amount) { Health += Amount; }
+"""
+
+
+def bp_node(nid, cls, title, **kw):
+    return {"id": nid, "class": cls, "title": title, "role": kw.pop("role", "other"), **kw}
+
+
+class FeatureTests(TempDir):
+    """Features: entry points from C++ source and Blueprint graphs, and the steps they run."""
+
+    def build(self):
+        write(self.tmp / "Source/Game/HeroCharacter.cpp", CHARACTER_CPP)
+        reflection = {"native": [{"path": "/Script/Game.HeroCharacter", "name": "HeroCharacter", "super": "/Script/Engine.Character",
+                                  "functions": [{"name": "Heal", "flags": ["Native", "Net", "NetServer"]},
+                                                {"name": "DoJump", "flags": ["Native", "BlueprintCallable"]}]}],
+                      "blueprint": []}
+        graph = {"name": "EventGraph", "kind": "event", "nodes": [
+            bp_node("e1", "K2Node_Event", "BeginPlay 이벤트", role="event", member="ReceiveBeginPlay"),
+            bp_node("b1", "K2Node_IfThenElse", "Branch"),
+            bp_node("c1", "K2Node_CallFunction", "Do Jump", role="call", member="DoJump", memberOwner="/Script/Game.HeroCharacter"),
+            bp_node("c2", "K2Node_CallFunction", "Print String", role="call", member="PrintString",
+                    memberOwner="/Script/Engine.KismetSystemLibrary"),
+            bp_node("e2", "K2Node_Event", "Tick 이벤트", role="event", member="ReceiveTick"),   # unwired: not a feature
+            bp_node("e3", "K2Node_ComponentBoundEvent", "On Component Begin Overlap (Box)", role="event"),
+            bp_node("s1", "K2Node_VariableSet", "Set", member="Score"),
+        ], "links": [
+            {"from": "e1", "fromPin": "then", "to": "b1", "toPin": "execute", "kind": "exec"},
+            {"from": "b1", "fromPin": "then", "to": "c1", "toPin": "execute", "kind": "exec"},
+            {"from": "b1", "fromPin": "else", "to": "c2", "toPin": "execute", "kind": "exec"},
+            {"from": "e3", "fromPin": "then", "to": "s1", "toPin": "execute", "kind": "exec"},
+        ]}
+        bp = {"asset": "/Game/BP_Hero.BP_Hero", "generatedClass": "/Game/BP_Hero.SKEL_BP_Hero_C",
+              "parent": "/Script/Game.HeroCharacter", "graphs": [graph]}
+        return features.build_features({"reflection": reflection, "blueprints": [bp]}, self.tmp, [])
+
+    def test_cpp_entry_points_by_category(self):
+        doc = self.build()
+        hero = next(c for c in doc["classes"] if c["key"] == "uclass:/Script/Game.HeroCharacter")
+        by_name = {f["name"]: f for f in hero["features"]}
+        self.assertEqual(by_name["BeginPlay"]["category"], "lifecycle")
+        self.assertEqual(by_name["Jump · Started"]["category"], "input")
+        self.assertEqual(by_name["Fire · Triggered"]["category"], "input")
+        self.assertEqual(by_name["Hitbox.OnComponentBeginOverlap"]["category"], "collision")
+        self.assertEqual(by_name["타이머 → Regen"]["category"], "timer")
+        self.assertEqual(by_name["Heal"]["category"], "network")
+        self.assertTrue(by_name["BeginPlay"]["where"].startswith("Source/Game/HeroCharacter.cpp:"))
+        self.assertTrue(all(f["estimated"] for f in hero["features"]))
+        self.assertNotIn("DoJump", by_name, "a bound input handler is not listed again as a public function")
+        texts = [s["text"] for s in by_name["BeginPlay"]["steps"]]
+        self.assertIn("ResetHealth", texts)
+        self.assertNotIn("Fake", " ".join(texts), "comments are not code")
+
+    def test_cpp_flow_has_branches_loops_and_expansion(self):
+        doc = self.build()
+        hero = next(c for c in doc["classes"] if c["key"] == "uclass:/Script/Game.HeroCharacter")
+        jump = next(f for f in hero["features"] if f["name"] == "Jump · Started")
+        call = jump["steps"][0]
+        self.assertEqual(call["text"], "DoJump")
+        branch = call["inner"][0]
+        self.assertEqual(branch["kind"], "branch")
+        self.assertEqual([b["label"] for b in branch["branches"]], ["참", "거짓"])
+        self.assertEqual(branch["branches"][0]["steps"][0]["text"], "Jump")
+        self.assertEqual(branch["branches"][1]["steps"][0]["text"], "PlayFailSound")
+        self.assertEqual(call["inner"][1], {"kind": "set", "text": "설정 JumpCount", "estimated": True})
+        fire = next(f for f in hero["features"] if f["name"] == "Fire · Triggered")
+        inner = fire["steps"][0]["inner"]
+        self.assertNotIn("Muzzle", [s["text"] for s in inner], "a declared variable is not a call")
+        loop = next(s for s in inner if s["kind"] == "loop")
+        self.assertEqual(loop["branches"][0]["steps"][0]["kind"], "spawn")
+
+    def test_blueprint_events_walk_exec_wires_into_cpp(self):
+        doc = self.build()
+        bp = next(c for c in doc["classes"] if c["key"] == "bp:/Game/BP_Hero.BP_Hero_C")
+        self.assertEqual(bp["name"], "BP_Hero")
+        self.assertEqual(bp["parent"], "uclass:/Script/Game.HeroCharacter")
+        names = [f["name"] for f in bp["features"]]
+        self.assertNotIn("Tick 이벤트", names, "an unwired default event does nothing")
+        begin = next(f for f in bp["features"] if f["name"] == "BeginPlay 이벤트")
+        self.assertEqual(begin["category"], "lifecycle")
+        branch = begin["steps"][0]
+        self.assertEqual(branch["kind"], "branch")
+        labels = {b["label"]: b["steps"] for b in branch["branches"]}
+        self.assertEqual(set(labels), {"참", "거짓"})
+        jump = labels["참"][0]
+        self.assertEqual(jump["target"], "uclass:/Script/Game.HeroCharacter")
+        self.assertEqual(jump["inner"][0]["kind"], "branch", "the BP call continues into the C++ body")
+        overlap = next(f for f in bp["features"] if f["name"].startswith("On Component Begin Overlap"))
+        self.assertEqual(overlap["category"], "collision")
+        self.assertEqual(overlap["steps"], [{"kind": "set", "text": "설정 Score"}])
+
+    def test_report_section(self):
+        html_text = features.render_html(self.build())
+        self.assertIn("<h2>기능</h2>", html_text)
+        self.assertIn("Jump · Started", html_text)
+        self.assertIn("C++ 소스 추정", html_text)
 
 
 class ClassModelTests(unittest.TestCase):

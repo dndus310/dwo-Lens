@@ -43,7 +43,7 @@ static int LineIndexOf(const std::string& line, const std::string& id)
 	return -1;
 }
 
-// ============================================================================ structure model (graph.json and flows/*.mmd)
+// ============================================================================ structure model (graph.json and features.json)
 
 struct ClassNode
 {
@@ -56,19 +56,37 @@ struct ClassNode
 	std::string parent;
 };
 
-struct FlowEdge
+// What a class does (features.json): its entry points (events, input, overrides, bindings...) and the steps each one
+// runs, with branches and expanded calls. Steps read from C++ source are estimates.
+struct FlowStep;
+struct FlowBranch
 {
-	std::string to;
-	std::string pin;
+	std::string label;
+	std::vector<FlowStep> steps;
 };
 
-struct Flow
+struct FlowStep
 {
-	std::string title;
-	std::map<std::string, std::string> labels;
-	std::map<std::string, std::vector<FlowEdge>> out;
-	std::vector<std::string> starts;
-	std::vector<std::string> order;
+	std::string kind;      // call, set, branch, sequence, loop, cast, spawn, widget, timer, dispatch, bind, macro, other
+	std::string text;
+	std::string target;    // class key the step reaches into (navigation)
+	bool estimated = false;
+	int repeat = 1;
+	std::vector<FlowBranch> branches;
+	std::vector<FlowStep> inner;   // the called function's own steps
+};
+
+struct Feature
+{
+	std::string id, name, category, trigger, owner, source, where;
+	bool estimated = false;
+	std::vector<FlowStep> steps;
+};
+
+struct ClassFeatures
+{
+	std::string key, name, kind, parent;
+	std::vector<Feature> features;
 };
 
 // Where a symbol lives, for the architecture view's location tree.
@@ -134,50 +152,60 @@ struct Structure
 	std::map<std::string, ClassNode> classes;
 	std::vector<std::string> classRoots;
 	std::vector<Ref> calls, assetRefs, moduleDeps;
-	std::vector<Flow> flows;
+	std::map<std::string, ClassFeatures> features;                  // class key -> features
+	std::vector<std::pair<std::string, std::string>> featureCats;   // category id -> name, in display order
+	int featureCount = 0;
 	int symbols = 0, relations = 0;
 };
 
-static std::string MermaidUnescape(std::string s)
+static FlowStep ParseStep(const json& j)
 {
-	auto replaceAll = [&s](const std::string& a, const std::string& b) {
-		for (size_t p = s.find(a); p != std::string::npos; p = s.find(a, p + b.size())) s.replace(p, a.size(), b);
-	};
-	replaceAll("#quot;", "\"");
-	replaceAll("#lt;", "<");
-	replaceAll("#gt;", ">");
-	return s;
+	FlowStep st;
+	st.kind = Str(j, "kind");
+	st.text = Str(j, "text");
+	st.target = Str(j, "target");
+	st.estimated = j.value("estimated", false);
+	st.repeat = (int)ImMax<long long>(1, Num(j, "repeat"));
+	for (auto& b : Arr(j, "branches"))
+	{
+		FlowBranch br;
+		br.label = Str(b, "label");
+		for (auto& x : Arr(b, "steps")) br.steps.push_back(ParseStep(x));
+		st.branches.push_back(std::move(br));
+	}
+	for (auto& x : Arr(j, "inner")) st.inner.push_back(ParseStep(x));
+	return st;
 }
 
-static Flow ParseFlow(const fs::path& file)
+static void LoadFeatures(const fs::path& file, Structure& s)
 {
-	Flow f;
-	f.title = PathUtf8(file.stem());
-	std::ifstream in(file, std::ios::binary);
-	std::string line;
-	std::set<std::string> hasIncoming;
-	static const std::regex edge(R"(^(\S+) -->(?:\|([^|]*)\|)? (\S+)$)");
-	std::smatch m;
-	while (std::getline(in, line))
+	auto doc = ReadJson(file);
+	if (!doc) return;
+	for (auto& c : Arr(*doc, "categories")) s.featureCats.push_back({ Str(c, "id"), Str(c, "name") });
+	for (auto& c : Arr(*doc, "classes"))
 	{
-		if (!line.empty() && line.back() == '\r') line.pop_back();
-		if (line.rfind("flowchart", 0) == 0 || line.empty()) continue;
-		if (std::regex_match(line, m, edge))
+		ClassFeatures cf;
+		cf.key = Str(c, "key");
+		cf.name = Str(c, "name");
+		cf.kind = Str(c, "kind");
+		cf.parent = Str(c, "parent");
+		for (auto& f : Arr(c, "features"))
 		{
-			f.out[m[1]].push_back({ m[3], MermaidUnescape(m[2]) });
-			hasIncoming.insert(m[3]);
-			continue;
+			Feature ft;
+			ft.id = Str(f, "id");
+			ft.name = Str(f, "name");
+			ft.category = Str(f, "category");
+			ft.trigger = Str(f, "trigger");
+			ft.owner = Str(f, "owner");
+			ft.source = Str(f, "source");
+			ft.where = Str(f, "where");
+			ft.estimated = f.value("estimated", false);
+			for (auto& x : Arr(f, "steps")) ft.steps.push_back(ParseStep(x));
+			cf.features.push_back(std::move(ft));
 		}
-		size_t cut = line.find_first_of("[({");
-		size_t q1 = line.find('"'), q2 = line.rfind('"');
-		if (cut == std::string::npos || q1 == std::string::npos || q2 <= q1) continue;
-		std::string id = line.substr(0, cut);
-		f.labels[id] = MermaidUnescape(line.substr(q1 + 1, q2 - q1 - 1));
-		f.order.push_back(id);
+		s.featureCount += (int)cf.features.size();
+		s.features[cf.key] = std::move(cf);
 	}
-	for (auto& id : f.order)
-		if (!hasIncoming.count(id)) f.starts.push_back(id);
-	return f;
 }
 
 static void LoadStructure(const fs::path& outDir, Structure& s)
@@ -263,11 +291,7 @@ static void LoadStructure(const fs::path& outDir, Structure& s)
 	for (auto& [key, n] : s.classes)
 		if (!hasParent.count(key) && hasProject(key, 0)) s.classRoots.push_back(key);
 
-	std::error_code ec;
-	if (fs::is_directory(outDir / "flows", ec))
-		for (auto& e : fs::directory_iterator(outDir / "flows", ec))
-			if (e.path().extension() == ".mmd") s.flows.push_back(ParseFlow(e.path()));
-	std::sort(s.flows.begin(), s.flows.end(), [](const Flow& a, const Flow& b) { return a.title < b.title; });
+	LoadFeatures(outDir / "features.json", s);
 	s.loaded = true;
 }
 

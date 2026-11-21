@@ -123,7 +123,7 @@ __dwo-forge.bat uninstall           :: 한 번에 완전 제거. 기록·생성 
 |---|---|---|
 | - | 홈 (Ctrl+9) | 위 설명 |
 | DwoLens | 대시보드 (Ctrl+1) | 프로젝트 상태 배너, KPI 카드(새 문제, 아키텍처 문제, BP 복잡도, 테스트 통과율, 로그 오류, 맵 스모크, 프레임 p95, 콘텐츠 용량, DwoStateMonitor)와 실행별 추세선, 검사별 최근 10회 결과, 주요 문제, 시작하기 체크리스트 |
-| DwoLens | 아키텍처 (Ctrl+2) | 왼쪽 탐색은 기본이 **위치** 보기: 소스 코드(Source) · 콘텐츠(/Game) · 프로젝트 플러그인(Plugins) · 엔진·외부로 나눈 뒤 실제 폴더 트리를 따라가며, 폴더마다 항목 수와 문제 수, 항목마다 종류(C++, BP, 위젯 BP, DataTable 등)를 표시. 클래스는 `상속` 보기로, BP 호출·에셋 참조·모듈 의존성은 `연결 수 순` 목록으로 바꿀 수 있음. 가운데는 클래스 계층·BP 실행 흐름·BP 호출·에셋 참조·모듈 의존성 **노드 그래프**(이동·확대·미니맵·F 전체 보기), 품질 점검 표 |
+| DwoLens | 아키텍처 (Ctrl+2) | 왼쪽 탐색은 기본이 **위치** 보기: 소스 코드(Source) · 콘텐츠(/Game) · 프로젝트 플러그인(Plugins) · 엔진·외부로 나눈 뒤 실제 폴더 트리를 따라가며, 폴더마다 항목 수와 문제 수, 항목마다 종류(C++, BP, 위젯 BP, DataTable 등)를 표시. 클래스는 `상속` 보기로, BP 호출·에셋 참조·모듈 의존성은 `연결 수 순` 목록으로 바꿀 수 있음. 가운데는 클래스 계층·BP 호출·에셋 참조·모듈 의존성 **노드 그래프**(이동·확대·미니맵·F 전체 보기), 품질 점검 표. **기능** 보기는 클래스가 하는 일을 진입점별(생명주기·입력·UI·충돌·인터페이스 구현·네트워크·타이머·이벤트·공개 함수)로 나누고, 고른 기능이 어떤 순서로 전개되는지(호출, 값 설정, 분기 참/거짓, 반복, 형변환, 스폰) 위에서 아래로 그림. BP 이벤트가 부르는 C++ 함수는 그 본문까지 이어서 펼치고(점선 `내부`), 부모 C++ 클래스와 자식 BP의 기능을 함께 보여 줌. C++ 쪽은 소스 패턴(BindAction, AddDynamic, SetTimer, 오버라이드, if/for)으로 읽은 추정 |
 | DwoLens | 문제 (Ctrl+3) | 모든 검사의 최신 실행에서 모은 문제. 심각도·범주 필터, 묶기, **NEW**(이전 실행 대비), 무시(기준선) |
 | DwoLens | 검증 (Ctrl+4) | 단계 카드, 자동화 테스트 트리, 최근 10회 결과 띠, **새 실패·불안정(flaky) 테스트**, 맵 스모크 결과 |
 | DwoLens | 로그 (Ctrl+5) | 지문으로 묶은 로그 그룹, 횟수 추세, 처음·마지막 발생, 콜스택, 크래시 |
@@ -382,7 +382,8 @@ A/
 | `run.json` | 실행 ID, 검사, 단계별 결과·소요 시간, dwo-Forge 버전 |
 | `out/report.html` | 검사별 리포트 |
 | `out/graph.json`, `out/index.db` | 심볼·관계 (status, evidence 포함) |
-| `out/class_uml.puml` / `.mmd`, `out/flows/*.mmd` | 클래스 다이어그램, BP 실행 흐름 |
+| `out/class_uml.puml` / `.mmd`, `out/flows/*.mmd` | 클래스 다이어그램, Blueprint 실행 그래프(Mermaid) |
+| `out/features.json` | 클래스별 기능(진입점)과 각 기능의 단계 (`lens.features/1`, 아키텍처의 기능 보기와 리포트의 기능 섹션) |
 | `out/class_uml.xmi` | UML 2 클래스 모델(XMI 2.1). Visual Paradigm의 `File > Import > XMI`(또는 `scripts\ImportXMI.bat -project <.vpp> -file <.xmi>`), Enterprise Architect, MagicDraw, Papyrus에서 가져옵니다. 클래스는 `/Game` 폴더, `C++/<모듈>`, `External/<모듈>` 패키지로 나뉘고 속성·함수·상속·참조가 모두 들어갑니다. 다이어그램은 가져온 뒤 패키지를 끌어다 놓아 만듭니다 |
 | `out/findings.json`, `out/quality.json`, `out/statemonitor.json` | 분석 결과와 품질 점검 |
 | `out/verify.json`, `out/logs.json` | 검증·로그 결과 |

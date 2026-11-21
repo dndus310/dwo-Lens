@@ -80,6 +80,7 @@ public:
 	bool showMinimap = true;
 	bool follow = false;     // keep the active node in view
 	float rowLimit = 8;
+	bool frameTop = false;   // tall flows: fit the width and start at the top instead of fitting everything
 
 	// Replaces the graph content while keeping positions of nodes that already existed.
 	void Set(std::vector<GraphNode> newNodes, std::vector<GraphLink> newLinks)
@@ -178,7 +179,7 @@ public:
 		// minimap hit test first so it does not start a node drag
 		ImVec2 mmA, mmB;
 		bool overMinimap = false;
-		if (showMinimap && !nodes.empty())
+		if (showMinimap && !nodes.empty() && size.x > S(560))
 		{
 			mmB = origin + size - ImVec2(S(10), S(10));
 			mmA = mmB - ImVec2(S(160), S(100));
@@ -233,7 +234,7 @@ public:
 		// nodes
 		for (int i = 0; i < (int)nodes.size(); ++i) DrawNode(dl, i, toScreen);
 
-		if (showMinimap && !nodes.empty()) DrawMinimap(dl, origin, size, mmA, mmB, overMinimap);
+		if (showMinimap && !nodes.empty() && size.x > S(560)) DrawMinimap(dl, origin, size, mmA, mmB, overMinimap);
 
 		// overlay help
 		char zoomText[32];
@@ -418,11 +419,13 @@ private:
 		}
 		ImVec2 extent = (hi - lo) * g_scale;
 		// keep the bottom-right minimap clear of the content
-		ImVec2 area(size.x - (showMinimap ? S(170) : 0), size.y);
+		ImVec2 area(size.x - (showMinimap && size.x > S(560) ? S(170) : 0), size.y);
 		float z = ImMin((area.x - S(60)) / ImMax(extent.x, 1.f), (area.y - S(60)) / ImMax(extent.y, 1.f));
+		if (frameTop) z = ImMax(z, ImMin((area.x - S(60)) / ImMax(extent.x, 1.f), 1.0f));
 		zoom = ImClamp(z, 0.2f, 1.2f);
 		ImVec2 center = (lo + hi) * 0.5f * zoom * g_scale;
 		pan = area * 0.5f - center;
+		if (frameTop && extent.y * zoom > area.y - S(60)) pan.y = S(30) - lo.y * zoom * g_scale;
 	}
 
 	static ImVec2 Bezier(ImVec2 a, ImVec2 b, ImVec2 c, ImVec2 d, float t)

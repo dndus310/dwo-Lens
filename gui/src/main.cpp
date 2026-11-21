@@ -1280,6 +1280,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 	if (!hoverArg.empty()) swscanf_s(hoverArg.c_str(), L"%f,%f", &hoverX, &hoverY);
 	double shotDelay = delayArg.empty() ? 0.8 : _wtof(delayArg.c_str());
 	if (modeArg == L"machine") ui.liveMode = 1;
+	if (modeArg == L"features") ui.archMode = 1;   // architecture: the 기능 view (screenshots)
 	bool openUninstall = ArgValue(argc, argv, L"--dialog") == L"uninstall";
 	if (ArgValue(argc, argv, L"--dialog") == L"palette") g_paletteOpen = true;   // screenshots of the command palette
 	LocalFree(argv);
@@ -1362,7 +1363,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int)
 		app.activity = Activity::Launcher;
 		g_launcherPageRequest = viewArg == L"jenkins" ? 1 : viewArg == L"engines" ? 2 : 3;
 	}
-	if (!selectArg.empty() && app.activity == Activity::Live) ui.liveSource = ToUtf8(selectArg);
+	if (!selectArg.empty() && app.activity == Activity::Architecture) ui.archSel = ToUtf8(selectArg);
+	else if (!selectArg.empty() && app.activity == Activity::Live) ui.liveSource = ToUtf8(selectArg);
 	else if (!selectArg.empty())
 	{
 		ui.historySel = ToUtf8(selectArg);

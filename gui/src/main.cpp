@@ -339,21 +339,30 @@ static void DrawMenuBar(App& app, bool& quit)
 	ImGui::EndMainMenuBar();
 }
 
-static std::map<std::string, Activity> g_lastToolScreen;   // tool id -> last screen used, reopened from its tile
+static std::map<std::string, Activity> g_lastToolScreen;   // tool id -> last screen used, reopened from its entry
 
+// Sidebar: home, PC components, the installed tools (the open one lists its screens), and at the bottom the command
+// palette, about and collapse. Expanded it shows names; collapsed, icons only with tooltips.
 static void DrawActivityBar(App& app)
 {
 	ImGuiViewport* vp = ImGui::GetMainViewport();
-	g_activityWidth = S(52);
+	bool collapsed = app.sidebarCollapsed;
+	g_activityWidth = collapsed ? S(56) : S(220);
 	ImGui::SetNextWindowPos(vp->WorkPos);
 	ImGui::SetNextWindowSize(ImVec2(g_activityWidth, vp->WorkSize.y - g_statusHeight));
 	ImGui::SetNextWindowViewport(vp->ID);
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, S(6)));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, S(8)));
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
-	ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(0x2B, 0x2D, 0x30, 255));
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, S(2)));
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, IM_COL32(0x22, 0x23, 0x26, 255));
 	ImGui::Begin("##activity", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking |
 	                                        ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNav);
+	ImGui::PopStyleColor();
+	ImGui::PopStyleVar(2);
 	ImDrawList* dl = ImGui::GetWindowDrawList();
+	ImVec2 wp = ImGui::GetWindowPos();
+	float W = g_activityWidth;
+	dl->AddLine(wp + ImVec2(W - 1, 0), wp + ImVec2(W - 1, ImGui::GetWindowHeight()), col::Border, 1);
 	app.RebuildProblems();
 	int newProblems = 0;
 	for (auto& p : app.problems) newProblems += p.isNew && !p.muted && p.severity != "info";
@@ -361,118 +370,161 @@ static void DrawActivityBar(App& app)
 	std::vector<ToolView> views = ToolViews(app);
 	std::string activeTool = ToolOfActivity(app.activity);
 	if (!activeTool.empty()) g_lastToolScreen[activeTool] = app.activity;
+	ConsumeLauncherRequest();
+	launcher::Ui& lu = launcher::State();
+	bool inLauncher = app.activity == Activity::Launcher;
 
-	auto badgeDot = [&](ImVec2 p, ImVec2 size, ImU32 c) { dl->AddCircleFilled(p + ImVec2(size.x - S(12), S(10)), S(4), c); };
-	auto spinner = [&](ImVec2 p, ImVec2 size, ImU32 c) {
-		float t = (float)ImGui::GetTime() * 6;
-		dl->PathArcTo(p + ImVec2(size.x - S(12), S(10)), S(4), t, t + 4.5f, 10);
-		dl->PathStroke(c, 0, S(1.5f));
-	};
-	auto tooltip = [&](ImVec2 p, ImVec2 size, const std::string& title, const std::string& sub) {
-		ImGui::SetNextWindowPos(ImVec2(p.x + size.x + S(4), p.y + S(8)));
-		BeginTip();
-		ImGui::TextUnformatted(title.c_str());
-		if (!sub.empty()) { ImGui::SameLine(); TextDim(sub); }
-		ImGui::EndTooltip();
-	};
-
-	// ---- launcher
-	{
+	// One row. icon: glyph, or a tool tile when 'tool' is set. badge: text pill (expanded) or a dot (collapsed / no text).
+	auto row = [&](const char* id, const char* icon, const ToolMeta* tool, const std::string& label, bool active, int depth,
+	               ImU32 badgeColor, const std::string& badge, const std::string& tip) -> bool {
+		float h = depth ? S(34) : S(40);
 		ImVec2 p = ImGui::GetCursorScreenPos();
-		ImVec2 size(g_activityWidth, S(44));
-		bool clicked = ImGui::InvisibleButton("launcher", size);
-		bool hovered = ImGui::IsItemHovered();
-		bool active = app.activity == Activity::Launcher;
-		if (active) dl->AddRectFilled(p, p + ImVec2(S(3), size.y), col::Accent);
-		ImU32 color = active ? col::Text : hovered ? IM_COL32(0xC8, 0xCB, 0xD0, 255) : col::Dim;
-		ImVec2 is = g_fonts.icon->CalcTextSizeA(g_fonts.icon->FontSize, FLT_MAX, 0, ICON_HOME);
-		dl->AddText(g_fonts.icon, g_fonts.icon->FontSize, p + (size - is) * 0.5f, color, ICON_HOME);
-		int updates = app.attached ? UpdateCount(views) : 0;
-		if (updates) badgeDot(p, size, col::Warn);
-		if (hovered) tooltip(p, size, "런처", updates ? Fmt("업데이트 %d · Ctrl+9", updates) : "프로젝트·도구 관리 · Ctrl+9");
-		if (clicked) app.requestActivity = Activity::Launcher;
-	}
-	{
+		ImGui::PushID(id);
+		bool clicked = ImGui::InvisibleButton("row", ImVec2(W - 1, h));
+		bool hov = ImGui::IsItemHovered();
+		ImVec2 a = p + ImVec2(S(8), 0), b = p + ImVec2(W - S(9), h);
+		if (active) dl->AddRectFilled(a, b, IM_COL32(255, 255, 255, 26), S(6));
+		else if (hov) dl->AddRectFilled(a, b, IM_COL32(255, 255, 255, 12), S(6));
+		float indent = collapsed ? 0 : depth * S(16);
+		float glyphX;
+		if (tool)
+		{
+			float t = S(22);
+			glyphX = collapsed ? (W - t) * 0.5f : S(18) + indent;
+			DrawToolTile(dl, ImVec2(p.x + glyphX, p.y + (h - t) * 0.5f), t, *tool, active || hov ? 1.0f : 0.82f);
+		}
+		else
+		{
+			float fs = g_fonts.icon->FontSize * (depth ? 0.8f : 0.92f);
+			ImVec2 is = g_fonts.icon->CalcTextSizeA(fs, FLT_MAX, 0, icon);
+			glyphX = collapsed ? (W - is.x) * 0.5f : S(18) + indent + (S(22) - is.x) * 0.5f;
+			dl->AddText(g_fonts.icon, fs, ImVec2(p.x + glyphX, p.y + (h - is.y) * 0.5f), active ? col::Text : hov ? IM_COL32(0xD0, 0xD3, 0xD8, 255) : col::Dim, icon);
+		}
+		if (!collapsed)
+		{
+			ImFont* f = active && !depth ? g_fonts.bold : g_fonts.body;
+			float fs = f->FontSize * (depth ? 0.95f : 1.0f);
+			ImVec2 ts = f->CalcTextSizeA(fs, FLT_MAX, 0, label.c_str());
+			float lx = p.x + S(52) + indent;
+			dl->PushClipRect(ImVec2(lx, p.y), ImVec2(p.x + W - S(14), p.y + h), true);
+			dl->AddText(f, fs, ImVec2(lx, p.y + (h - ts.y) * 0.5f), active ? col::Text : hov ? IM_COL32(0xE6, 0xE8, 0xEB, 255) : IM_COL32(0xB8, 0xBC, 0xC2, 255), label.c_str());
+			dl->PopClipRect();
+		}
+		if (badgeColor)
+		{
+			if (!collapsed && !badge.empty())
+			{
+				ImFont* f = g_fonts.bold;
+				float fs = f->FontSize * 0.78f;
+				ImVec2 bs = f->CalcTextSizeA(fs, FLT_MAX, 0, badge.c_str());
+				ImVec2 bb = ImVec2(p.x + W - S(20), p.y + h * 0.5f + bs.y * 0.5f + S(2));
+				ImVec2 ba = ImVec2(bb.x - bs.x - S(12), bb.y - bs.y - S(4));
+				dl->AddRectFilled(ba, bb, badgeColor, S(9));
+				dl->AddText(f, fs, ba + ImVec2(S(6), S(2)), IM_COL32(255, 255, 255, 255), badge.c_str());
+			}
+			else dl->AddCircleFilled(ImVec2(p.x + (collapsed ? W * 0.5f + S(12) : W - S(26)), p.y + (collapsed ? S(9) : h * 0.5f)), S(4), badgeColor);
+		}
+		if (hov && (collapsed || !tip.empty()))
+		{
+			ImGui::SetNextWindowPos(ImVec2(p.x + W + S(4), p.y + S(6)));
+			BeginTip();
+			if (collapsed) { ImGui::TextUnformatted(label.c_str()); if (!tip.empty()) ImGui::SameLine(); }
+			if (!tip.empty()) TextDim(tip);
+			ImGui::EndTooltip();
+		}
+		ImGui::PopID();
+		return clicked;
+	};
+	auto rule = [&](const char* caption) {
+		ImGui::Dummy(ImVec2(W, S(4)));
 		ImVec2 c = ImGui::GetCursorScreenPos();
-		dl->AddLine(c + ImVec2(S(12), S(3)), c + ImVec2(g_activityWidth - S(12), S(3)), col::Border, S(1));
-		ImGui::Dummy(ImVec2(g_activityWidth, S(8)));
-	}
+		dl->AddLine(c + ImVec2(S(16), 0), c + ImVec2(W - S(16), 0), col::Border, 1);
+		ImGui::Dummy(ImVec2(W, S(6)));
+		if (caption && !collapsed)
+		{
+			ImVec2 q = ImGui::GetCursorScreenPos();
+			ImFont* f = g_fonts.bold;
+			float fs = f->FontSize * 0.8f;
+			dl->AddText(f, fs, q + ImVec2(S(20), 0), col::Muted, caption);
+			ImGui::Dummy(ImVec2(W, fs + S(6)));
+		}
+	};
 
-	// ---- tools: installed ones (and the one on screen)
+	int updates = app.attached ? UpdateCount(views) : 0;
+	if (row("home", ICON_HOME, nullptr, "홈", inLauncher && lu.page == launcher::Project, 0, updates ? col::Warn : 0,
+	        updates ? std::to_string(updates) : std::string(), updates ? Fmt("업데이트 %d", updates) : std::string("Ctrl+9")))
+	{
+		app.requestActivity = Activity::Launcher;
+		lu.page = launcher::Project;
+	}
+	if (row("pc", ICON_LIBRARY, nullptr, "PC 구성요소", inLauncher && lu.page == launcher::Pc, 0, 0, "", "Jenkins, 언리얼 엔진"))
+	{
+		app.requestActivity = Activity::Launcher;
+		lu.page = launcher::Pc;
+	}
+	rule("도구");
+	bool anyTool = false;
 	for (int i = 0; i < kToolCount; ++i)
 	{
 		const ToolMeta& m = kToolMeta[i];
 		const ToolView& v = views[i];
-		bool active = activeTool == m.id;
-		if (!ToolPresent(v) && !active) continue;
-		ImGui::PushID(m.id);
-		ImVec2 p = ImGui::GetCursorScreenPos();
-		ImVec2 size(g_activityWidth, S(44));
-		bool clicked = ImGui::InvisibleButton("tool", size);
-		bool hovered = ImGui::IsItemHovered();
-		if (active) dl->AddRectFilled(p, p + ImVec2(S(3), size.y), m.color);
-		float tile = S(26);
-		if (hovered && !active) dl->AddRectFilled(p + ImVec2(S(8), S(4)), p + ImVec2(size.x - S(8), size.y - S(4)), IM_COL32(255, 255, 255, 14), S(6));
-		DrawToolTile(dl, p + (size - ImVec2(tile, tile)) * 0.5f, tile, m, active || hovered ? 1.0f : 0.78f);
 		std::string id = m.id;
-		if (v.state == "update" || v.state == "legacy") badgeDot(p, size, col::Warn);
-		else if (id == "statemonitor" && connected) badgeDot(p, size, col::Pass);
-		else if (id == "canvas" && app.runner.running && app.runner.current.find("canvas-") != std::string::npos) spinner(p, size, col::Purple);
-		else if (id == "canvas" && !app.canvasReports.empty() && app.CanvasReportAt(0)->errors > 0) badgeDot(p, size, col::Fail);
-		else if (id == "lens" && !active && newProblems) badgeDot(p, size, col::Fail);
-		if (hovered) tooltip(p, size, m.name, v.state == "update" ? "업데이트 있음" : v.state == "legacy" ? "옮기기 필요" : v.state == "own" ? "프로젝트에 포함" : "");
-		if (clicked)
+		bool active = activeTool == id;
+		if (!ToolPresent(v) && !active) continue;
+		anyTool = true;
+		ImU32 bc = 0;
+		std::string badge, tip;
+		if (v.state == "update" || v.state == "legacy") { bc = col::Warn; badge = "업데이트"; tip = "업데이트 있음"; }
+		else if (id == "statemonitor" && connected) { bc = col::Pass; badge = Fmt("연결 %d", connected); }
+		else if (id == "lens" && !active && newProblems) { bc = col::Fail; badge = std::to_string(newProblems); tip = Fmt("새 문제 %d", newProblems); }
+		else if (id == "canvas" && !app.canvasReports.empty() && app.CanvasReportAt(0)->errors > 0) { bc = col::Fail; tip = "최근 가져오기에 오류"; }
+		int screens = 0;
+		for (auto& a : kActivities) screens += ToolOfActivity(a.id) == id;
+		// a single-screen tool is itself the active row; a tool with several screens highlights the screen instead
+		if (row(m.id, nullptr, &m, m.name, active && (screens <= 1 || collapsed), 0, bc, badge, tip))
 		{
 			auto last = g_lastToolScreen.find(id);
 			app.requestActivity = last != g_lastToolScreen.end() ? last->second : m.open;
 		}
-		// the active tool unfolds its screens (DwoLens has seven)
-		int screens = 0;
-		for (auto& a : kActivities) screens += ToolOfActivity(a.id) == id;
-		if (active && screens > 1)
+		if (active)
 		{
+			if (screens <= 1) continue;
 			for (auto& a : kActivities)
 			{
 				if (ToolOfActivity(a.id) != id) continue;
-				ImGui::PushID((int)a.id);
-				ImVec2 q = ImGui::GetCursorScreenPos();
-				ImVec2 qs(g_activityWidth, S(36));
-				bool qc = ImGui::InvisibleButton("screen", qs);
-				bool qh = ImGui::IsItemHovered();
-				bool qa = app.activity == a.id;
-				if (qa) dl->AddRectFilled(q + ImVec2(S(8), S(2)), q + ImVec2(qs.x - S(8), qs.y - S(2)), IM_COL32(255, 255, 255, 20), S(6));
-				ImU32 color = qa ? col::Text : qh ? IM_COL32(0xC8, 0xCB, 0xD0, 255) : col::Dim;
-				ImVec2 is = g_fonts.icon->CalcTextSizeA(g_fonts.icon->FontSize * 0.86f, FLT_MAX, 0, a.icon);
-				dl->AddText(g_fonts.icon, g_fonts.icon->FontSize * 0.86f, q + (qs - is) * 0.5f, color, a.icon);
-				if (a.id == Activity::Problems && newProblems)
-				{
-					std::string b = newProblems > 99 ? "99+" : std::to_string(newProblems);
-					ImVec2 bs = ImGui::CalcTextSize(b.c_str()) * 0.8f;
-					ImVec2 c = q + ImVec2(qs.x - S(14), S(10));
-					dl->AddCircleFilled(c, ImMax(bs.x, bs.y) * 0.5f + S(3), col::Fail);
-					dl->AddText(g_fonts.bold, g_fonts.bold->FontSize * 0.8f, c - bs * 0.5f, IM_COL32(255, 255, 255, 255), b.c_str());
-				}
-				if (a.id == Activity::Overview && app.runner.running) spinner(q, qs, col::Info);
-				if (qh) tooltip(q, qs, std::string(m.name) + " · " + a.name, a.shortcut);
-				if (qc) app.requestActivity = a.id;
-				ImGui::PopID();
+				ImU32 sc = 0;
+				std::string sb;
+				if (a.id == Activity::Problems && newProblems) { sc = col::Fail; sb = newProblems > 99 ? "99+" : std::to_string(newProblems); }
+				if (a.id == Activity::Overview && app.runner.running) sc = col::Info;
+				if (row(a.key, a.icon, nullptr, a.name, app.activity == a.id, 1, sc, sb, collapsed ? a.shortcut : "")) app.requestActivity = a.id;
 			}
-			ImVec2 c = ImGui::GetCursorScreenPos();
-			dl->AddLine(c + ImVec2(S(16), S(3)), c + ImVec2(g_activityWidth - S(16), S(3)), WithAlpha(m.color, 0.5f), S(1));
-			ImGui::Dummy(ImVec2(g_activityWidth, S(8)));
 		}
-		ImGui::PopID();
 	}
-	// command palette at the bottom
-	ImGui::SetCursorPosY(ImGui::GetWindowHeight() - S(52));
-	ImVec2 p = ImGui::GetCursorScreenPos();
-	if (ImGui::InvisibleButton("palette", ImVec2(g_activityWidth, S(46)))) g_paletteOpen = true;
-	ImVec2 is = g_fonts.icon->CalcTextSizeA(g_fonts.icon->FontSize, FLT_MAX, 0, ICON_SEARCH);
-	dl->AddText(g_fonts.icon, g_fonts.icon->FontSize, p + (ImVec2(g_activityWidth, S(46)) - is) * 0.5f, ImGui::IsItemHovered() ? col::Text : col::Dim, ICON_SEARCH);
-	Tooltip("명령 팔레트 (Ctrl+K)");
+	if (!anyTool && !collapsed)
+	{
+		ImGui::SetCursorPosX(S(20));
+		ImGui::PushTextWrapPos(W - S(16));
+		TextDim("설치한 도구가 여기에 나타납니다.");
+		ImGui::PopTextWrapPos();
+	}
+
+	// bottom
+	float bottomH = (S(40) + S(2)) * 3 + S(14) + S(12);   // three rows, the rule above them, window padding
+	if (ImGui::GetCursorPosY() < ImGui::GetWindowHeight() - bottomH) ImGui::SetCursorPosY(ImGui::GetWindowHeight() - bottomH);
+	rule(nullptr);
+	if (row("palette", ICON_SEARCH, nullptr, "명령 검색", false, 0, 0, "", "Ctrl+K")) g_paletteOpen = true;
+	if (row("about", ICON_INFO, nullptr, "정보", inLauncher && lu.page == launcher::About, 0, 0, "", collapsed ? "버전, 문서, 도구 카탈로그" : ""))
+	{
+		app.requestActivity = Activity::Launcher;
+		lu.page = launcher::About;
+	}
+	if (row("collapse", collapsed ? ICON_RIGHT : ICON_LEFT, nullptr, "접기", false, 0, 0, "", collapsed ? "펼치기" : ""))
+	{
+		app.sidebarCollapsed = !app.sidebarCollapsed;
+		app.SaveSettings();
+	}
 	ImGui::End();
-	ImGui::PopStyleColor();
-	ImGui::PopStyleVar(2);
+	ImGui::PopStyleVar();
 }
 
 static void DrawStatusBar(App& app)
@@ -843,6 +895,39 @@ static void DrawApp(App& app, bool& quit)
 		layoutChecked = true;
 		if (app.message == "reset-layout") app.message.clear();
 	}
+	bool launcherMode = app.activity == Activity::Launcher;
+	if (launcherMode)
+	{
+		// The launcher is one card next to the sidebar, with the run log as a drawer under it. The dock layout of the
+		// tool screens stays alive (KeepAliveOnly) and comes back unchanged when a tool is opened.
+		ImGui::DockSpace(dockspace, ImVec2(0, 0), ImGuiDockNodeFlags_KeepAliveOnly);
+		static bool logOpen = false;
+		if (app.showConsole || (app.runner.running && app.runner.ElapsedSeconds() < 0.2)) logOpen = true;
+		app.showConsole = false;
+		float drawerBar = ImGui::GetFrameHeight() + S(8);
+		float drawer = logOpen ? ImMin(S(240), size.y * 0.4f) : 0;
+		DrawLauncherContent(app, size.y - drawerBar - drawer);
+		// run log drawer
+		ImGui::SetCursorPos(ImVec2(S(16), size.y - drawerBar - drawer));
+		ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0, 0, 0, 0));
+		std::string bar = std::string(logOpen ? ICON_DOWN : ICON_RIGHT) + "  실행 로그" + (app.runner.running ? "  ●  " + app.runner.current : std::string());
+		if (ImGui::Button(bar.c_str())) logOpen = !logOpen;
+		ImGui::PopStyleColor();
+		if (logOpen)
+		{
+			ImGui::SetCursorPos(ImVec2(S(16), size.y - drawer));
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(10), S(6)));
+			ImGui::BeginChild("launcher-log", ImVec2(size.x - S(32), drawer - S(10)), ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding);
+			DrawConsole(app);
+			ImGui::EndChild();
+			ImGui::PopStyleVar();
+		}
+		ImGui::End();
+		DrawDetachModal(app);
+		DrawCommandPalette(app);
+		DrawToasts(g_statusHeight);
+		return;
+	}
 	ImGui::DockSpace(dockspace, ImVec2(0, 0), ImGuiDockNodeFlags_None);
 	ImGui::End();
 
@@ -863,7 +948,6 @@ static void DrawApp(App& app, bool& quit)
 		case Activity::Live: DrawLiveNav(app); break;
 		case Activity::Canvas: DrawCanvasNav(app); break;
 		case Activity::History: DrawHistoryNav(app); break;
-		case Activity::Launcher: DrawLauncherNav(app); break;
 		case Activity::Ci: DrawCiNav(app); break;
 		default: break;
 		}
@@ -885,7 +969,6 @@ static void DrawApp(App& app, bool& quit)
 		case Activity::Live: DrawLiveMain(app); break;
 		case Activity::Canvas: DrawCanvasMain(app); break;
 		case Activity::History: DrawHistoryMain(app); break;
-		case Activity::Launcher: DrawLauncherMain(app); break;
 		case Activity::Ci: DrawCiMain(app); break;
 		default: break;
 		}
@@ -906,7 +989,6 @@ static void DrawApp(App& app, bool& quit)
 		case Activity::Live: DrawLiveInspector(app); break;
 		case Activity::Canvas: DrawCanvasInspector(app); break;
 		case Activity::History: DrawHistoryInspector(app); break;
-		case Activity::Launcher: DrawLauncherInspector(app); break;
 		case Activity::Ci: DrawCiInspector(app); break;
 		default: break;
 		}

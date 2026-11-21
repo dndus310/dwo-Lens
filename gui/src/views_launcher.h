@@ -1,5 +1,6 @@
-// The launcher: dwo-Forge's home. Left: projects and PC components; middle: the selected project's tool library
-// (install, update, remove, open); right: details. Tool versions come from 'forge.ps1 tools --json'.
+// The launcher: dwo-Forge's home, drawn as one card next to the sidebar. Project page: tabs (all / installed /
+// updates), project picker and search, then the tool library (thumbnail, text, action + "..." menu, version).
+// PC page: Jenkins and engines. Tool versions come from 'forge.ps1 tools --json'.
 #pragma once
 
 #include "views_ci.h"
@@ -10,7 +11,8 @@ struct ToolMeta
 {
 	const char* id;        // forge.ps1 tool id
 	const char* name;
-	const char* mono;      // two-letter tile shown in the activity bar and the library
+	const char* mono;      // two-letter tile shown in the sidebar
+	const char* icon;      // glyph on the library thumbnail
 	ImU32 color;
 	const char* summary;
 	Activity open;         // first screen of the tool
@@ -18,10 +20,10 @@ struct ToolMeta
 };
 
 static const ToolMeta kToolMeta[] = {
-	{ "lens", "DwoLens", "Ln", col::Accent, "아키텍처·문제·검증·로그·성능·용량 검사와 실행 기록", Activity::Overview, "Plugins/__DwoLensInspector (편집기 전용, 기본 꺼짐)" },
-	{ "statemonitor", "DwoStateMonitor", "SM", col::Pass, "실행 중인 게임의 상태를 실시간으로 보는 플러그인", Activity::Live, "Plugins/__DwoStateMonitor" },
-	{ "canvas", "DwoCanvas", "Cv", col::Purple, "디자인 파일(*.dwocanvas.json)을 UMG 위젯 블루프린트로 가져오기", Activity::Canvas, "Plugins/__DwoCanvas" },
-	{ "ci", "DwoBuilder", "Bd", col::Teal, "C++ 컴파일·패키지 빌드, push·merge·커밋 때 자동 빌드(Jenkins)", Activity::Ci, "Jenkins 작업, .git/hooks (Jenkins는 PC에 하나)" },
+	{ "lens", "DwoLens", "Ln", ICON_SEARCH, col::Accent, "아키텍처·문제·검증·로그·성능·용량 검사와 실행 기록", Activity::Overview, "Plugins/__DwoLensInspector (편집기 전용, 기본 꺼짐)" },
+	{ "statemonitor", "DwoStateMonitor", "SM", ICON_EYE, col::Pass, "실행 중인 게임의 상태를 실시간으로 보는 플러그인", Activity::Live, "Plugins/__DwoStateMonitor" },
+	{ "canvas", "DwoCanvas", "Cv", ICON_CANVAS, col::Purple, "디자인 파일(*.dwocanvas.json)을 UMG 위젯 블루프린트로 가져오기", Activity::Canvas, "Plugins/__DwoCanvas" },
+	{ "ci", "DwoBuilder", "Bd", ICON_PACKAGE, col::Teal, "C++ 컴파일·패키지 빌드, push·merge·커밋 때 자동 빌드(Jenkins)", Activity::Ci, "Jenkins 작업, .git/hooks (Jenkins는 PC에 하나)" },
 };
 static const int kToolCount = 4;
 
@@ -179,14 +181,17 @@ static std::string ShortDate(const std::string& iso)
 
 namespace launcher
 {
-enum Page { Project, Jenkins, Engines, About };
+enum Page { Project, Pc, About };
 struct Ui
 {
 	Page page = Project;
-	std::string tool;              // selected row (inspector)
-	bool connectWith[kToolCount] = { true, false, false, false };
+	int tab = 0;                   // 0 all tools, 1 installed, 2 updates
+	int pcTab = 0;                 // 0 Jenkins, 1 engines
+	char search[96] = {};
 	std::string confirmRemove;     // tool id waiting for confirmation
-	json projects;                 // CI projects.json (PC page), re-read every few seconds
+	std::string details;           // tool id whose details popup is open
+	bool logOpen = false;          // run log drawer under the launcher
+	json projects;                 // Jenkins projects.json (PC page), re-read every few seconds
 	double projectsAt = -100;
 };
 static Ui& State()
@@ -196,6 +201,17 @@ static Ui& State()
 }
 } // namespace launcher
 
+// Page requests from elsewhere (tool screens, --view): 1 Jenkins, 2 engines, 3 about.
+static void ConsumeLauncherRequest()
+{
+	launcher::Ui& u = launcher::State();
+	if (g_launcherPageRequest < 0) return;
+	if (g_launcherPageRequest == 1 || g_launcherPageRequest == 2) { u.page = launcher::Pc; u.pcTab = g_launcherPageRequest - 1; }
+	else if (g_launcherPageRequest == 3) u.page = launcher::About;
+	else u.page = launcher::Project;
+	g_launcherPageRequest = -1;
+}
+
 static fs::path CiHomeDir()
 {
 	const wchar_t* ciHome = _wgetenv(L"DWO_FORGE_CI_HOME");
@@ -203,70 +219,102 @@ static fs::path CiHomeDir()
 	return fs::path(_wgetenv(L"LOCALAPPDATA") ? _wgetenv(L"LOCALAPPDATA") : L".") / "dwo-Forge" / "ci";
 }
 
-// ============================================================================ navigator
+// ============================================================================ building blocks (card, tabs, thumbnails)
 
-static void DrawLauncherNav(App& app)
+// Large rounded tile with the tool's colour as a diagonal gradient and its icon, like a store thumbnail.
+static void DrawToolThumb(ImDrawList* dl, ImVec2 a, ImVec2 b, const ToolMeta& m, bool dim)
 {
-	launcher::Ui& u = launcher::State();
-	if (g_launcherPageRequest >= 0) { u.page = (launcher::Page)g_launcherPageRequest; g_launcherPageRequest = -1; }
-	std::vector<ToolView> views = ToolViews(app);
-	SectionHeader("프로젝트");
-	bool listed = false;
-	for (auto& r : app.recent)
-	{
-		fs::path p = fs::u8path(r);
-		std::error_code ec;
-		if (!fs::exists(p, ec)) continue;
-		listed = true;
-		bool current = p == app.project;
-		ImGui::PushID(r.c_str());
-		std::string label = PathUtf8(p.filename());
-		if (ImGui::Selectable(label.c_str(), current && u.page == launcher::Project, ImGuiSelectableFlags_AllowOverlap))
-		{
-			if (!current) app.SetProject(p);
-			u.page = launcher::Project;
-			u.tool.clear();
-		}
-		Tooltip(r.c_str());
-		ImGui::SameLine();
-		if (current && app.attached && UpdateCount(views) > 0)
-		{
-			ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - S(64));
-			Pill(Fmt("업데이트 %d", UpdateCount(views)), col::Warn);
-		}
-		else TextDim(PathUtf8(p.parent_path().filename()));
-		ImGui::PopID();
-	}
-	if (!listed) TextDim("열어 본 프로젝트가 없습니다.");
-	if (ImGui::Selectable((std::string(ICON_ADD) + "  프로젝트 열기...").c_str()))
-	{
-		fs::path p;
-		if (PickOpen(g_hwnd, true, L".uproject가 있는 프로젝트 폴더 선택", p)) { app.SetProject(p); u.page = launcher::Project; }
-	}
-	Tooltip("언리얼 프로젝트 폴더(.uproject가 있는 폴더)를 고릅니다. 창으로 끌어다 놓아도 됩니다.");
-
-	SectionHeader("PC 구성요소");
-	ci::Client& c = ci::Instance();
-	c.Ensure(app.hasUProject ? app.project : fs::path());
-	ci::Snapshot s = c.Get();
-	if (ImGui::Selectable((std::string(ICON_SYNC) + "  Jenkins (DwoBuilder)").c_str(), u.page == launcher::Jenkins, ImGuiSelectableFlags_AllowOverlap)) u.page = launcher::Jenkins;
-	ImGui::SameLine();
-	ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - S(56));
-	TextDim(!s.installed ? "없음" : s.running ? "실행 중" : "중지됨");
-	json doc = g_tools.Get(app.project);
-	int engines = (int)Arr(Obj(doc, "pc"), "engines").size();
-	if (ImGui::Selectable((std::string(ICON_GAME) + "  언리얼 엔진").c_str(), u.page == launcher::Engines, ImGuiSelectableFlags_AllowOverlap)) u.page = launcher::Engines;
-	if (engines) { ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - S(56)); TextDim(Fmt("%d개", engines)); }
-
-	SectionHeader("dwo-Forge");
-	if (ImGui::Selectable((std::string(ICON_INFO) + "  정보와 도구 카탈로그").c_str(), u.page == launcher::About)) u.page = launcher::About;
+	int v0 = dl->VtxBuffer.Size;
+	dl->AddRectFilled(a, b, IM_COL32_WHITE, S(8));
+	int v1 = dl->VtxBuffer.Size;
+	ImGui::ShadeVertsLinearColorGradientKeepAlpha(dl, v0, v1, a, b, Mix(m.color, col::Bg, dim ? 0.72f : 0.28f), Mix(m.color, col::Bg, dim ? 0.88f : 0.74f));
+	dl->AddRect(a, b, IM_COL32(255, 255, 255, 18), S(8));
+	ImFont* f = g_fonts.iconLarge;
+	float fs = f->FontSize;
+	ImVec2 ts = f->CalcTextSizeA(fs, FLT_MAX, 0, m.icon);
+	dl->AddText(f, fs, (a + b - ts) * 0.5f, IM_COL32(255, 255, 255, dim ? 120 : 235), m.icon);
 }
 
-// ============================================================================ project page
+// Tab with an accent underline (the card's top row).
+static bool UnderlineTab(const char* label, bool active)
+{
+	ImGui::PushFont(g_fonts.title);
+	ImVec2 ts = ImGui::CalcTextSize(label, nullptr, true);
+	ImVec2 p = ImGui::GetCursorScreenPos();
+	ImVec2 size(ts.x + S(24), ts.y + S(18));
+	bool clicked = ImGui::InvisibleButton(label, size);
+	bool hovered = ImGui::IsItemHovered();
+	ImDrawList* dl = ImGui::GetWindowDrawList();
+	ImU32 c = active ? col::Accent : hovered ? col::Text : col::Dim;
+	dl->AddText(g_fonts.title, g_fonts.title->FontSize, p + ImVec2(S(12), S(8)), c, label, ImGui::FindRenderedTextEnd(label));
+	if (active) dl->AddRectFilled(p + ImVec2(0, size.y - S(3)), p + ImVec2(size.x, size.y), col::Accent, S(1.5f));
+	ImGui::PopFont();
+	return clicked;
+}
+
+static void CardRule()
+{
+	ImVec2 p = ImGui::GetCursorScreenPos();
+	float w = ImGui::GetContentRegionAvail().x;
+	ImGui::GetWindowDrawList()->AddLine(p, p + ImVec2(w, 0), col::Border, S(1));
+	ImGui::Dummy(ImVec2(w, S(1)));
+}
+
+// A rounded panel lighter than the window, filling the rest of the space (or 'height').
+static void BeginCard(const char* id, float height = 0)
+{
+	ImGui::PushStyleColor(ImGuiCol_ChildBg, col::Panel);
+	ImGui::PushStyleColor(ImGuiCol_FrameBg, IM_COL32(0x3A, 0x3C, 0x41, 255));
+	ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, IM_COL32(0x43, 0x45, 0x4A, 255));
+	ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(0x3A, 0x3C, 0x41, 255));
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(0x46, 0x48, 0x4D, 255));
+	ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, S(10));
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, S(6));
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(20), S(6)));
+	ImGui::BeginChild(id, ImVec2(0, height), ImGuiChildFlags_AlwaysUseWindowPadding);
+}
+static void EndCard()
+{
+	ImGui::EndChild();
+	ImGui::PopStyleVar(3);
+	ImGui::PopStyleColor(5);
+}
+
+// Banner row inside the card (connect, updates, engine change).
+static bool Banner(const char* id, ImU32 color, const std::string& text, const char* action)
+{
+	ImVec2 p = ImGui::GetCursorScreenPos();
+	float w = ImGui::GetContentRegionAvail().x;
+	float h = ImGui::GetFrameHeight() + S(16);
+	ImDrawList* dl = ImGui::GetWindowDrawList();
+	dl->AddRectFilled(p, p + ImVec2(w, h), WithAlpha(color, 0.10f), S(6));
+	dl->AddRect(p, p + ImVec2(w, h), WithAlpha(color, 0.45f), S(6));
+	ImGui::SetCursorScreenPos(p + ImVec2(S(14), S(8)));
+	ImGui::AlignTextToFramePadding();
+	ImGui::PushTextWrapPos(p.x + w - S(160));
+	ImGui::TextUnformatted(text.c_str());
+	ImGui::PopTextWrapPos();
+	bool clicked = false;
+	if (action)
+	{
+		ImGui::PushID(id);
+		float bw = ImGui::CalcTextSize(action).x + ImGui::GetStyle().FramePadding.x * 2 + S(8);
+		ImGui::SetCursorScreenPos(ImVec2(p.x + w - bw - S(12), p.y + S(8)));
+		ImGui::BeginDisabled(false);
+		clicked = PrimaryButton(action, ImVec2(bw, 0));
+		ImGui::EndDisabled();
+		ImGui::PopID();
+	}
+	ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h + S(10)));
+	ImGui::Dummy(ImVec2(0, 0));
+	return clicked;
+}
+
+// ============================================================================ tool list
 
 static const char* StateLabel(const ToolView& v)
 {
-	if (v.state == "installed") return "최신";
+	if (v.state == "installed") return "설치됨";
 	if (v.state == "update") return "업데이트 있음";
 	if (v.state == "own") return "프로젝트에 포함";
 	if (v.state == "legacy") return "이전 형식";
@@ -281,281 +329,384 @@ static ImU32 StateColor(const ToolView& v)
 	return col::Muted;
 }
 
-static std::string VersionLine(App& app, const ToolView& v)
+static std::string VersionText(const ToolView& v)
 {
-	if (!v.known) return v.state == "none" ? std::string() : "버전 확인 중...";
-	if (v.state == "installed") return "dwo-Forge " + (v.installedVersion.empty() ? v.availableVersion : v.installedVersion) + (v.installedEngine.empty() ? "" : " · UE " + v.installedEngine);
+	if (!v.known) return v.state == "none" ? std::string() : "확인 중...";
 	if (v.state == "update")
 	{
-		if (v.reason == "engine-changed") return "엔진이 바뀜: UE " + v.installedEngine + " 빌드 → 다시 설치 필요";
-		if (v.reason == "unknown-version") return "설치 버전 기록 없음 (이전 dwo-Forge) → " + v.availableVersion;
-		return v.installedVersion + "  →  " + v.availableVersion;
+		if (v.reason == "engine-changed") return "UE " + v.installedEngine + "용 → 다시 빌드";
+		if (v.reason == "unknown-version") return "이전 버전 → " + v.availableVersion;
+		return v.installedVersion + " → " + v.availableVersion;
 	}
-	if (v.state == "legacy") return "dwo-Lens 1.x의 Plugins/__StateMonitor → 업데이트하면 DwoStateMonitor로 옮김";
-	if (v.state == "own") return "프로젝트의 자체 플러그인 · dwo-Forge가 관리하지 않음";
-	return "사용 가능 " + v.availableVersion;
+	if (v.state == "own") return "프로젝트 자체";
+	if (v.state == "legacy") return "dwo-Lens 1.x";
+	return "버전 " + v.availableVersion;
 }
 
-static std::string ExtraLine(App& app, const ToolView& v)
+static std::string TagLine(App& app, const ToolMeta& m, const ToolView& v)
 {
-	if (v.id == "lens" && ToolPresent(v))
+	std::string id = m.id;
+	std::string t = id == "ci" ? "프로젝트 + PC" : "프로젝트";
+	if (id == "lens" && ToolPresent(v))
 	{
 		int done = 0, failed = 0;
 		for (int i = 0; i < kLensLineCount; ++i)
 			if (const RunInfo* r = app.Latest(i)) { ++done; failed += r->verdict == "fail"; }
-		return Fmt("검사 %d종 중 %d종 실행 · 실패 %d", kLensLineCount, done, failed);
+		t += Fmt("  ·  검사 %d종 중 %d종 실행, 실패 %d", kLensLineCount, done, failed);
 	}
-	if (v.id == "statemonitor" && v.detail == "runtime") return "패키지 게임에도 포함";
-	if (v.id == "statemonitor" && v.detail == "editor") return "에디터·PIE 전용";
-	if (v.id == "canvas" && !app.canvasVersion.empty()) return "플러그인 " + app.canvasVersion;
-	if (v.id == "ci" && !v.detail.empty())
+	else if (id == "statemonitor" && v.detail == "runtime") t += "  ·  패키지 게임에도 포함";
+	else if (id == "statemonitor" && v.detail == "editor") t += "  ·  에디터·PIE 전용";
+	else if (id == "canvas" && !app.canvasVersion.empty()) t += "  ·  플러그인 " + app.canvasVersion;
+	else if (id == "ci")
 	{
-		ci::Snapshot s = ci::Instance().Get();
-		std::string last = "빌드 없음";
-		if (!s.builds.empty())
+		if (!v.detail.empty())
 		{
-			std::string verdict = ci::Verdict(s.builds.front());
-			const char* label = verdict == "running" ? "진행 중" : VerdictLabel(verdict);
-			last = Fmt("최근 빌드 #%d ", s.builds.front().number) + (label ? label : verdict);
+			ci::Snapshot s = ci::Instance().Get();
+			t += "  ·  작업 " + v.detail;
+			if (!s.builds.empty())
+			{
+				std::string verdict = ci::Verdict(s.builds.front());
+				const char* label = verdict == "running" ? "진행 중" : VerdictLabel(verdict);
+				t += Fmt("  ·  최근 빌드 #%d ", s.builds.front().number) + (label ? label : verdict);
+			}
 		}
-		return "작업 " + v.detail + " · " + last;
+		else t += "  ·  로컬 빌드는 설치 없이 사용";
 	}
-	return "";
+	if (v.state == "none" || v.state == "own") return t;
+	return t + "  ·  " + m.folder;
 }
 
-static void DrawToolRow(App& app, const ToolMeta& m, const ToolView& v, const json& doc)
+// Runs a tool action; on a project that is not connected yet, connects first.
+static void RunToolCommand(App& app, const std::string& command)
+{
+	if (!app.attached) app.Run("connect");
+	app.Run(command);
+}
+
+static void DrawToolDetails(App& app, const ToolMeta& m, const ToolView& v)
+{
+	KeyValue("상태", StateLabel(v), 90);
+	if (!v.installedVersion.empty()) KeyValue("설치 버전", v.installedVersion, 90);
+	if (!v.availableVersion.empty()) KeyValue("최신 버전", v.availableVersion, 90);
+	if (!v.installedEngine.empty()) KeyValue("빌드 엔진", "UE " + v.installedEngine, 90);
+	if (!v.installedAt.empty()) KeyValue("설치 일시", ShortDate(v.installedAt), 90);
+	KeyValue("범위", m.id == std::string("ci") ? "프로젝트 + PC" : "프로젝트", 90);
+	KeyValue("설치 위치", m.folder, 90);
+	ImGui::Spacing();
+	TextDim("명령줄 (누르면 복사)");
+	std::string id = m.id == std::string("ci") ? "builder" : m.id;
+	for (const char* verb : { "install", "update", "remove" })
+	{
+		std::string line = "__dwo-forge.bat tool " + std::string(verb) + " " + id;
+		if (ImGui::Selectable((std::string(ICON_COPY) + "  " + line).c_str())) { ImGui::SetClipboardText(line.c_str()); PushToast("복사함", line, col::Info); }
+	}
+	(void)app;
+}
+
+static void DrawToolItem(App& app, const ToolMeta& m, const ToolView& v, const json& doc, bool last)
 {
 	launcher::Ui& u = launcher::State();
 	bool idle = !app.runner.running;
-	bool selected = u.tool == m.id;
-	float h = S(86);
+	std::string id = m.id;
+	bool present = ToolPresent(v);
+	bool managed = v.state == "installed" || v.state == "update" || v.state == "legacy";
 	ImGui::PushID(m.id);
-	ImGui::PushStyleColor(ImGuiCol_ChildBg, selected ? col::Panel2 : col::Panel);
-	ImGui::PushStyleColor(ImGuiCol_Border, v.state == "update" || v.state == "legacy" ? WithAlpha(col::Warn, 0.6f) : col::Border);
-	ImGui::BeginChild("row", ImVec2(0, h), ImGuiChildFlags_Borders, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 	ImDrawList* dl = ImGui::GetWindowDrawList();
-	ImVec2 origin = ImGui::GetCursorScreenPos();
-	float tile = S(40);
-	DrawToolTile(dl, origin + ImVec2(0, S(4)), tile, m, v.state == "none" ? 0.45f : 1.0f);
-	float textX = ImGui::GetCursorPosX() + tile + S(14);
-	ImGui::SetCursorPosX(textX);
+	ImVec2 p = ImGui::GetCursorScreenPos();
+	float w = ImGui::GetContentRegionAvail().x;
+	float h = S(126);
+	ImGui::SetNextItemAllowOverlap();
+	ImGui::InvisibleButton("row", ImVec2(w, h));
+	bool hovered = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenOverlappedByItem);
+	if (hovered && ImGui::IsMouseDoubleClicked(0) && (present || id == "ci")) app.requestActivity = m.open;
+	if (hovered) dl->AddRectFilled(p + ImVec2(-S(8), S(4)), p + ImVec2(w + S(8), h - S(4)), IM_COL32(255, 255, 255, 8), S(8));
+
+	// thumbnail
+	ImVec2 ta = p + ImVec2(0, S(15));
+	ImVec2 tb = ta + ImVec2(S(172), S(96));
+	DrawToolThumb(dl, ta, tb, m, v.state == "none");
+
+	// text block
+	float rightW = S(190);
+	float tx = tb.x + S(20);
+	float textW = p.x + w - rightW - tx - S(16);
+	ImGui::SetCursorScreenPos(ImVec2(tx, ta.y - S(1)));
+	ImGui::PushFont(g_fonts.bold);
+	ImGui::PushStyleColor(ImGuiCol_Text, StateColor(v));
+	ImGui::SetWindowFontScale(0.82f);
+	ImGui::TextUnformatted(StateLabel(v));
+	ImGui::SetWindowFontScale(1.0f);
+	ImGui::PopStyleColor();
+	ImGui::PopFont();
+	ImGui::SetCursorScreenPos(ImVec2(tx, ImGui::GetCursorScreenPos().y - S(2)));
 	ImGui::PushFont(g_fonts.title);
 	ImGui::TextUnformatted(m.name);
 	ImGui::PopFont();
-	ImGui::SameLine();
-	Pill(StateLabel(v), StateColor(v));
-	std::string ver = VersionLine(app, v);
-	ImGui::SetCursorPosX(textX);
-	TextDim(m.summary);
-	ImGui::SetCursorPosX(textX);
-	std::string extra = ExtraLine(app, v);
-	if (v.state == "update" || v.state == "legacy") TextColored(col::Warn, ver.c_str());
-	else TextDim(ver + (extra.empty() ? "" : (ver.empty() ? "" : "   ·   ") + extra));
+	ImGui::SetCursorScreenPos(ImVec2(tx, ImGui::GetCursorScreenPos().y + S(1)));
+	ImGui::PushTextWrapPos(tx + textW);
+	ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0xC4, 0xC7, 0xCC, 255));
+	ImGui::TextWrapped("%s", m.summary);
+	ImGui::PopStyleColor();
+	ImGui::PopTextWrapPos();
+	ImGui::SetCursorScreenPos(ImVec2(tx, tb.y - ImGui::GetTextLineHeight() + S(1)));
+	ImGui::PushStyleColor(ImGuiCol_Text, col::Dim);
+	ImGui::SetWindowFontScale(0.9f);
+	std::string tags = TagLine(app, m, v);
+	ImGui::PushClipRect(ImVec2(tx, p.y), ImVec2(tx + textW, p.y + h), true);
+	ImGui::TextUnformatted(tags.c_str());
+	ImGui::PopClipRect();
+	ImGui::SetWindowFontScale(1.0f);
+	ImGui::PopStyleColor();
 
-	// buttons, right-aligned on the first line
-	std::vector<std::pair<std::string, int>> buttons;   // label, kind (0 primary, 1 normal, 2 remove)
-	bool present = ToolPresent(v);
-	bool managed = v.state == "installed" || v.state == "update" || v.state == "legacy";
-	if (v.state == "none") buttons.push_back({ "설치", 0 });
-	if (v.state == "update" || v.state == "legacy") buttons.push_back({ v.state == "legacy" ? "옮기기" : "업데이트", 0 });
-	if (present || m.id == std::string("ci")) buttons.push_back({ "열기", v.state == "installed" || v.state == "own" ? 0 : 1 });   // DwoBuilder: local builds need nothing installed
-	if (m.id == std::string("statemonitor") && v.state == "none") buttons.push_back({ "패키지 포함 설치", 1 });
-	if (managed) buttons.push_back({ "제거", 2 });
-	float x = ImGui::GetWindowContentRegionMax().x;
-	for (auto it = buttons.rbegin(); it != buttons.rend(); ++it)
-		x -= ImGui::CalcTextSize(it->first.c_str()).x + ImGui::GetStyle().FramePadding.x * 2 + ImGui::GetStyle().ItemSpacing.x;
-	ImGui::SetCursorPos(ImVec2(x, S(8)));
+	// actions: primary button + "..." menu, version under them
+	std::string primary, icon;
+	if (v.state == "none") { primary = "설치"; icon = ICON_DOWNLOAD; }
+	else if (v.state == "update") { primary = "업데이트"; icon = ICON_SYNC; }
+	else if (v.state == "legacy") { primary = "옮기기"; icon = ICON_SYNC; }
+	else { primary = "열기"; icon = ICON_OPEN; }
 	json pc = Obj(doc, "pc");
-	bool ciBlocked = m.id == std::string("ci") && v.state == "none" && v.known &&
-	                 !Obj(pc, "jenkins").value("installed", false) && Str(Obj(pc, "bundle"), "file").empty();
-	for (size_t i = 0; i < buttons.size(); ++i)
+	bool ciBlocked = id == "ci" && v.state == "none" && v.known && !Obj(pc, "jenkins").value("installed", false) && Str(Obj(pc, "bundle"), "file").empty();
+	std::string label = icon + "  " + primary;
+	float bw = ImGui::CalcTextSize(label.c_str()).x + ImGui::GetStyle().FramePadding.x * 2 + S(18);
+	float mw = ImGui::GetFrameHeight() + S(6);
+	float bx = p.x + w - bw - mw - ImGui::GetStyle().ItemSpacing.x;
+	ImGui::SetCursorScreenPos(ImVec2(bx, ta.y + S(6)));
+	bool mutates = primary != "열기";
+	ImGui::BeginDisabled(mutates && (!idle || !app.hasUProject || (primary == "설치" && (ciBlocked || !v.available))));
+	bool clicked = primary == "열기" ? PrimaryButton(label.c_str(), ImVec2(bw, 0)) : ImGui::Button(label.c_str(), ImVec2(bw, 0));
+	ImGui::EndDisabled();
+	if (primary == "설치" && ciBlocked) Tooltip("자동 빌드에는 PC의 Jenkins가 필요합니다. 인터넷 PC에서 dwo-Forge.bat ci-bundle로 만든 번들을 dwo-Forge의 bundles 폴더에 두세요. 로컬 빌드는 ··· > 열기로 설치 없이 쓸 수 있습니다.");
+	else if (primary == "설치" && !app.attached) Tooltip("프로젝트를 dwo-Forge에 연결한 뒤 설치합니다.");
+	if (clicked)
 	{
-		auto& [label, kind] = buttons[i];
-		if (i) ImGui::SameLine();
-		bool mutates = label != "열기";
-		ImGui::BeginDisabled(mutates && (!idle || !app.attached || (label == "설치" && (ciBlocked || !v.available))));
-		bool clicked = kind == 0 ? PrimaryButton(label.c_str()) : ImGui::Button(label.c_str());
-		ImGui::EndDisabled();
-		if (label == "설치" && ciBlocked) Tooltip("DwoBuilder는 PC에 Jenkins가 필요합니다. 인터넷 PC에서 dwo-Forge.bat ci-bundle로 만든 번들을 dwo-Forge의 bundles 폴더에 두세요.");
-		else if (label == "패키지 포함 설치") Tooltip("패키지 게임에서도 동작합니다. .uproject(BP 전용) 또는 Build.cs(C++)에 DwoStateMonitor를 등록해야 합니다.");
-		else if (label == "설치" && m.id == std::string("ci")) Tooltip("Jenkins 작업과 git 훅을 만듭니다. PC에 Jenkins가 없으면 bundles 폴더의 오프라인 번들로 먼저 설치합니다.");
-		if (!clicked) continue;
-		std::string id = m.id;
-		if (label == "설치") app.Run("tool install " + id);
-		else if (label == "패키지 포함 설치") app.Run("tool install statemonitor --runtime");
-		else if (label == "업데이트" || label == "옮기기") app.Run("tool update " + id);
-		else if (label == "열기") app.requestActivity = m.open;
-		else if (label == "제거") { u.confirmRemove = id; ImGui::OpenPopup("confirm-remove"); }
+		if (primary == "설치") RunToolCommand(app, "tool install " + id);
+		else if (primary == "업데이트" || primary == "옮기기") app.Run("tool update " + id);
+		else app.requestActivity = m.open;
 	}
+	ImGui::SameLine();
+	if (ImGui::Button("···", ImVec2(mw, 0))) ImGui::OpenPopup("more");
+	if (ImGui::BeginPopup("more"))
+	{
+		if (ImGui::MenuItem("열기", nullptr, false, present || id == "ci")) app.requestActivity = m.open;
+		if (id == "statemonitor" && ImGui::MenuItem("설치 (패키지 게임 포함)", nullptr, false, idle && v.state == "none")) RunToolCommand(app, "tool install statemonitor --runtime");
+		if (ImGui::MenuItem("업데이트", nullptr, false, idle && managed)) app.Run("tool update " + id);
+		if (ImGui::MenuItem("제거...", nullptr, false, idle && managed)) u.confirmRemove = id;
+		ImGui::Separator();
+		if (ImGui::MenuItem("자세히...")) u.details = id;
+		ImGui::EndPopup();
+	}
+	std::string ver = VersionText(v);
+	ImVec2 vs = ImGui::CalcTextSize(ver.c_str());
+	ImGui::SetCursorScreenPos(ImVec2(p.x + w - vs.x, ta.y + S(6) + ImGui::GetFrameHeight() + S(10)));
+	if (v.state == "update" || v.state == "legacy") TextColored(col::Warn, ver.c_str());
+	else { ImGui::PushFont(g_fonts.bold); TextDim(ver); ImGui::PopFont(); }
+
+	// confirm removal / details
+	if (u.confirmRemove == id) { ImGui::OpenPopup("confirm-remove"); u.confirmRemove.clear(); }
 	if (ImGui::BeginPopup("confirm-remove"))
 	{
 		TextBold(std::string(m.name) + " 제거");
 		ImGui::PushTextWrapPos(S(360));
-		if (m.id == std::string("ci")) TextDim("이 프로젝트의 Jenkins 작업(빌드 기록 포함)과 git 훅을 지웁니다. PC의 Jenkins와 다른 프로젝트는 그대로입니다.");
-		else if (m.id == std::string("lens")) TextDim("Plugins/__DwoLensInspector를 지웁니다. 실행 기록은 남고, 다시 설치하면 이어서 씁니다.");
+		if (id == "ci") TextDim("이 프로젝트의 Jenkins 작업(빌드 기록 포함)과 git 훅을 지웁니다. PC의 Jenkins와 다른 프로젝트는 그대로입니다.");
+		else if (id == "lens") TextDim("Plugins/__DwoLensInspector를 지웁니다. 실행 기록은 남고, 다시 설치하면 이어서 씁니다.");
 		else TextDim(std::string(m.folder) + "를 지웁니다. 프로젝트 코드나 에셋이 아직 쓰고 있으면 제거를 멈추고 목록을 보여 줍니다.");
 		ImGui::PopTextWrapPos();
 		ImGui::Spacing();
-		if (DangerButton("제거")) { app.Run("tool remove " + u.confirmRemove); ImGui::CloseCurrentPopup(); }
+		if (DangerButton("제거")) { app.Run("tool remove " + id); ImGui::CloseCurrentPopup(); }
 		ImGui::SameLine();
 		if (ImGui::Button("취소")) ImGui::CloseCurrentPopup();
 		ImGui::EndPopup();
 	}
-	// clicking the row (outside the buttons) selects it for the inspector
-	if (ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::IsMouseClicked(0) && !ImGui::IsAnyItemHovered()) u.tool = m.id;
-	if (ImGui::IsWindowHovered() && ImGui::IsMouseDoubleClicked(0) && present && !ImGui::IsAnyItemHovered()) app.requestActivity = m.open;
-	ImGui::EndChild();
-	ImGui::PopStyleColor(2);
+	if (u.details == id) { ImGui::OpenPopup("details"); u.details.clear(); }
+	ImGui::SetNextWindowSize(ImVec2(S(460), 0));
+	if (ImGui::BeginPopup("details"))
+	{
+		Title(m.name);
+		ImGui::PushTextWrapPos(0);
+		TextDim(m.summary);
+		ImGui::PopTextWrapPos();
+		ImGui::Spacing();
+		DrawToolDetails(app, m, v);
+		ImGui::EndPopup();
+	}
+
+	ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h));
+	if (!last) CardRule();
 	ImGui::PopID();
 }
 
-static void DrawConnectPanel(App& app)
+// ============================================================================ project page
+
+static void ProjectPicker(App& app)
 {
-	launcher::Ui& u = launcher::State();
-	ImGui::BeginChild("connect", ImVec2(0, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY);
-	ImGui::PushFont(g_fonts.title);
-	ImGui::TextUnformatted("이 프로젝트는 아직 dwo-Forge에 연결되지 않았습니다");
-	ImGui::PopFont();
-	ImGui::PushTextWrapPos(0);
-	TextDim("연결하면 프로젝트에 __dwo-forge 폴더와 실행 파일 __dwo-forge.bat이 생기고, git 프로젝트에서는 변경 목록에 나타나지 않게 숨깁니다. "
-	        ".uproject와 기존 파일은 건드리지 않습니다. 연결 해제하면 흔적 없이 지워집니다.");
-	ImGui::PopTextWrapPos();
-	ImGui::Spacing();
-	TextBold("함께 설치할 도구");
-	for (int i = 0; i < kToolCount; ++i)
-	{
-		ImGui::PushID(i);
-		ImGui::Checkbox("##with", &u.connectWith[i]);
-		ImGui::SameLine();
-		ImVec2 p = ImGui::GetCursorScreenPos();
-		float t = ImGui::GetFrameHeight() * 0.8f;
-		DrawToolTile(ImGui::GetWindowDrawList(), p + ImVec2(0, (ImGui::GetFrameHeight() - t) * 0.5f), t, kToolMeta[i]);
-		ImGui::Dummy(ImVec2(t, ImGui::GetFrameHeight()));
-		ImGui::SameLine();
-		ImGui::AlignTextToFramePadding();
-		ImGui::TextUnformatted(kToolMeta[i].name);
-		ImGui::SameLine();
-		TextDim(kToolMeta[i].summary);
-		ImGui::PopID();
-	}
-	ImGui::Spacing();
-	ImGui::BeginDisabled(app.runner.running || !app.HomeValid());
-	if (PrimaryButton((std::string(ICON_LINK) + "  연결").c_str()))
-	{
-		app.Run("connect");
-		for (int i = 0; i < kToolCount; ++i)
-			if (u.connectWith[i]) app.Run(std::string("tool install ") + kToolMeta[i].id);
-	}
-	ImGui::EndDisabled();
+	ImGui::AlignTextToFramePadding();
+	TextDim("프로젝트");
 	ImGui::SameLine();
-	TextDim("도구는 나중에 이 화면에서 언제든 설치·제거할 수 있습니다.");
-	ImGui::EndChild();
+	std::string name = app.hasUProject ? app.projectName : std::string("선택 안 됨");
+	float bw = ImMax(S(220), ImGui::CalcTextSize(name.c_str()).x + S(48));
+	ImVec2 bp = ImGui::GetCursorScreenPos();
+	ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.0f, 0.5f));
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(S(12), ImGui::GetStyle().FramePadding.y));
+	if (ImGui::Button(("  " + name + "##projectpick").c_str(), ImVec2(bw, 0))) ImGui::OpenPopup("projects");
+	ImGui::PopStyleVar(2);
+	{
+		// caret at the right edge, like a dropdown
+		float fs = g_fonts.icon->FontSize * 0.6f;
+		ImVec2 cs = g_fonts.icon->CalcTextSizeA(fs, FLT_MAX, 0, ICON_DOWN);
+		ImGui::GetWindowDrawList()->AddText(g_fonts.icon, fs, ImVec2(bp.x + bw - cs.x - S(12), bp.y + (ImGui::GetFrameHeight() - cs.y) * 0.5f), col::Dim, ICON_DOWN);
+	}
+	if (app.hasUProject) Tooltip(PathUtf8(app.project).c_str());
+	if (ImGui::BeginPopup("projects"))
+	{
+		for (auto& r : app.recent)
+		{
+			fs::path p = fs::u8path(r);
+			std::error_code ec;
+			if (!fs::exists(p, ec)) continue;
+			ImGui::PushID(r.c_str());
+			if (ImGui::Selectable(PathUtf8(p.filename()).c_str(), p == app.project, 0, ImVec2(S(320), 0))) app.SetProject(p);
+			ImGui::SameLine(S(200));
+			TextDim(PathUtf8(p.parent_path().filename()));
+			ImGui::PopID();
+		}
+		ImGui::Separator();
+		if (ImGui::Selectable((std::string(ICON_FOLDER) + "  프로젝트 열기...").c_str()))
+		{
+			fs::path p;
+			if (PickOpen(g_hwnd, true, L".uproject가 있는 프로젝트 폴더 선택", p)) app.SetProject(p);
+		}
+		ImGui::EndPopup();
+	}
+}
+
+static void ProjectMenu(App& app)
+{
+	if (ImGui::Button("···##project", ImVec2(ImGui::GetFrameHeight() + S(6), 0))) ImGui::OpenPopup("projectmenu");
+	Tooltip("프로젝트 관리");
+	if (ImGui::BeginPopup("projectmenu"))
+	{
+		bool idle = !app.runner.running;
+		if (ImGui::MenuItem("폴더 열기", nullptr, false, app.hasUProject)) OpenWithShell(app.project);
+		ImGui::Separator();
+		if (ImGui::MenuItem("연결", nullptr, false, idle && app.hasUProject && !app.attached)) app.Run("connect");
+		if (ImGui::MenuItem("연결 새로 고침", nullptr, false, idle && app.attached)) app.Run("update");
+		if (ImGui::MenuItem("환경 점검", nullptr, false, idle && app.attached)) app.Run("doctor");
+		if (ImGui::MenuItem("상태 확인", nullptr, false, idle && app.attached)) app.Run("status");
+		ImGui::Separator();
+		if (ImGui::MenuItem("연결 해제...", nullptr, false, idle && app.attached)) app.confirmDetach = true;
+		ImGui::EndPopup();
+	}
 }
 
 static void DrawProjectPage(App& app)
 {
 	launcher::Ui& u = launcher::State();
+	json doc = g_tools.Get(app.project);
+	const json& pj = Obj(doc, "project");
+	std::vector<ToolView> views = ToolViews(app);
+	int installed = 0;
+	for (auto& v : views) installed += ToolPresent(v);
+	int updates = app.attached ? UpdateCount(views) : 0;
+
+	// tabs
+	ImGui::Dummy(ImVec2(0, S(2)));
+	if (UnderlineTab("모든 도구", u.tab == 0)) u.tab = 0;
+	ImGui::SameLine(0, S(4));
+	if (UnderlineTab(Fmt("설치됨 (%d)##installed", installed).c_str(), u.tab == 1)) u.tab = 1;
+	ImGui::SameLine(0, S(4));
+	if (UnderlineTab(Fmt("업데이트 (%d)##updates", updates).c_str(), u.tab == 2)) u.tab = 2;
+	CardRule();
+	ImGui::Dummy(ImVec2(0, S(6)));
+
+	// filter row: project, facts, search, project menu
+	ProjectPicker(app);
+	if (app.hasUProject)
+	{
+		ImGui::SameLine(0, S(14));
+		std::string engine = Str(pj, "engine", app.attached ? app.Engine() : "");
+		std::string facts = std::string(app.isCodeProject ? "C++" : "Blueprint 전용") + (engine.empty() ? "" : "  ·  UE " + engine) +
+		                    (app.attached ? (Str(app.state, "vcs") == "none" ? "  ·  버전 관리 없음" : "  ·  git") : "  ·  연결 안 됨");
+		ImGui::AlignTextToFramePadding();
+		TextDim(facts);
+	}
+	float right = ImGui::GetWindowContentRegionMax().x;
+	float searchW = S(260);
+	ImGui::SameLine(right - searchW - ImGui::GetFrameHeight() - S(14));
+	SearchBox("##toolsearch", u.search, sizeof(u.search), ICON_SEARCH "  도구 검색", searchW);
+	ImGui::SameLine();
+	ProjectMenu(app);
+	ImGui::Dummy(ImVec2(0, S(6)));
+
 	if (!app.hasUProject)
 	{
-		if (EmptyState(ICON_FOLDER, "프로젝트를 여세요", "언리얼 프로젝트 폴더(.uproject가 있는 폴더)를 고르거나 이 창으로 끌어다 놓으세요. 연결하고 쓸 도구를 고르면 됩니다.", "프로젝트 열기..."))
+		if (EmptyState(ICON_FOLDER, "프로젝트를 여세요", "언리얼 프로젝트 폴더(.uproject가 있는 폴더)를 고르거나 이 창으로 끌어다 놓으세요. 그다음 쓸 도구를 설치하면 됩니다.", "프로젝트 열기..."))
 		{
 			fs::path p;
 			if (PickOpen(g_hwnd, true, L".uproject가 있는 프로젝트 폴더 선택", p)) app.SetProject(p);
 		}
 		return;
 	}
-	json doc = g_tools.Get(app.project);
-	const json& pj = Obj(doc, "project");
-	std::vector<ToolView> views = ToolViews(app);
-
-	// ---- header
-	ImGui::PushFont(g_fonts.big);
-	ImGui::TextUnformatted(app.projectName.c_str());
-	ImGui::PopFont();
-	std::string engine = Str(pj, "engine", app.attached ? app.Engine() : "");
-	std::string sub = std::string(app.isCodeProject ? "C++" : "Blueprint 전용") + (engine.empty() ? "" : "  ·  UE " + engine) +
-	                  (app.attached ? "  ·  " + std::string(Str(app.state, "vcs") == "none" ? "버전 관리 없음" : "git") : "") + "  ·  " + PathUtf8(app.project);
-	TextDim(sub);
-	{
-		float right = ImGui::GetWindowContentRegionMax().x;
-		float bw = S(110);
-		ImGui::SameLine();
-		ImGui::SetCursorPosX(right - (app.attached ? bw * 2 + S(8) : bw));
-		if (ImGui::Button((std::string(ICON_FOLDER) + "  폴더 열기").c_str(), ImVec2(bw, 0))) OpenWithShell(app.project);
-		if (app.attached)
-		{
-			ImGui::SameLine();
-			ImGui::BeginDisabled(app.runner.running);
-			if (ImGui::Button((std::string(ICON_CLOSE) + "  연결 해제...").c_str(), ImVec2(bw, 0))) app.confirmDetach = true;
-			ImGui::EndDisabled();
-			Tooltip("모든 도구를 지우고 프로젝트를 dwo-Forge에서 분리합니다. 무엇을 지우는지 먼저 보여 줍니다.");
-		}
-	}
-	ImGui::Spacing();
-
 	if (!app.attached && app.legacyAttached)
 	{
-		EmptyState(ICON_SYNC, "dwo-Lens 1.x로 연동된 프로젝트입니다",
+		EmptyState(ICON_SYNC, "dwo-Lens 1.x로 연결된 프로젝트입니다",
 		           "__dwo-lens 폴더와 실행 파일, git exclude 블록을 dwo-Forge 이름으로 옮기고 있습니다. 실행 기록과 설정은 그대로 유지됩니다.");
 		return;
 	}
-	if (!app.attached) { DrawConnectPanel(app); return; }
 
-	// ---- update / engine banners
-	int updates = UpdateCount(views);
+	// banners
+	std::string engine = Str(pj, "engine");
 	std::string connectedEngine = Str(pj, "connectedEngine");
-	if (!engine.empty() && !connectedEngine.empty() && engine != connectedEngine)
+	ImGui::BeginDisabled(app.runner.running);
+	if (!app.attached)
 	{
-		Pill("엔진 변경", col::Warn);
-		ImGui::SameLine();
-		ImGui::TextUnformatted(("연결할 때 UE " + connectedEngine + ", 지금 UE " + engine + ". 연결을 새로 고치면 도구도 새 엔진으로 다시 빌드합니다.").c_str());
-		ImGui::SameLine();
-		ImGui::BeginDisabled(app.runner.running);
-		if (PrimaryButton("연결 새로 고침")) app.Run("update");
-		ImGui::EndDisabled();
+		if (Banner("connect", col::Info, "이 프로젝트는 dwo-Forge에 연결되지 않았습니다. 도구의 설치를 누르면 연결과 설치를 함께 합니다. "
+		                                 "연결은 __dwo-forge 폴더와 실행 파일만 만들고 git에서 숨기며, 연결 해제로 흔적 없이 지울 수 있습니다.", "연결만 하기"))
+			app.Run("connect");
+	}
+	else if (!engine.empty() && !connectedEngine.empty() && engine != connectedEngine)
+	{
+		if (Banner("engine", col::Warn, "연결할 때 UE " + connectedEngine + ", 지금 UE " + engine + ". 연결을 새로 고치면 도구도 새 엔진으로 다시 빌드합니다.", "연결 새로 고침"))
+			app.Run("update");
 	}
 	else if (updates > 0)
 	{
-		Pill(Fmt("업데이트 %d", updates), col::Warn);
-		ImGui::SameLine();
-		ImGui::TextUnformatted(Fmt("이 dwo-Forge(%s)에 더 새 버전이 있는 도구가 %d개 있습니다.", Str(Obj(doc, "forge"), "version").c_str(), updates).c_str());
-		ImGui::SameLine();
-		ImGui::BeginDisabled(app.runner.running);
-		if (PrimaryButton((std::string(ICON_SYNC) + "  모두 업데이트").c_str())) app.Run("tool update --all");
-		ImGui::EndDisabled();
+		if (Banner("updates", col::Warn, Fmt("이 dwo-Forge(%s)에 더 새 버전이 있는 도구가 %d개 있습니다.", Str(Obj(doc, "forge"), "version").c_str(), updates), "모두 업데이트"))
+			app.Run("tool update --all");
 	}
+	ImGui::EndDisabled();
+	if (!g_tools.error.empty()) TextColored(col::Fail, ("도구 상태를 읽지 못했습니다: " + g_tools.error.substr(0, 160)).c_str());
 
-	// ---- library
-	std::string forgeVersion = Str(Obj(doc, "forge"), "version");
-	SectionHeader("도구", forgeVersion.empty() ? (g_tools.busy ? "확인 중..." : nullptr) : ("dwo-Forge " + forgeVersion).c_str());
+	// list
+	std::vector<int> shown;
 	for (int i = 0; i < kToolCount; ++i)
 	{
-		DrawToolRow(app, kToolMeta[i], views[i], doc);
-		ImGui::Dummy(ImVec2(0, S(2)));
+		const ToolView& v = views[i];
+		if (u.tab == 1 && !ToolPresent(v)) continue;
+		if (u.tab == 2 && !(v.state == "update" || v.state == "legacy")) continue;
+		if (u.search[0] && !ContainsNoCase(std::string(kToolMeta[i].name) + " " + kToolMeta[i].summary, u.search)) continue;
+		shown.push_back(i);
 	}
-
-	SectionHeader("프로젝트 관리");
-	ImGui::BeginDisabled(app.runner.running);
-	if (ImGui::Button((std::string(ICON_SETTINGS) + "  환경 점검").c_str())) app.Run("doctor");
-	ImGui::SameLine();
-	if (ImGui::Button((std::string(ICON_INFO) + "  상태 확인").c_str())) app.Run("status");
-	ImGui::SameLine();
-	if (ImGui::Button((std::string(ICON_SYNC) + "  연결 새로 고침").c_str())) app.Run("update");
-	Tooltip("실행 파일과 git 숨김 설정을 이 dwo-Forge 버전으로 맞추고, 업데이트가 있는 도구를 모두 업데이트합니다.");
-	ImGui::EndDisabled();
-	if (!g_tools.error.empty()) { ImGui::Spacing(); TextColored(col::Fail, ("도구 상태를 읽지 못했습니다: " + g_tools.error.substr(0, 200)).c_str()); }
+	TextDim(Fmt("도구 (%d)", (int)shown.size()) + (g_tools.busy ? "   ·   버전 확인 중..." : ""));
+	ImGui::BeginChild("tools", ImVec2(0, 0), ImGuiChildFlags_None);
+	for (size_t k = 0; k < shown.size(); ++k) DrawToolItem(app, kToolMeta[shown[k]], views[shown[k]], doc, k + 1 == shown.size());
+	if (shown.empty()) TextDim(u.tab == 2 ? "업데이트할 도구가 없습니다." : u.tab == 1 ? "설치한 도구가 없습니다. '모든 도구'에서 설치하세요." : "검색과 일치하는 도구가 없습니다.");
+	ImGui::EndChild();
 }
 
-// ============================================================================ PC pages
+// ============================================================================ PC components
 
-static void DrawJenkinsPage(App& app)
+static void DrawJenkinsPanel(App& app)
 {
 	launcher::Ui& u = launcher::State();
 	ci::Client& c = ci::Instance();
+	c.Ensure(app.hasUProject ? app.project : fs::path());
 	ci::Snapshot s = c.Get();
 	json doc = g_tools.Get(app.project);
 	const json& pc = Obj(doc, "pc");
-	ViewHeader(ICON_SYNC, "Jenkins (DwoBuilder)", "PC에 하나만 설치되고, 프로젝트마다 DwoBuilder 도구가 작업을 하나씩 만듭니다.");
+	ImGui::PushTextWrapPos(0);
+	TextDim("DwoBuilder의 자동 빌드에 쓰는 Jenkins입니다. PC에 하나만 설치되고 127.0.0.1에서만 열리며, 프로젝트마다 DwoBuilder가 작업을 하나씩 만듭니다.");
+	ImGui::PopTextWrapPos();
+	ImGui::Spacing();
 	if (!s.installed) Pill("설치 안 됨", col::Muted);
 	else if (s.running) Pill(Fmt("실행 중 · 127.0.0.1:%d", s.port), col::Pass);
 	else Pill("중지됨", col::Warn);
@@ -566,7 +717,6 @@ static void DrawJenkinsPage(App& app)
 	KeyValue("오프라인 번들", bundle.empty() ? "없음 (인터넷 PC에서 dwo-Forge.bat ci-bundle)" : bundle, 110);
 	if (!s.user.empty()) KeyValue("계정", s.user, 110);
 	ImGui::Spacing();
-
 	bool idle = !app.runner.running;
 	ImGui::BeginDisabled(!idle);
 	auto pickBundle = [&](const char* verb) {
@@ -576,8 +726,12 @@ static void DrawJenkinsPage(App& app)
 	};
 	if (!s.installed)
 	{
-		if (!bundle.empty() && PrimaryButton((std::string(ICON_DOWNLOAD) + "  설치").c_str())) app.Run("ci-install");
-		if (!bundle.empty()) { Tooltip(("bundles 폴더의 " + bundle + "로 설치합니다. 네트워크에 접속하지 않습니다.").c_str()); ImGui::SameLine(); }
+		if (!bundle.empty())
+		{
+			if (PrimaryButton((std::string(ICON_DOWNLOAD) + "  설치").c_str())) app.Run("ci-install");
+			Tooltip(("bundles 폴더의 " + bundle + "로 설치합니다. 네트워크에 접속하지 않습니다.").c_str());
+			ImGui::SameLine();
+		}
 		if (ImGui::Button((std::string(ICON_FOLDER) + "  번들 파일로 설치...").c_str())) pickBundle("ci-install");
 	}
 	else
@@ -613,8 +767,6 @@ static void DrawJenkinsPage(App& app)
 		if (ImGui::Button("취소")) ImGui::CloseCurrentPopup();
 		ImGui::EndPopup();
 	}
-
-	// projects that use it
 	if (NowSeconds() - u.projectsAt > 3)
 	{
 		u.projectsAt = NowSeconds();
@@ -642,16 +794,19 @@ static void DrawJenkinsPage(App& app)
 	}
 }
 
-static void DrawEnginesPage(App& app)
+static void DrawEnginesPanel(App& app)
 {
 	json doc = g_tools.Get(app.project);
 	const json& pj = Obj(doc, "project");
-	ViewHeader(ICON_GAME, "언리얼 엔진", "이 PC에 설치된 엔진. 도구 플러그인은 프로젝트가 쓰는 엔진에 맞춰 빌드됩니다.");
+	ImGui::PushTextWrapPos(0);
+	TextDim("이 PC에 설치된 언리얼 엔진입니다. 플러그인 도구는 프로젝트가 쓰는 엔진에 맞춰 빌드됩니다.");
+	ImGui::PopTextWrapPos();
+	ImGui::Spacing();
 	auto engines = Arr(Obj(doc, "pc"), "engines");
 	if (engines.empty()) { TextDim(g_tools.busy ? "확인 중..." : "프로젝트를 열면 엔진 목록을 읽습니다."); return; }
 	if (ImGui::BeginTable("engines", 3, kTable))
 	{
-		ImGui::TableSetupColumn("버전", ImGuiTableColumnFlags_WidthFixed, S(110));
+		ImGui::TableSetupColumn("버전", ImGuiTableColumnFlags_WidthFixed, S(140));
 		ImGui::TableSetupColumn("연결 이름", ImGuiTableColumnFlags_WidthFixed, S(200));
 		ImGui::TableSetupColumn("위치", ImGuiTableColumnFlags_WidthStretch);
 		ImGui::TableHeadersRow();
@@ -668,10 +823,32 @@ static void DrawEnginesPage(App& app)
 	}
 }
 
+static void DrawPcPage(App& app)
+{
+	launcher::Ui& u = launcher::State();
+	ImGui::Dummy(ImVec2(0, S(2)));
+	if (UnderlineTab("Jenkins (DwoBuilder)", u.pcTab == 0)) u.pcTab = 0;
+	ImGui::SameLine(0, S(4));
+	if (UnderlineTab("언리얼 엔진", u.pcTab == 1)) u.pcTab = 1;
+	CardRule();
+	ImGui::Dummy(ImVec2(0, S(8)));
+	ImGui::BeginChild("pc", ImVec2(0, 0), ImGuiChildFlags_None);
+	if (u.pcTab == 0) DrawJenkinsPanel(app); else DrawEnginesPanel(app);
+	ImGui::EndChild();
+}
+
 static void DrawAboutPage(App& app)
 {
 	json doc = g_tools.Get(app.project);
-	ViewHeader(ICON_FORGE, "dwo-Forge", "언리얼 프로젝트에 도구를 설치·업데이트하고 실행하는 런처");
+	ImGui::Dummy(ImVec2(0, S(2)));
+	UnderlineTab("dwo-Forge", true);
+	CardRule();
+	ImGui::Dummy(ImVec2(0, S(8)));
+	ImGui::BeginChild("about", ImVec2(0, 0), ImGuiChildFlags_None);
+	ImGui::PushTextWrapPos(0);
+	TextDim("언리얼 프로젝트에 도구를 설치·업데이트하고 실행하는 런처입니다.");
+	ImGui::PopTextWrapPos();
+	ImGui::Spacing();
 	std::string version = Str(Obj(doc, "forge"), "commit", app.SystemCommit());
 	KeyValue("버전", version.empty() ? "-" : version, 70);
 	KeyValue("위치", PathUtf8(app.home), 70);
@@ -683,82 +860,27 @@ static void DrawAboutPage(App& app)
 	if (ImGui::Button("설치 폴더 열기")) OpenWithShell(app.home);
 	SectionHeader("도구 카탈로그", "tools/catalog.json");
 	DrawCatalogTable(app);
+	ImGui::EndChild();
 }
 
-static void DrawLauncherMain(App& app)
+// The whole launcher: one card in the space next to the sidebar (the run log drawer is drawn by the caller).
+static void DrawLauncherContent(App& app, float height)
 {
+	ConsumeLauncherRequest();
+	ImGui::SetCursorPos(ImGui::GetCursorPos() + ImVec2(S(16), S(14)));
+	ImGui::BeginGroup();
+	float w = ImGui::GetContentRegionAvail().x - S(16);
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(S(8), S(6)));
+	ImGui::BeginChild("launcher-frame", ImVec2(w, height - S(14)), ImGuiChildFlags_None);
+	BeginCard("card");
 	switch (launcher::State().page)
 	{
 	case launcher::Project: DrawProjectPage(app); break;
-	case launcher::Jenkins: DrawJenkinsPage(app); break;
-	case launcher::Engines: DrawEnginesPage(app); break;
+	case launcher::Pc: DrawPcPage(app); break;
 	case launcher::About: DrawAboutPage(app); break;
 	}
-}
-
-// ============================================================================ inspector
-
-static void DrawLauncherInspector(App& app)
-{
-	launcher::Ui& u = launcher::State();
-	if (u.page == launcher::Jenkins)
-	{
-		SectionHeader("DwoBuilder 구조");
-		ImGui::PushTextWrapPos(0);
-		TextDim("Jenkins(Java 포함)는 PC에 하나만 설치되며 127.0.0.1에서만 열립니다. 프로젝트에 DwoBuilder 도구를 설치하면 그 프로젝트의 Jenkins 작업과 git 훅이 생기고, "
-		        "push·merge·브랜치 생성·커밋 때 빌드가 자동으로 시작됩니다.");
-		ImGui::Spacing();
-		TextDim("폐쇄망 PC: 인터넷 PC에서 dwo-Forge.bat ci-bundle로 만든 zip을 dwo-Forge의 bundles 폴더에 두면 네트워크 없이 설치됩니다.");
-		ImGui::PopTextWrapPos();
-		return;
-	}
-	if (u.page != launcher::Project || !app.hasUProject) return;
-	std::vector<ToolView> views = ToolViews(app);
-	for (int i = 0; i < kToolCount; ++i)
-	{
-		if (u.tool != kToolMeta[i].id) continue;
-		const ToolMeta& m = kToolMeta[i];
-		const ToolView& v = views[i];
-		ImVec2 p = ImGui::GetCursorScreenPos();
-		DrawToolTile(ImGui::GetWindowDrawList(), p, S(28), m);
-		ImGui::Dummy(ImVec2(S(28), S(28)));
-		ImGui::SameLine();
-		ImGui::AlignTextToFramePadding();
-		Title(m.name);
-		ImGui::PushTextWrapPos(0);
-		TextDim(m.summary);
-		ImGui::PopTextWrapPos();
-		SectionHeader("설치");
-		KeyValue("상태", StateLabel(v), 80);
-		if (!v.installedVersion.empty()) KeyValue("설치 버전", v.installedVersion, 80);
-		if (!v.availableVersion.empty()) KeyValue("최신 버전", v.availableVersion, 80);
-		if (!v.installedEngine.empty()) KeyValue("빌드 엔진", "UE " + v.installedEngine, 80);
-		if (!v.installedAt.empty()) KeyValue("설치 일시", ShortDate(v.installedAt), 80);
-		KeyValue("범위", m.id == std::string("ci") ? "프로젝트 + PC" : "프로젝트", 80);
-		KeyValue("설치 위치", m.folder, 80);
-		SectionHeader("명령줄");
-		std::string id = m.id;
-		for (const char* verb : { "install", "update", "remove" })
-		{
-			std::string line = "__dwo-forge.bat tool " + std::string(verb) + " " + id;
-			if (ImGui::Selectable((std::string(ICON_COPY) + "  " + line).c_str())) { ImGui::SetClipboardText(line.c_str()); PushToast("복사함", line, col::Info); }
-		}
-		if (ImGui::Selectable((std::string(ICON_COPY) + "  __dwo-forge.bat tools").c_str())) ImGui::SetClipboardText("__dwo-forge.bat tools");
-		return;
-	}
-	SectionHeader("프로젝트");
-	KeyValue("이름", app.projectName, 80);
-	KeyValue("종류", app.isCodeProject ? "C++" : "Blueprint 전용", 80);
-	if (app.attached)
-	{
-		KeyValue("엔진", "UE " + app.Engine(), 80);
-		KeyValue("연결 일시", ShortDate(Str(app.state, "attachedAt")), 80);
-		KeyValue("연결 버전", app.SystemCommit(), 80);
-		KeyValue("버전 관리", Str(app.state, "vcs") == "none" ? "없음" : Str(app.state, "vcs") == "parent" ? "상위 git 저장소" : "git", 80);
-	}
-	KeyValue("경로", PathUtf8(app.project), 80);
-	ImGui::Spacing();
-	ImGui::PushTextWrapPos(0);
-	TextDim("도구 줄을 누르면 버전과 설치 위치를, 두 번 누르면 그 도구를 엽니다.");
-	ImGui::PopTextWrapPos();
+	EndCard();
+	ImGui::EndChild();
+	ImGui::PopStyleVar();
+	ImGui::EndGroup();
 }

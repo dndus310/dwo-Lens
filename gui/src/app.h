@@ -377,6 +377,7 @@ struct App
 	bool lensInstalled = false;  // Plugins/__DwoLensInspector (the DwoLens tool)
 	bool ciInstalled = false;    // __dwo-forge/ci.json (DwoBuilder tool)
 	bool toolsDirty = true;      // tool versions must be read again (forge.ps1 tools --json)
+	bool sidebarCollapsed = false; // sidebar shows icons only (saved in gui.json)
 	bool migrationStarted = false;
 	json state;
 	json catalog;
@@ -414,6 +415,7 @@ struct App
 		{
 			for (auto& r : Arr(*s, "recent")) if (r.is_string()) recent.push_back(r.get<std::string>());
 			for (auto& r : Arr(*s, "canvasRecent")) if (r.is_string()) canvasRecent.push_back(r.get<std::string>());
+			sidebarCollapsed = s->value("sidebarCollapsed", false);
 			const json& l = Obj(*s, "live");
 			liveSettings.port = (int)l.value("port", 47731);
 			liveSettings.autoObserve = l.value("auto", true);
@@ -428,6 +430,7 @@ struct App
 		json s;
 		s["recent"] = recent;
 		s["canvasRecent"] = canvasRecent;
+		s["sidebarCollapsed"] = sidebarCollapsed;
 		s["live"] = { { "port", liveSettings.port }, { "auto", liveSettings.autoObserve }, { "engine", liveSettings.engineProps },
 		              { "interval", liveSettings.interval }, { "watch", liveSettings.watch } };
 		std::error_code ec;

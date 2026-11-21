@@ -44,6 +44,7 @@
 #define ICON_CLOSE     u8"\uE711"
 #define ICON_DELETE    u8"\uE74D"
 #define ICON_RIGHT     u8"\uE76C"
+#define ICON_LEFT      u8"\uE76B"
 #define ICON_DOWN      u8"\uE70D"
 #define ICON_GAME      u8"\uE7FC"
 #define ICON_BOLT      u8"\uE945"
@@ -136,7 +137,8 @@ struct Fonts
 	ImFont* title = nullptr;
 	ImFont* big = nullptr;
 	ImFont* mono = nullptr;
-	ImFont* icon = nullptr;     // icons only, larger, for the activity bar
+	ImFont* icon = nullptr;     // icons only, larger, for the sidebar
+	ImFont* iconLarge = nullptr; // the few tool glyphs drawn on launcher thumbnails, at full size (not scaled up)
 };
 static Fonts g_fonts;
 static float g_scale = 1.0f;
@@ -193,6 +195,9 @@ static void LoadFonts(float scale)
 		ImFontConfig cfg;
 		cfg.PixelSnapH = true;
 		g_fonts.icon = exists(icons) ? io.Fonts->AddFontFromFileTTF(icons, 20.0f * scale, &cfg, iconRanges) : g_fonts.body;
+		// search (DwoLens), canvas (DwoCanvas), eye (DwoStateMonitor), package (DwoBuilder)
+		static const ImWchar thumbRanges[] = { 0xE721, 0xE721, 0xE790, 0xE790, 0xE7B3, 0xE7B3, 0xE7B8, 0xE7B8, 0 };
+		g_fonts.iconLarge = exists(icons) ? io.Fonts->AddFontFromFileTTF(icons, 40.0f * scale, &cfg, thumbRanges) : g_fonts.icon;
 	}
 	io.FontDefault = g_fonts.body;
 }
